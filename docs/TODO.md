@@ -540,6 +540,34 @@ Any core edit for a new source id is a bug.
      runtime port actually ships: same env, same port, same wire, a different
      inside. Discord stays 1.0.0, having never released.
 
+11. **Live sweep of the Discord surface** (`done`, 2026-09-04).
+    - The user exercised the paths that had never run. Working first time:
+      **an image** (described), **the reaction tool** (asked for a like, got
+      one — and its new trace is in Debug), **an edit**. Twenty-four Discord
+      traces, and every `inbound`/`reply`/`deliver` succeeded.
+    - **Feedback did not work, either thumb.** `self-improvement/collect-feedback`
+      failed twice with `components[BASE_TYPE_MAX_LENGTH]: Must be 5 or fewer`
+      (Discord code 50035). The transport's fault: the core sends a plain grid
+      and knows no platform's limits, so it lays a menu out one option per row
+      — right for a narrow Telegram keyboard, which has no row limit. Discord
+      allows FIVE action rows; the like menu is six and the dislike menu seven,
+      and `toComponents` mapped the grid one-to-one. So no feedback was
+      collectable on Discord at all.
+    - **Fixed by re-packing, not truncating** (`fitToRows`): dropping an option
+      would quietly change the question being asked. Rows are the narrowest
+      width that still fits everything, so long labels stay readable rather
+      than five being crammed in whenever they would go; past Discord's 25
+      buttons it throws instead of losing them. Six tests
+      (`src/discord/menu.test.ts`), 22 in the transport.
+    - **One `skipped` in the sweep is correct, not a defect**: a channel
+      message that was not addressed reached the LLM analyzer, which answered
+      `name_match: absent`. That is the gate working.
+    - **Still unexercised on Discord**: a voice note inbound, a generated image
+      outbound (`sendPhoto` returns `mediaId: null` here — Discord serves
+      attachments from a CDN URL with no re-usable file id, so the core has
+      nothing to key stored media by), the delivery MCP tools, and the
+      cross-feed between the two platforms now that one assistant spans both.
+
 10. **The profile was neither live nor reversible** (`done`, 2026-09-04).
     - **Found live (user, 2026-09-04):** "identities have to auto refresh after
       linking is done. there is no option to UNLINK account from Profile page."
