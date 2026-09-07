@@ -13,6 +13,7 @@ import {
 } from "@assistant-hub-swarm/bus";
 import { busTraceClient } from "@assistant-hub-swarm/service";
 
+import { describeError } from "./errors";
 import { sendChatMessage, type SendContext } from "./send";
 import type { PlatformConnection, TransportDescriptor } from "./types";
 
@@ -122,7 +123,7 @@ export async function startDeliveryConsumer(input: {
                 level: "warn",
                 data: {
                   sourceMessageId,
-                  error: error instanceof Error ? error.message : String(error),
+                  error: describeError(error),
                 },
               });
             },

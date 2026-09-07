@@ -3,6 +3,7 @@ import { openPublisher, type BusPublisher } from "@assistant-hub-swarm/bus";
 import { dashboardRefresh } from "@assistant-hub-swarm/service";
 
 import type { CoreApi } from "./core-api";
+import { describeError } from "./errors";
 import { buildEditEvent, buildInboundEvent, buildReactionEvent } from "./inbound";
 import type { RunningConnection } from "./send";
 import { SeenCache, type UpdatePublisher } from "./updates";
@@ -88,7 +89,7 @@ export class ConnectionManager<TRaw> {
   }
 
   private errorText(err: unknown): string {
-    return this.deps.adapter.errorText?.(err) ?? (err instanceof Error ? err.message : String(err));
+    return this.deps.adapter.errorText?.(err) ?? describeError(err);
   }
 
   /**

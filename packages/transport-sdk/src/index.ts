@@ -222,6 +222,9 @@ export { toolTrigger, tracedTool } from "./runtime/trace";
 export { reactToMessage } from "./runtime/reactions";
 export { startDeliveryConsumer } from "./runtime/delivery";
 export { createCoreApi } from "./runtime/core-api";
+// Your own logs want this too: it is what turns a bare `fetch failed` into
+// the connection error underneath it.
+export { describeError } from "./runtime/errors";
 export { openUpdatePublisher, updateEnvelope, SeenCache } from "./runtime/updates";
 export { buildEditEvent, buildInboundEvent, buildReactionEvent } from "./runtime/inbound";
 export { healthBody, publishDelivered, sendChatMessage } from "./runtime/send";

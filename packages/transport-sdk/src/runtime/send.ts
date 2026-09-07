@@ -5,6 +5,7 @@ import {
   type MessageDeliveredEvent,
 } from "@assistant-hub-swarm/contracts";
 
+import { describeError } from "./errors";
 import { splitMessage } from "./split";
 import { updateEnvelope, type UpdatePublisher } from "./updates";
 import type { ConnectionStatus, PlatformConnection, SendOptions, TransportDescriptor } from "./types";
@@ -106,7 +107,7 @@ export async function sendChatMessage(
     ((sourceMessageId: string, err: unknown) =>
       console.error(
         `Failed to report delivery ${input.chatId}:${sourceMessageId}:`,
-        err instanceof Error ? err.message : String(err),
+        describeError(err),
       ));
 
   // Empty text is sent as-is: the platform's refusal is the honest answer,

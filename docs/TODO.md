@@ -34,9 +34,10 @@ current tree before acting on them.
 
 ## Transport SDK: a new transport with zero core edits (`in-progress`, opened 2026-09-02)
 
-**Where it stands (2026-09-04):** all seven phases have landed and every check
-passes. The SDK is published at **3.0.0** and both transports run on it. What
-is left is the pushes only the user can make.
+**Where it stands (2026-09-07):** all seven phases have landed and every check
+passes. The SDK is published at **3.1.0** and both transports run on it;
+**3.2.0** (item 8) is committed here and waits for a push. What is left is the
+pushes only the user can make.
 
 **Problem (user, 2026-09-02).** `docs/PLAN.md` and the overview promise that a
 transport connects "without any core change", while
@@ -739,6 +740,55 @@ Any core edit for a new source id is a bug.
      1.0.0 — and the core's compose pin for Telegram stays at 1.0.0 until
      1.1.0 is actually in the registry, since the new pin check would (rightly)
      refuse a compose file naming an image nobody published.
+
+8. **A failed registration says why** (`done`, 2026-09-07 — SDK 3.2.0,
+   committed, not yet published).
+   - **Problem (user, 2026-09-07):** a transport that could not reach its core
+     printed `registration with the core failed (fetch failed) — retrying in
+     10s`, once every ten seconds, forever. Every word of it is useless.
+     `fetch failed` is the entire message Node's fetch throws for every
+     network failure there is, and the reason it actually was — refused,
+     unresolved, timed out, TLS — sits one level down in `cause`, which
+     nothing read. Nor did the line say which transport, which URL it tried,
+     how many attempts had failed, or for how long.
+   - **`describeError` (new, `runtime/errors.ts`, exported):** name, message,
+     the error code when the message does not already spell it out, every
+     entry of an `AggregateError` (fetch tries every address a name resolves
+     to, and "IPv6 refused, IPv4 timed out" is a different problem from "both
+     refused"), and the whole `cause` chain — depth-capped and safe on a
+     chain that points back at itself. It is duck-typed, not `instanceof
+     Error`, so a `DOMException` from `AbortSignal.timeout` describes itself
+     too. This is now the SDK's **only** way of putting a thrown thing into a
+     log: the default `errorText` in `service.ts`, `http.ts` and
+     `manager.ts`, the delivery-report log in `send.ts` and the trace field in
+     `delivery.ts` all go through it.
+   - **Every core call names itself.** `createCoreApi`'s `request` wraps a
+     transport failure with the method and the full URL; reads a non-OK body
+     as text before JSON (a proxy or gateway answers HTML, and that page beats
+     "answered 502" alone) and prefers the core's own
+     `{ error: { message } }`; reports a 200 whose body is not JSON as exactly
+     that; and says when an answer does not match `CONTRACT_MAJOR` rather than
+     dumping a raw zod error. The throw carries **where**, `cause` carries
+     **why**, and `describeError` joins them at the point of logging — saying
+     the reason in both places printed everything twice.
+   - **The retry line** now names the transport, the core URL, the attempt and
+     the elapsed time, so "the core is still booting" and "this has been
+     failing for an hour" stop looking identical. Before registration is even
+     attempted the service logs the two URLs and the contract major, which is
+     what a failed registration is nearly always about.
+   - **Proof.** Seven new unit tests pin the wording of the shapes that
+     actually occur (`transport-sdk` 26 tests, all passing), and the built
+     `dist` was driven against a dead port, an unresolvable name, an nginx-ish
+     502, a 409 contract refusal and a 200 of HTML — the refused case reads
+     `... did not answer <- TypeError: fetch failed <- AggregateError
+     (ECONNREFUSED) [connect ECONNREFUSED ::1:3200; connect ECONNREFUSED
+     127.0.0.1:3200]`.
+   - **Follow-up, blocked on the push:** `telegramErrorText` and
+     `discordErrorText` still answer `err.message` for anything that is not a
+     platform error of their own, so a Telegram or Discord network failure
+     still logs bare. Both become a one-line fall-through to the exported
+     `describeError` once 3.2.0 is on the registry and each transport has
+     installed it.
 
 **Landed with the org move (`done`, 2026-09-02):** local `origin` repointed;
 the guide, the tracker and the link-fetch user-agent name the new repository;

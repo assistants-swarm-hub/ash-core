@@ -1,4 +1,8 @@
-import { BUS_EVENTS_CHANNEL, type SourceTraceClient } from "@assistant-hub-swarm/contracts";
+import {
+  BUS_EVENTS_CHANNEL,
+  CONTRACT_MAJOR,
+  type SourceTraceClient,
+} from "@assistant-hub-swarm/contracts";
 import { openPublisher, openSubscriber, type BusPublisher, type BusSubscription } from "@assistant-hub-swarm/bus";
 import { busTraceClient, optionalEnv, requireEnv } from "@assistant-hub-swarm/service";
 import { serve } from "@hono/node-server";
@@ -6,6 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { createCoreApi, type CoreApi } from "./core-api";
 import { startDeliveryConsumer, type DeliveryConsumer } from "./delivery";
+import { describeError } from "./errors";
 import { createTransportApi } from "./http";
 import { ConnectionManager } from "./manager";
 import { registerDeliveryTools, type DeliveryToolTexts } from "./mcp";
@@ -91,11 +96,13 @@ export async function startTransportService<TRaw>(
   // consumer and every hosted tool share it.
   const events: BusPublisher = openPublisher(redisUrl);
   const traces = busTraceClient(descriptor.id, events);
+  const coreUrl = optionalEnv("CORE_API_URL") ?? "http://localhost:3200";
+  const selfUrl = optionalEnv("SELF_URL") ?? `http://localhost:${port}`;
   const core = createCoreApi({
     descriptor,
-    baseUrl: optionalEnv("CORE_API_URL") ?? "http://localhost:3200",
+    baseUrl: coreUrl,
     token: internalToken,
-    selfUrl: optionalEnv("SELF_URL") ?? `http://localhost:${port}`,
+    selfUrl,
   });
   const manager = new ConnectionManager<TRaw>({
     descriptor,
@@ -108,7 +115,7 @@ export async function startTransportService<TRaw>(
   });
 
   const errorText = (err: unknown): string =>
-    options.adapter.errorText?.(err) ?? (err instanceof Error ? err.message : String(err));
+    options.adapter.errorText?.(err) ?? describeError(err);
 
   const send: SendContext = {
     descriptor,
@@ -171,6 +178,14 @@ export async function startTransportService<TRaw>(
     console.log(`${descriptor.id} API listening on :${info.port}`);
   });
 
+  // Said before the first attempt, because the two URLs and the wire major
+  // are what a failed registration is nearly always about, and a log that
+  // only starts talking once something breaks makes the operator guess what
+  // this process even tried.
+  console.log(
+    `registering ${descriptor.id} (contract v${CONTRACT_MAJOR}) with the core at ${coreUrl}, ` +
+      `callbacks to ${selfUrl}`,
+  );
   const desired = await core.registerUntilAccepted();
   console.log(
     `registered with the core — ${desired.connections.length} connection(s) desired` +

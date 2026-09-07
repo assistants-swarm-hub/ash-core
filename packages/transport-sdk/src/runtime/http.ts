@@ -12,6 +12,7 @@ import { internalTokenGuard, serveMcp } from "@assistant-hub-swarm/service";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Hono } from "hono";
 
+import { describeError } from "./errors";
 import { publishDelivered, sendChatMessage, type SendContext } from "./send";
 import type { ConnectionStatus, PlatformConnection } from "./types";
 
@@ -52,7 +53,7 @@ interface RouteContext {
 }
 
 export function createTransportApi(deps: TransportApiDeps): Hono {
-  const errorText = deps.errorText ?? ((err: unknown) => (err instanceof Error ? err.message : String(err)));
+  const errorText = deps.errorText ?? describeError;
   const app = new Hono();
 
   app.get("/health", (c) => c.json({ ok: true, connections: deps.statuses() }));
