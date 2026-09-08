@@ -343,6 +343,12 @@ the same body are informational and never cause a 503. Redis is not part of read
 either: a core without its queue serves the dashboard and reports the consumer state
 in its log.
 
+## The core will not start: `database "core" does not exist`
+
+The stack predates the `core` default for the bundled database and its data sits
+in `bot`. Set `POSTGRES_DB=bot` in `.env`, or rename the database once while the
+app is stopped — the command is under [Upgrading](deployment.md#upgrading).
+
 ## Locked out of the dashboard
 
 Passwords are per account, and an admin resets any *other* account from `/accounts`

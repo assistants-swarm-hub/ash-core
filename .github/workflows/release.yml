@@ -288,7 +288,7 @@ jobs:
         env:
           POSTGRES_USER: bot
           POSTGRES_PASSWORD: bot
-          POSTGRES_DB: bot
+          POSTGRES_DB: core
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U bot"
@@ -330,7 +330,7 @@ jobs:
           docker run -d --name smoke --network host \
             -e NODE_ENV=production \
             -e PORT=3200 \
-            -e DATABASE_URL=postgres://bot:bot@127.0.0.1:5432/bot \
+            -e DATABASE_URL=postgres://bot:bot@127.0.0.1:5432/core \
             -e REDIS_URL=redis://127.0.0.1:6379 \
             -e INTERNAL_API_TOKEN=smoke-test \
             "$ref"

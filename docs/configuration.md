@@ -62,7 +62,7 @@ Read by `docker-compose.yml`, not by application code:
 | `INTERNAL_API_TOKEN` | `change-me` | Passed to every app. **Set a real value** — it is what a transport authenticates with too |
 | `POSTGRES_USER` | `bot` | Bundled Postgres user |
 | `POSTGRES_PASSWORD` | `bot` | Bundled Postgres password |
-| `POSTGRES_DB` | `bot` | Bundled Postgres database |
+| `POSTGRES_DB` | `core` | Bundled Postgres database |
 | `POSTGRES_PORT` | `5432` | Host port published for Postgres |
 | `REDIS_PORT` | `6379` | Host port published for Redis |
 | `TZ` | `UTC` | Process timezone for every service |

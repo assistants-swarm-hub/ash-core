@@ -257,6 +257,18 @@ same commit, so take the new compose file along with the new image. Pulling the
 image against an old compose file leaves traces and downloads unmounted: the host
 directories still hold what they held, but the container writes past them.
 
+**Once, upgrading past 1.49.0:** the bundled database defaults to `core` (it was
+`bot`). A stack that never set `POSTGRES_DB` keeps its data in `bot`, and the new
+default points the core at a `core` database that does not exist — it fails to
+start rather than starting empty. Either set `POSTGRES_DB=bot` in `.env` and
+carry on, or rename the database once while the app is stopped:
+
+```bash
+docker compose stop app && docker compose exec -T db psql -U bot -d postgres -c 'alter database bot rename to core' && docker compose up -d
+```
+
+Nothing in the store depends on the name; the rename is instant.
+
 A transport upgrades on **its own** schedule — its image and version are its
 repository's, not this one's. The only thing the two sides must agree on is the
 wire's `CONTRACT_MAJOR`; when they do not, the core refuses that transport by

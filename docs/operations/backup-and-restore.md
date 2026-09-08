@@ -27,10 +27,9 @@ needs — bot tokens included — it fetches from the core at registration.
 
 ### Dump
 
-The store is the `core` database (user and password default to `bot`). Set
-`POSTGRES_DB=core` in the Compose `.env` so the bundled Postgres creates it on
-first start and its healthcheck and the default `DATABASE_URL` name it too — the
-compose file's own fallback is still `bot`. With the stack up:
+The store is the `core` database — the Compose default for `POSTGRES_DB`, which
+the bundled Postgres creates on first start and its healthcheck and the default
+`DATABASE_URL` name too; user and password default to `bot`. With the stack up:
 
 ```bash
 docker compose exec -T db pg_dump -U bot -d core > backup.sql
@@ -44,8 +43,7 @@ docker compose exec -T db pg_dump -U bot -d core -Fc > backup.dump
 
 ### Restore
 
-Into a fresh `core` database (the container creates it on first start when
-`POSTGRES_DB=core` is set):
+Into a fresh `core` database (the container creates it on first start):
 
 ```bash
 docker compose exec -T db psql -U bot -d core < backup.sql
@@ -141,7 +139,8 @@ tar czf "/backups/traces-$(date +%F).tar.gz" -C /srv/assistants-swarm-hub/data t
 ## Disaster recovery
 
 1. Bring up a fresh stack (`docker compose up -d`) with the same `INTERNAL_API_TOKEN`
-   and the same `POSTGRES_DB`, so the database the dump names exists.
+   and, if you override it, the same `POSTGRES_DB`, so the database the dump
+   names exists.
    Do **not** visit `/setup` yet.
 2. Restore the database dump.
 3. Unpack the trace archive into `./data/traces`, ensuring the container user can

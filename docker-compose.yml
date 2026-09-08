@@ -29,7 +29,7 @@ services:
       PORT: 3200
       # Built from the bundled db service; override DATABASE_URL to use an
       # external database.
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-bot}:${POSTGRES_PASSWORD:-bot}@db:5432/${POSTGRES_DB:-bot}}
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-bot}:${POSTGRES_PASSWORD:-bot}@db:5432/${POSTGRES_DB:-core}}
       # The cross-app bus + transport queues. The token authenticates every
       # direction and must match the transport services' — set a real one in
       # .env. Transport base URLs are announced at registration, not
@@ -81,7 +81,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-bot}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bot}
-      POSTGRES_DB: ${POSTGRES_DB:-bot}
+      POSTGRES_DB: ${POSTGRES_DB:-core}
       TZ: ${TZ:-UTC}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
@@ -89,7 +89,7 @@ services:
       # Bind-mounted host directory for persistence.
       - "./data/pg:/var/lib/postgresql/data"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bot} -d ${POSTGRES_DB:-bot}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bot} -d ${POSTGRES_DB:-core}"]
       interval: 5s
       timeout: 5s
       retries: 10
