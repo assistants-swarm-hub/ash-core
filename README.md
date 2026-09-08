@@ -35,7 +35,7 @@ The rest of this file is the quick reference.
 ```bash
 npm install
 docker compose up -d db redis          # or point the .env file at your own Postgres + Redis
-cp apps/core/.env.example apps/core/.env
+cp core/.env.example core/.env
 npm run db:migrate
 npm run dev                            # the core on http://localhost:3200
 ```
@@ -85,7 +85,7 @@ Root scripts fan out across the workspaces through turbo.
 | `npm run test:watch` | Vitest watch mode (core) |
 | `npm run test:integration` | Integration tests against real Postgres and Redis (Testcontainers; **Docker required**) |
 | `npm run test:linux` | The whole suite inside a Linux container (`docker-compose.test.yml`) |
-| `npm run db:generate` | Generate a SQL migration from `apps/core/store/schema.ts` |
+| `npm run db:generate` | Generate a SQL migration from `core/store/schema.ts` |
 | `npm run db:migrate` | Apply pending migrations to `DATABASE_URL` |
 | `npm run db:studio` | Open Drizzle Studio |
 | `npm run release:patch\|minor\|major` | Bump the root version; the release workflow ships whatever that version is missing from the registry |
@@ -101,14 +101,14 @@ change to the core.
 
 | Path | Responsibility |
 | --- | --- |
-| `apps/core/` | The hub: dashboard, web chat, the conversation store, the reply pipeline, background jobs, LLM clients, MCP runtime, traces. One Next.js process. |
-| `apps/core/app/` | App Router routes, layouts, and Route Handlers (`app/api/**/route.ts`). Handlers stay thin, declare an access level, and delegate to `server/`. |
-| `apps/core/components/` | Shared, presentational dashboard UI. `components/ui/` is the design-system kit (import via `@/components/ui`); `components/layout/` the responsive app shell; `components/transports/` the schema-driven transport sections; `components/theme/` the theme toggle. |
-| `apps/core/features/` | Product feature modules (server service, schemas, API, UI, tests) following the feature contract in [Contributing](docs/development/contributing.md). |
-| `apps/core/server/` | Server-only domain logic and shared infrastructure: auth, ownership, the queue consumers (`ingest/`, `turn/`), the bus, LLM, MCP, jobs, trace, realtime, the conversation store (`source-store/`), transport registrations (`transports/`). |
-| `apps/core/store/` | THE database module: the Drizzle schema (`schema.ts`) and the one migration chain (`migrations/`). |
-| `apps/core/lib/` | Small shared utilities and pure contracts importable by both client and server. |
-| `apps/core/test/` | Test support (stubs, fixtures, the Testcontainers database helper). |
+| `core/` | The hub: dashboard, web chat, the conversation store, the reply pipeline, background jobs, LLM clients, MCP runtime, traces. One Next.js process. |
+| `core/app/` | App Router routes, layouts, and Route Handlers (`app/api/**/route.ts`). Handlers stay thin, declare an access level, and delegate to `server/`. |
+| `core/components/` | Shared, presentational dashboard UI. `components/ui/` is the design-system kit (import via `@/components/ui`); `components/layout/` the responsive app shell; `components/transports/` the schema-driven transport sections; `components/theme/` the theme toggle. |
+| `core/features/` | Product feature modules (server service, schemas, API, UI, tests) following the feature contract in [Contributing](docs/development/contributing.md). |
+| `core/server/` | Server-only domain logic and shared infrastructure: auth, ownership, the queue consumers (`ingest/`, `turn/`), the bus, LLM, MCP, jobs, trace, realtime, the conversation store (`source-store/`), transport registrations (`transports/`). |
+| `core/store/` | THE database module: the Drizzle schema (`schema.ts`) and the one migration chain (`migrations/`). |
+| `core/lib/` | Small shared utilities and pure contracts importable by both client and server. |
+| `core/test/` | Test support (stubs, fixtures, the Testcontainers database helper). |
 | — | Transports are **not** in this repository. Each is its own repository and its own image, built on `packages/transport-sdk` and connected by registration alone; Telegram's is [ahw-transport-telegram](https://github.com/assistant-hub-swarm/ahw-transport-telegram), the reference for [adding a transport](docs/development/adding-a-transport.md). |
 | `packages/contracts/` | Cross-app zod schemas (`@assistant-hub-swarm/contracts`): scoped refs, transport events, reply delivery and turn lifecycle, the internal APIs, the trace contract, realtime topics. |
 | `packages/bus/` | Redis plumbing (`@assistant-hub-swarm/bus`): BullMQ queues with `attempts: 1` and the pub/sub bus. |
@@ -123,7 +123,7 @@ change to the core.
 Server-only modules (`server/env.ts`, `server/http.ts`, …) import `server-only`
 so they cannot be pulled into a client bundle. Pure contracts that the dashboard
 needs to render (`lib/api-error.ts`, `lib/trace.ts`) are intentionally **not**
-server-only. Path alias `@/*` maps to the `apps/core` root; workspace packages
+server-only. Path alias `@/*` maps to the `core` root; workspace packages
 are imported by name (`@assistant-hub-swarm/*`).
 
 ## Database
@@ -132,8 +132,8 @@ Persistence uses [Drizzle ORM](https://orm.drizzle.team) with drizzle-kit
 migrations against Postgres (with the `vector` and `pg_trgm` extensions, both
 created by the migrations; the compose `pgvector` image ships them).
 
-- Edit tables in `apps/core/store/schema.ts`, then run `npm run db:generate` and
-  commit the new SQL under `apps/core/store/migrations/`.
+- Edit tables in `core/store/schema.ts`, then run `npm run db:generate` and
+  commit the new SQL under `core/store/migrations/`.
 - Apply migrations with `npm run db:migrate` (drizzle-kit). In deployment the
   container entrypoint runs the same SQL through the programmatic migrator
   (`node migrate/migrate.mjs`) before starting the standalone server, so the

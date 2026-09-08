@@ -7,8 +7,8 @@ truth and the SQL migrations under `store/migrations/` are generated from it
 it is a stateless transport; everything it needs remembered lands in the
 tables below.
 
-Paths in this document are relative to `apps/core/` unless they start with
-`apps/` or `packages/`.
+Paths in this document are relative to `core/` unless they start with
+`core/` or `packages/`.
 
 Extensions in use: `vector` (pgvector, for the 1024-wide `embedding` columns —
 `EMBEDDING_DIMENSIONS` in `packages/contracts/src/embeddings.ts`) and
@@ -1001,10 +1001,10 @@ Both halves are one job:
 - `drizzle.config.ts` loads `.env*` the way Next does (`@next/env`);
   `db:generate` needs no database, `db:migrate` reads `DATABASE_URL`.
 
-In production the image never ships drizzle-kit. `apps/core/Dockerfile` copies
+In production the image never ships drizzle-kit. `core/Dockerfile` copies
 the SQL files next to `packages/db/migrate/migrate.mjs` — drizzle's
 programmatic migrator (`drizzle-orm/node-postgres/migrator`) with its own two
 dependencies — and the container command is
-`node migrate/migrate.mjs && node apps/core/server.js`: pending migrations
+`node migrate/migrate.mjs && node core/server.js`: pending migrations
 complete before the app accepts traffic, and a failed migration fails the
 start. With no `DATABASE_URL` the runner logs a warning and exits 0.

@@ -4,7 +4,7 @@ Read this alongside `AGENTS.md` (the short, authoritative version), and check
 [`docs/TODO.md`](../TODO.md) — pending features with their agreed specs and
 decisions, plus open items — before starting implementation work.
 
-Paths are relative to `apps/core/` unless they start with `apps/` or `packages/`.
+Paths are relative to `core/` unless they start with `core/` or `packages/`.
 
 ## Non-negotiables
 
@@ -251,7 +251,7 @@ codegraph explore "how does the addressing analyzer decide"
 ```
 
 ```bash
-codegraph node apps/core/features/bot-messaging/server/service.ts
+codegraph node core/features/bot-messaging/server/service.ts
 ```
 
 If a future worktree has no `.codegraph/` directory, skip it — indexing is the user's

@@ -21,9 +21,9 @@ in.
 
 ## Architecture in one paragraph
 
-Two apps in a Turborepo: **apps/core** (Next.js — dashboard, web chat, the
+One app in a Turborepo: **core** (Next.js — dashboard, web chat, the
 whole brain/pipeline, ONE Postgres database whose schema and migration
-chain live in `apps/core/store/`). Transports are **not** in this
+chain live in `core/store/`). Transports are **not** in this
 repository: each is its own repository and image (Telegram's is
 `assistant-hub-swarm/ahw-transport-telegram`), self-registering with the
 core at boot, forwarding every update as transport events over the Redis
@@ -78,7 +78,7 @@ Code must be clean, readable, and DRY.
   persistence, trace recording, and error mapping belong in shared server
   code. Every route declares its access level on `defineRoute` (`admin`
   default / `account` / `public`) and scopes data through the ownership
-  helpers in `apps/core/server/ownership.ts`.
+  helpers in `core/server/ownership.ts`.
 - Server-only logic must not leak into client bundles. Use server-only
   module boundaries for database, filesystem, Telegram, Playwright, LLM
   credentials, and secrets.
@@ -95,7 +95,7 @@ Every feature follows the standard feature contract, as established by
 `features/settings` (the reference implementation) and documented in
 `docs/development/contributing.md`: acceptance criteria; server-side
 service logic; validated schemas; typed persistence (the one store chain —
-edit `apps/core/store/schema.ts`, `npm run db:generate`, commit the SQL,
+edit `core/store/schema.ts`, `npm run db:generate`, commit the SQL,
 `npm run db:migrate`); Route Handlers on shared wrappers with the right
 access level; dashboard UI that live-updates over the shared SSE layer;
 registration in `lib/features.ts` with a `featureDebugHref(id)` link into
@@ -103,7 +103,7 @@ the shared `/debug` explorer (features do not get their own Debug route);
 trace recording for every meaningful action with COMPLETE raw bodies;
 downloadable JSON trace bundles; tests for service logic, Route Handlers,
 and critical UI/debug behavior (integration suites bootstrap through
-`apps/core/test/store-db.ts`).
+`core/test/store-db.ts`).
 
 ## Standing decisions (do not reopen without the user)
 

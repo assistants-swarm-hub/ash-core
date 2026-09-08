@@ -20,7 +20,7 @@ dist
 # Local data / artifacts
 data
 downloads
-apps/core/data
+core/data
 coverage
 *.log
 

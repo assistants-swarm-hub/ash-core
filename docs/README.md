@@ -97,9 +97,9 @@ its behavior, configuration, data, traces and tests.
 
 ## Conventions used in these docs
 
-- Paths are relative to `apps/core/` unless they start with `apps/` or
+- Paths are relative to `core/` unless they start with `core/` or
   `packages/` (`features/history/server/service.ts` means
-  `apps/core/features/history/server/service.ts`).
+  `core/features/history/server/service.ts`).
 - "Admin" and "user" are the two account roles. An **operator** is whoever
   administers the deployment — an admin account. **Owner rights** in a chat
   belong to the assistant's owning account (resolved through identity links)

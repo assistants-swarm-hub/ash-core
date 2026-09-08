@@ -5,7 +5,7 @@ thing most operator questions are really about. The walk-through follows a
 Telegram message, because that is the transport that exists; the web chat joins
 the same pipeline at Stage 2 with its own in-process source side.
 
-Paths are relative to `apps/core/` unless they start with `apps/`.
+Paths are relative to `core/` unless they start with `core/` or `packages/`.
 
 ## The seam
 

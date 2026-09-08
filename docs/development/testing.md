@@ -4,8 +4,8 @@ Three tiers, three different costs, three different purposes.
 
 | Tier | Command | Needs | Count |
 | --- | --- | --- | --- |
-| **Unit** | `npm run test` | Nothing | 112 files (107 in `apps/core`, 3 in `packages/contracts`, 1 in `packages/service`, 1 in `packages/transport-sdk`) |
-| **Integration** | `npm run test:integration` | Docker (Testcontainers) | 41 `*.integration.test.ts` files (40 in `apps/core`, 1 in `packages/bus`) |
+| **Unit** | `npm run test` | Nothing | 112 files (107 in `core`, 3 in `packages/contracts`, 1 in `packages/service`, 1 in `packages/transport-sdk`) |
+| **Integration** | `npm run test:integration` | Docker (Testcontainers) | 41 `*.integration.test.ts` files (40 in `core`, 1 in `packages/bus`) |
 | **Live** (a subset of integration) | `npm run test:integration` with a configured LLM | Docker + a reachable LLM endpoint | Marked `*-live` / tool-selection |
 
 Tests are **colocated** with the code they cover: `addressing.test.ts` sits beside
@@ -14,16 +14,16 @@ Tests are **colocated** with the code they cover: `addressing.test.ts` sits besi
 ## Root scripts vs. per-workspace commands
 
 The root scripts are turbo fan-outs: `npm run test` runs `vitest run` in every
-workspace that has a `test` script (`apps/core`, `packages/contracts`,
+workspace that has a `test` script (`core`, `packages/contracts`,
 `packages/service`, `packages/transport-sdk`), and `npm run test:integration` runs
-`test:integration` where it exists (`apps/core` and `packages/bus`).
+`test:integration` where it exists (`core` and `packages/bus`).
 `npm run test:watch` is core-only.
 
 To run one workspace, or one file, go there and call vitest directly:
 
 ```bash
-cd apps/core && npx vitest run features/bot-messaging
-cd apps/core && npx vitest run --config vitest.integration.config.ts server/turn
+cd core && npx vitest run features/bot-messaging
+cd core && npx vitest run --config vitest.integration.config.ts server/turn
 cd packages/transport-sdk && npx vitest run
 cd packages/bus && npx vitest run --config vitest.integration.config.ts
 ```
@@ -56,7 +56,7 @@ would drop the one guarantee they exist for — and `npm run test:linux` runs th
 A Windows `npm run test` reports them as skipped, not passed.
 
 The repository is bind-mounted into that container, but `node_modules` (root and
-`apps/core`) are named volumes: esbuild, rollup and lightningcss ship per-platform
+`core`) are named volumes: esbuild, rollup and lightningcss ship per-platform
 native builds, so the host's install cannot execute there. The first run populates
 the volumes (a couple of minutes); later runs start in seconds. Arguments pass
 through, so a subset works too:
@@ -67,13 +67,13 @@ npm run test:linux -- npx vitest run features/browser-agent
 
 ## Unit tests
 
-`apps/core/vitest.config.ts`, `environment: "node"`. Two aliases make server code
+`core/vitest.config.ts`, `environment: "node"`. Two aliases make server code
 directly testable:
 
 | Alias | Points at | Why |
 | --- | --- | --- |
 | `server-only` | `test/stubs/empty.ts` | The real package throws outside an RSC bundle |
-| `@` | `apps/core/` (the app root) | Mirrors the tsconfig path alias |
+| `@` | `core/` (the app root) | Mirrors the tsconfig path alias |
 
 What belongs here: every pure decision. The codebase is deliberately structured so
 that the interesting logic *is* pure and does not need a database or a model:
@@ -102,7 +102,7 @@ API.
 
 ## Integration tests
 
-`apps/core/vitest.integration.config.ts`. Real Postgres, per-file, via Testcontainers.
+`core/vitest.integration.config.ts`. Real Postgres, per-file, via Testcontainers.
 
 | Setting | Value | Why |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ const { db, pool, connectionUri, truncate, stop } = await startTestStoreDb();
 Starts a `pgvector/pgvector:pg17` container (through `@assistant-hub-swarm/db/testing`'s
 `startTestPostgres` — one container, any number of databases inside it), creates a
 database, builds a Drizzle handle, and **runs the real migrations** from
-`apps/core/store/migrations`. That last part is load-bearing: it means the integration
+`core/store/migrations`. That last part is load-bearing: it means the integration
 suite fails if a migration is broken, and it means a schema change you generated but
 did not apply still passes here — which is exactly the trap that hides an unapplied
 migration until the operator's bot crashes on the old schema. Always run
@@ -258,11 +258,11 @@ stateless, and what it forwards is what the core's ingest suite already proves.
 ## Running a subset
 
 ```bash
-cd apps/core && npx vitest run features/bot-messaging
+cd core && npx vitest run features/bot-messaging
 ```
 
 ```bash
-cd apps/core && npx vitest run --config vitest.integration.config.ts features/memory
+cd core && npx vitest run --config vitest.integration.config.ts features/memory
 ```
 
 ```bash

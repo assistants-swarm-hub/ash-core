@@ -10,13 +10,13 @@ Configuration lives in **two** layers, and the split is deliberate.
 Runtime setup is **not** in env vars. An operator should never have to edit a
 file and restart a container to change the model an assistant uses.
 
-Paths are relative to `apps/core/` unless they start with `apps/` or `packages/`.
+Paths are relative to `core/` unless they start with `core/` or `packages/`.
 
 ---
 
 ## Environment variables
 
-### The core (`apps/core`)
+### The core (`core`)
 
 The full list, as parsed by `server/env.ts`. Every variable also accepts a
 `<NAME>_FILE` variant whose file contents are used instead — that is the Docker

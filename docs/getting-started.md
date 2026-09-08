@@ -39,10 +39,10 @@ docker compose up -d db redis
 Each app reads its own `.env`:
 
 ```bash
-cp apps/core/.env.example apps/core/.env
+cp core/.env.example core/.env
 ```
 
-In `apps/core/.env` set `DATABASE_URL`, `REDIS_URL` and `INTERNAL_API_TOKEN`.
+In `core/.env` set `DATABASE_URL`, `REDIS_URL` and `INTERNAL_API_TOKEN`.
 That token is what lets a transport register with the core — with it unset,
 every internal route answers 401 and any transport retries registration
 forever. A transport is a separate service with its own checkout and its own
@@ -180,7 +180,7 @@ Root scripts fan out across the workspaces through turbo.
 | `npm run test:watch` | Vitest watch mode (core) |
 | `npm run test:integration` | Integration tests against real Postgres and Redis (Testcontainers; **Docker required**) |
 | `npm run test:linux` | The whole suite inside a Linux container (`docker-compose.test.yml`), for a lockfile generated on Windows |
-| `npm run db:generate` | Generate a SQL migration from `apps/core/store/schema.ts` |
+| `npm run db:generate` | Generate a SQL migration from `core/store/schema.ts` |
 | `npm run db:migrate` | Apply pending migrations to `DATABASE_URL` |
 | `npm run db:studio` | Drizzle Studio |
 | `npm run release:patch\|minor\|major` | Bump the root `package.json` version without a git tag. The release workflow then ships whatever that version is missing from the registry |

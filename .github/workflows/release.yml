@@ -93,7 +93,7 @@ jobs:
           # list: it decides what to release and becomes the build matrix
           # below, so the two can never disagree. Transports are not here —
           # each is its own repository, on its own version.
-          IMAGES="ahw-core=apps/core/Dockerfile"
+          IMAGES="ahw-core=core/Dockerfile"
 
           published_image() {
             docker buildx imagetools inspect "$1" >/dev/null 2>&1

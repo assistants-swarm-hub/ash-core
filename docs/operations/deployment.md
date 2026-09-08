@@ -99,8 +99,8 @@ you can see and back up the data with ordinary tools:
 | --- | --- | --- |
 | `./data/pg` | `/var/lib/postgresql/data` | The database |
 | `./data/redis` | `/data` | The Redis append-only file: every queued transport event and inbound turn not yet consumed |
-| `./data/traces` | `/app/apps/core/data/traces` | Monthly trace NDJSON logs |
-| `./data/downloads` | `/app/apps/core/data/downloads` | Browser-agent downloads |
+| `./data/traces` | `/app/core/data/traces` | Monthly trace NDJSON logs |
+| `./data/downloads` | `/app/core/data/downloads` | Browser-agent downloads |
 
 All four are mounted, and all four hold the only copy of what they contain. Two of
 them matter for non-obvious reasons:
@@ -113,7 +113,7 @@ them matter for non-obvious reasons:
   attach to the chat** exists nowhere else, so an unmounted container path would
   silently lose it on the next image replacement.
 
-`/app/apps/core/data/bin` — where the yt-dlp updater keeps the current binary — is
+`/app/core/data/bin` — where the yt-dlp updater keeps the current binary — is
 deliberately **not** mounted (user decision, 2026-08-01). It is a cache, not data: a
 recreated container falls back to the build the image pins and re-downloads a current
 one on boot, which costs ~40 MB per redeploy and saves a host directory whose ownership
@@ -128,7 +128,7 @@ and downloads fail per-run, reported on the run row.
 
 Compose has working defaults; a root `.env` is optional and is read only for the
 `${…}` substitutions in `docker-compose.yml`. There is no root `.env.example`:
-`apps/core/.env.example` documents local (non-Docker) development, and each
+`core/.env.example` documents local (non-Docker) development, and each
 transport ships its own.
 
 **One variable is not optional in production: `INTERNAL_API_TOKEN`.** It is the shared
@@ -138,7 +138,7 @@ value in `.env`, and set the **same** value for both — a mismatch makes the tr
 registration fail with `401` and retry every 10 seconds forever, and the dashboard says
 the transport "has not announced itself yet".
 
-The core (`apps/core/server/env.ts`) reads:
+The core (`core/server/env.ts`) reads:
 
 | Variable | Compose sets it to | Notes |
 | --- | --- | --- |
@@ -201,10 +201,10 @@ Deliberate choices worth knowing before you change them:
 | --- | --- |
 | `npm install`, not `npm ci` | `package-lock.json` is generated on Windows and omits Linux-only optional native deps (musl builds of `lightningcss` / `tailwind-oxide`, `@emnapi/*`), which `npm ci`'s strict sync check rejects |
 | Native deps installed **inside** the image | Host `node_modules` must never be copied in — they are built for the wrong platform |
-| One manifest per workspace package the core depends on, copied before the install | The workspace install needs every manifest; the `deps` stage copies `apps/core/package.json` plus `packages/{bus,contracts,db,media,service,ui}/package.json` |
+| One manifest per workspace package the core depends on, copied before the install | The workspace install needs every manifest; the `deps` stage copies `core/package.json` plus `packages/{bus,contracts,db,media,service,ui}/package.json` |
 | `output: "standalone"` | The runner ships only traced runtime deps (`.next/standalone`), not a full `node_modules`; traced from the monorepo root, so the output mirrors the workspace layout |
 | `ffmpeg` from apk | Vision samples video frames with it, voice transcodes both ways, and the browser agent muxes streams with it (user decision: system ffmpeg over a bundled/WASM build) |
-| `yt-dlp` from **upstream**, not apk | The browser agent's media downloader; a media site's player has no file URL to fetch (user decision, 2026-07-29). The apk package is frozen per Alpine release while these sites change on purpose, so the image pins upstream's self-contained `musllinux` build (checksum-verified, no python3) and the app's daily updater keeps a newer copy in `/app/apps/core/data/bin` (user decision, 2026-08-01) |
+| `yt-dlp` from **upstream**, not apk | The browser agent's media downloader; a media site's player has no file URL to fetch (user decision, 2026-07-29). The apk package is frozen per Alpine release while these sites change on purpose, so the image pins upstream's self-contained `musllinux` build (checksum-verified, no python3) and the app's daily updater keeps a newer copy in `/app/core/data/bin` (user decision, 2026-08-01) |
 | `chromium` + `nss`/`freetype`/`harfbuzz`/fonts from apk | Playwright's own download is a glibc build that will not run on Alpine (musl). `CHROMIUM_EXECUTABLE_PATH` points at the distro browser |
 | `playwright` and `playwright-core` copied **whole** over the traced copies | They are `serverExternalPackages`, so Next's file tracer copies only statically resolvable JS and misses runtime data files like `playwright-core/browsers.json` |
 | `sharp` needs no apk package | It ships its own musl libvips binary via npm |
@@ -213,7 +213,7 @@ Deliberate choices worth knowing before you change them:
 #### Startup command
 
 ```sh
-node migrate/migrate.mjs && node apps/core/server.js
+node migrate/migrate.mjs && node core/server.js
 ```
 
 Migrations complete **before** the app accepts traffic, and a failed migration fails
@@ -223,7 +223,7 @@ The migration runner is isolated on purpose: `packages/db/migrate/` has its own 
 `package.json` and uses drizzle's **programmatic** migrator
 (`drizzle-orm/node-postgres/migrator`) rather than the drizzle-kit CLI, which is
 intentionally absent from the slim image. The image copies the SQL chain from
-`apps/core/store/migrations` next to it, and its two dependencies live in their own
+`core/store/migrations` next to it, and its two dependencies live in their own
 directory so they never touch the app's traced `node_modules`. With `DATABASE_URL`
 unset it warns and exits 0 rather than failing the container.
 
@@ -251,6 +251,13 @@ Or, when running the dev override, rebuild:
 The core's entrypoint applies any new migrations first; each transport
 re-registers with the core at boot and reconciles from the desired state the
 core answers with.
+
+**Once, upgrading past 1.48.1:** the app moved from `apps/core/` to `core/` in
+this repository, and its container paths moved with it — `/app/apps/core/data/*`
+is now `/app/core/data/*`. The bind mounts in `docker-compose.yml` moved in the
+same commit, so take the new compose file along with the new image. Pulling the
+image against an old compose file leaves traces and downloads unmounted: the host
+directories still hold what they held, but the container writes past them.
 
 A transport upgrades on **its own** schedule — its image and version are its
 repository's, not this one's. The only thing the two sides must agree on is the
@@ -321,7 +328,7 @@ its own repository (`ahw-transport-telegram`, …). The workflow:
    from another repository entirely, so nothing here can keep it honest, and an
    operator would otherwise meet a stale one as a pull failure on their server.
 3. **build** — one entry per missing image (`ahw-core` from
-   `apps/core/Dockerfile`), built with layer caching and handed to the next job
+   `core/Dockerfile`), built with layer caching and handed to the next job
    as an artifact — nothing is pushed. One failing image fails the release.
    Transports are not in the matrix: each releases from its own repository.
 4. **publish** — loads the images and **boots the core against a real Postgres

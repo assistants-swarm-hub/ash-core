@@ -4,7 +4,7 @@ This system holds Telegram bot tokens, LLM API keys, and a complete archive of
 private conversations. This document states what protects what, and what does
 not.
 
-Paths are relative to `apps/core/` unless they start with `apps/` or `packages/`.
+Paths are relative to `core/` unless they start with `core/` or `packages/`.
 
 ## Threat model in one paragraph
 

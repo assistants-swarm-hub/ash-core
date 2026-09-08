@@ -1,7 +1,7 @@
 # Architecture overview
 
 One application in this Turborepo, one Postgres database, one Redis, one brain.
-**`apps/core`** is a Next.js 16 App Router application: the dashboard, the web
+**`core`** is a Next.js 16 App Router application: the dashboard, the web
 chat, the whole reply pipeline, every background job, the MCP tool runtime and
 the trace store.
 
@@ -18,7 +18,7 @@ holds no list of them. A new platform is another container; see
                                   │  queue `transport-updates`          ▲ `reply.delivery`, `turn.lifecycle`
                                   ▼  (every message, edit, reaction,    │ (Redis pub/sub `assistant-hub-swarm:events`)
                                      delivery — media bytes attached)   │
-   dashboard ──HTTP──► apps/core (Next.js, :3200)                       │
+   dashboard ──HTTP──► core (Next.js, :3200)                       │
    (browser) ◄──SSE──   server/ingest ─► queue `inbound-messages` ─► server/turn ─► features/bot-messaging ──┘
    web chat  ──HTTP──►  features/web-chat ────────────────────────────┘ (same pipeline, in-process)
                                   │
@@ -30,14 +30,14 @@ holds no list of them. A new platform is another container; see
                                                      (each transport's own is one)
 ```
 
-Paths in this document are relative to `apps/core/` unless they start with
-`apps/` or `packages/`.
+Paths in this document are relative to `core/` unless they start with
+`core/` or `packages/`.
 
 ## The app, the transports and the shared packages
 
 | Workspace | Responsibility | State |
 | --- | --- | --- |
-| `apps/core` | Dashboard (admin and user roles), web chat, the conversation store, the reply pipeline, background jobs, LLM clients, MCP runtime, traces, realtime | The Postgres database (`store/`), trace files, downloads |
+| `core` | Dashboard (admin and user roles), web chat, the conversation store, the reply pipeline, background jobs, LLM clients, MCP runtime, traces, realtime | The Postgres database (`store/`), trace files, downloads |
 | *(each transport, elsewhere)* | One platform: connections per assistant, media download, structural addressing, sends, typing, the platform's MCP tools | **None.** It registers with the core at boot and reconciles from the desired state the core answers with |
 | `packages/contracts` | Every cross-app zod schema: scoped refs, transport events, reply delivery, turn lifecycle, the internal APIs, the trace contract, realtime topics | — |
 | `packages/bus` | BullMQ queues (`attempts: 1`) and the ioredis pub/sub bus | — |
@@ -69,7 +69,7 @@ major, not six versions of this repository's internals.
 | `lib/` | Small shared contracts importable from **both** client and server | Pure. No `server-only`, no database, no secrets |
 | `test/` | Stubs, fixtures, the Testcontainers database helper (`test/store-db.ts`) | — |
 
-Path alias: `@/*` maps to `apps/core/`. Workspace packages are imported by name
+Path alias: `@/*` maps to `core/`. Workspace packages are imported by name
 (`@assistant-hub-swarm/*`).
 
 ### The import boundary

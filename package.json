@@ -7,7 +7,7 @@
   },
   "packageManager": "npm@11.6.2",
   "workspaces": [
-    "apps/*",
+    "core",
     "packages/*"
   ],
   "scripts": {

@@ -861,7 +861,7 @@ upstream fix.
   Lockfile only — no declared range moved.
 - **sharp `^0.34.5` → `^0.35.4`** (high: inherited libvips CVEs
   `GHSA-f88m-g3jw-g9cj`) in `packages/media`, `packages/transport-sdk` and
-  `apps/core`. This is the one that also reached the **transport**, through the
+  `core`. This is the one that also reached the **transport**, through the
   SDK's own dependency — so `packages/transport-sdk` goes to **1.0.1**, and the
   transport picks the fix up on its next install once that is published.
   Verified beyond the type checker: a real round-trip through
@@ -922,8 +922,8 @@ security,data-model}.md`, `docs/operations/*` (all five),
 `docs/features/README.md`, root `README.md`. **Patched:**
 `docs/architecture/{background-jobs,observability,llm-and-mcp}.md`, every
 remaining `docs/features/*.md`, `AGENTS.md` (pointer to the manual).
-Conventions now stated in `docs/README.md`: paths are relative to `apps/core/`
-unless they start with `apps/` or `packages/`; admin/user roles and owner
+Conventions now stated in `docs/README.md`: paths are relative to `core/`
+unless they start with `core/` or `packages/`; admin/user roles and owner
 rights replace "operator" and "owner".
 
 **Proof:** a relative-link and anchor checker over all 47 markdown files under

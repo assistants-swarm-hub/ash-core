@@ -6,7 +6,7 @@ the MCP layer in `server/mcp/`: an in-process registry of the feature tools, plu
 remote MCP servers reached over HTTP — the operator's tool connections and each
 transport's own tool server.
 
-Paths are relative to `apps/core/` unless they start with `apps/` or `packages/`.
+Paths are relative to `core/` unless they start with `core/` or `packages/`.
 
 ## The five provider clients
 

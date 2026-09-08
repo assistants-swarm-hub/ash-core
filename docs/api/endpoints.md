@@ -44,8 +44,8 @@ least 8 characters.
   "checks": {
     "database":        { "ok": true, "detail": "Connected" },
     "configuration":   { "configured": true, "detail": "Chat backend and model set — see Overview for live status." },
-    "traceStorage":    { "ok": true, "detail": "/app/apps/core/data/traces", "pendingCount": 0, "lastFlushError": null },
-    "downloadStorage": { "ok": true, "detail": "/app/apps/core/data/downloads" }
+    "traceStorage":    { "ok": true, "detail": "/app/core/data/traces", "pendingCount": 0, "lastFlushError": null },
+    "downloadStorage": { "ok": true, "detail": "/app/core/data/downloads" }
   }
 }
 ```

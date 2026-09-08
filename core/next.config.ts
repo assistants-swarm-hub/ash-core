@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 
 // Root manifest, not this app's: the monorepo releases on one version (the
 // release pipeline watches the root "version" field), so build info reports it.
-import pkg from "../../package.json";
+import pkg from "../package.json";
 
 const nextConfig: NextConfig = {
   // Produce a self-contained server bundle (`.next/standalone`) so the
@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Trace from the monorepo root so workspace packages and the root
   // node_modules land in the standalone output.
-  outputFileTracingRoot: path.join(__dirname, "../../"),
+  outputFileTracingRoot: path.join(__dirname, "../"),
   // Workspace packages ship TypeScript sources (just-in-time packages); Next
   // compiles them as part of this app's build.
   transpilePackages: [

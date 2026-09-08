@@ -29,8 +29,8 @@ out/
 # local data (bind-mounted Postgres data at the root; per-app runtime data)
 /data
 /downloads
-/apps/*/data
-/apps/*/downloads
+/core/data
+/core/downloads
 
 # misc
 .DS_Store

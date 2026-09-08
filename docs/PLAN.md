@@ -39,12 +39,12 @@ Three pillars:
 
 ### Monorepo
 
-Turborepo with npm workspaces. `apps/*` never import each other's code —
-only packages.
+Turborepo with npm workspaces. One app plus the shared packages; code
+that crosses a workspace boundary is a package, never a reach into
+another workspace's source.
 
 ```
-apps/
-  core/       Next.js — the product. Dashboard + multi-user auth + web
+core/         Next.js — the product. Dashboard + multi-user auth + web
               chat + SSE, and the brain: reply pipeline, LLM loop, MCP
               runtime, schedulers, background jobs, Playwright, media
               pipelines (vision, voice). Owns THE store: accounts,
@@ -69,7 +69,7 @@ enabled connection, media fetching, update normalization, reply delivery,
 typing, and an MCP server for Telegram's outbound actions) is
 `assistant-hub-swarm/ahw-transport-telegram`. None has a database.
 
-Domain logic lives inside `apps/core`; only genuinely cross-app code is a
+Domain logic lives inside `core`; only genuinely cross-app code is a
 package. The build-time extension registry from the original design is
 retired: transports contribute dashboard UI through published config
 schemas (see Dashboard), not compiled-in UI packages, so a transport ships
@@ -78,12 +78,12 @@ no UI package at all.
 ### Runtime topology
 
 ```
-Browser ── HTTP/SSE ── apps/core ──┬── LLM endpoint(s)
+Browser ── HTTP/SSE ── core ──┬── LLM endpoint(s)
                           │        ├── remote MCP servers (HTTP)
                           │        ├── transport MCP servers (tg, …)
                           │        └── Playwright / media pipelines
                           │
-Telegram ─ pollers ─ transport ── Redis (queue + pub/sub) ── apps/core
+Telegram ─ pollers ─ transport ── Redis (queue + pub/sub) ── core
 
 (transports: inbound events out, reply-delivery + lifecycle events in;
  each hosts an MCP server for its platform's outbound actions)
@@ -92,7 +92,7 @@ One Postgres database (core's). Transports have none.
 ```
 
 Web chat has no transport app: it is a core feature, served and stored by
-`apps/core`, its turns entering the pipeline in-process.
+`core`, its turns entering the pipeline in-process.
 
 ### Data ownership
 

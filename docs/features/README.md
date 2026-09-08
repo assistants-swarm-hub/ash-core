@@ -6,7 +6,7 @@ live.
 
 Feature ids are the ones in `lib/features.ts` — the same strings that appear as
 `feature` on every trace and as the `/debug?feature=<id>` filter. Paths are
-relative to `apps/core/` unless they start with `apps/` or `packages/`.
+relative to `core/` unless they start with `core/` or `packages/`.
 
 ## Index
 
