@@ -1006,7 +1006,8 @@ Supersedes the 2026-08-19 "Collections feature" spec (`deferred`), which is
 dropped as a whole (user decision, 2026-09-08 — see "What changed" below;
 the old text is in git history). Not started. Two generic upgrades it
 depends on are tracked as their own entries right after this one:
-"Documents: a text-like media kind" and "`browse_web` spawns the assistant".
+"Documents: a text-like media kind" and "`start_agent`: a background copy
+of the assistant".
 
 ### The scenario (user, 2026-09-08)
 
@@ -1051,22 +1052,23 @@ depends on are tracked as their own entries right after this one:
 4. **File ingest: a `document` media kind on the transport contract** (own
    entry below). A dashboard import button is not part of v1.
 5. **Enrichment data: the per-collection fill-gaps instruction picks the
-   tools.** The assistant uses what it has — `browse_web`, or any lookup
-   server the operator connects as a tool connection. No source adapters
-   in core; the domain lives in the instruction.
+   tools.** The assistant uses what it has — a background agent with the
+   browser tools (`start_agent`, own entry below), or any lookup server
+   the operator connects as a tool connection. No source adapters in core;
+   the domain lives in the instruction.
 6. **The bulk job is a Task, not a new worker.** (The AGENTS.md ask for a
    new long-running worker was put and declined.) "Fill the gaps" makes
-   the assistant create an interval task in the chat; every fire dispatches
-   one quiet `browse_web` run whose goal is the batch ("query rows with
-   gaps, look each up, update them"). The run does the work with the
-   assistant's full toolset (own entry below). The browser runner executes
-   one run at a time, so a later run simply re-queries and continues — no
-   overlap, no pending markers.
+   the assistant create an interval task in the chat; every fire starts
+   one quiet background agent (`start_agent`) whose goal is the batch
+   ("query rows with gaps, look each up, update them"). The agent does the
+   work with the assistant's full toolset (own entry below). The agent
+   runner executes one run at a time, so a later run simply re-queries and
+   continues — no overlap, no pending markers.
 7. **Loop end: code reports the gaps, the model ends the task.** The prompt
    block carries "rows with gaps" per collection, so a fire that sees zero
    sends the one completion message (`send_message`) and deletes its own
-   task; a fire that sees gaps dispatches and stays quiet. Progress on the
-   dashboard is complete/total, live.
+   task; a fire that sees gaps starts an agent and stays quiet. Progress on
+   the dashboard is complete/total, live.
 8. **The standing rule is a Task; the rating is asked in plain text.**
    "Whenever I send a link of this kind: add it, look it up, present it as
    usual, ask my rating" is a prompt-kind Task of the assistant — `on-reply`
@@ -1100,7 +1102,7 @@ depends on are tracked as their own entries right after this one:
     structured-only without a model.
 14. **Tracking is dropped entirely** — not built, not kept as a later idea.
 15. **No hand-off mechanism.** "How does web-found data get into a row" is
-    answered by the agent holding the tools (own entry), not by
+    answered by the background agent holding the tools (own entry), not by
     continuation turns or a synchronous research tool.
 
 ### Proposed architecture (to implement; details are the implementer's)
@@ -1164,18 +1166,19 @@ depends on are tracked as their own entries right after this one:
    confirms once, `collection_import` runs, the reply reports the counts.
 2. **Fill the gaps.** The owner asks; the assistant creates an interval
    task (every 15 minutes, say) in the chat. Each fire reads the block:
-   gaps left → `browse_web({ goal: <batch>, quiet: true })` and no message;
-   zero → one `send_message` and `tasks_delete` of its own task. Each run:
-   `rows_query({ gaps: true, limit: N })`, per row browse and read, then
-   `rows_update`. A quiet run reports to the chat only when its goal
-   failed.
+   gaps left → `start_agent({ goal: <batch>, quiet: true })` and no
+   message; zero → one `send_message` and `tasks_delete` of its own task.
+   Each agent run: `rows_query({ gaps: true, limit: N })`, per row browse
+   and read, then `rows_update`. A quiet run posts its final report only
+   when its goal failed; progress notes, if the agent sends any, go out
+   silent.
 3. **A link under the standing rule.** The owner sends a link; the
    `on-reply` Task tells the turn what to do: `rows_add` with the key and
-   whatever is known, then `browse_web` with the goal "open the link, fill
+   whatever is known, then `start_agent` with the goal "open the link, fill
    row <id>, then present the item per the presentation instruction and
-   ask for a rating". The turn acknowledges; the run's report is the card
-   plus the question; the owner's "8" is applied by an ordinary turn via
-   `rows_update`. In a group the same runs from a `message` Task.
+   ask for a rating". The turn acknowledges; the run's final report is the
+   card plus the question; the owner's "8" is applied by an ordinary turn
+   via `rows_update`. In a group the same runs from a `message` Task.
 
 ### Acceptance criteria (v1)
 
@@ -1202,19 +1205,18 @@ depends on are tracked as their own entries right after this one:
 
 1. The `document` media kind (own entry) — contract, SDK release, the
    transports' normalizers, core ingest, the read tool.
-2. `browse_web` with the assistant's toolset, persona and `quiet` (own
-   entry).
+2. `start_agent` replacing `browse_web` (own entry).
 3. Collections: schema, service, tools, block, import.
 4. `/collections`.
 5. The fill-gaps loop and the link flow live, in the dev setup.
 
 ### Risks
 
-- Throughput: the browser runner is sequential and a run takes minutes, so
-  a 500-row watchlist takes many hours; a parallelism knob on the runner is
+- Throughput: the agent runner is sequential and a run takes minutes, so a
+  500-row watchlist takes many hours; a parallelism knob on the runner is
   the later answer, not part of v1.
-- The browser role's model now holds a larger toolset; the operator picks a
-  model that copes (settings, browser role).
+- The agent role's model holds a far larger toolset than the browser agent
+  did; the operator picks a model that copes (settings, agent role).
 
 ## Documents: a text-like media kind on the transport contract (`todo`, 2026-09-08)
 
@@ -1248,39 +1250,78 @@ Proposed shape (verify against the contract's rules):
 - Tests: contract schema, ingest, the read tool's slicing per format, and
   each transport's normalizer in its own repository.
 
-## `browse_web` spawns the assistant, not a browser-only agent (`todo`, 2026-09-08)
+## `start_agent`: a background copy of the assistant (`todo`, 2026-09-08)
 
-Today a run binds no turn context and the agent holds `BROWSER_AGENT_TOOLS`
-only; its report is posted to the chat verbatim and never re-enters a turn.
-User decision (2026-09-08): the agent a run spawns must hold the assistant's
-whole toolset so a goal like "look this up and record it" is carried out
-inside the run — no continuation turns, no synchronous research tool.
+Replaces `browse_web` (user decision, 2026-09-08, reworking the first
+version of this entry, which had overloaded `browse_web` with the
+assistant's toolset). Today `browse_web` inserts a run and the runner
+starts a second, browser-only model loop: its own "web-browsing agent"
+prompt, the browser role's model, the static browser tool list, no turn
+context, no persona, and a text report the runner posts. Such a run can
+read a page but cannot record anything anywhere.
 
-- The run row carries the full turn binding (source, chat, thread,
-  assistant, sender, owner rights, correlation); `runOne` wraps the agent
-  in `runWithToolContext` so every in-process and connection tool binds as
-  in any turn.
-- Toolset = browser tools + `getToolset()` for that assistant minus
-  `browse_web` (no recursion) and minus the delivery tools (the runner
-  keeps delivering the report — user decision). One dispatcher routes
-  `browser_*` to the browser dispatcher and the rest to the toolset's
-  `callTool`. Stable per assistant.
-- **Persona composed** into the agent's system prompt (user decision,
-  2026-09-08, reversing "the agent reports facts, never in character");
-  the honesty, download and substitution rules stay as directives.
-- `quiet: boolean` on `browse_web`: a quiet run stores its report on the
-  run row and delivers to the chat only when the outcome check says the
-  goal failed. Meant for batches dispatched from fires; the description
-  says so.
-- A restricted run keeps its URL fence for downloads; every other tool
-  gates on the bound owner flags exactly as in a turn.
-- Sub-decision to take when implementing: a dashboard-started run has no
-  chat, so tools that need one refuse — either such runs keep the
-  browser-only toolset, or the dashboard asks which assistant runs it.
-- Tests: toolset composition (no `browse_web`, no delivery tools), the
-  context binding in `runOne`, the persona in the prompt, quiet delivery
-  both ways, a restricted run's gates; the live suite extended with a goal
-  that records through a tool.
+Decisions (user, 2026-09-08):
+
+- **One explicit background tool, `start_agent`, replaces `browse_web`.**
+  Input: `goal` (self-contained), optional `context` (facts gathered from
+  the conversation, like a Task's), optional `quiet`. Output: an
+  acknowledgement with the run id. The description inherits everything
+  `browse_web`'s earned in production — the must-call cases (a shared link,
+  a lookup, a download, a live value, a multi-step job), "keep the request
+  intact, add no weaker branch", the do-not for casual chat and stable
+  facts — and adds the new must-call: any job that has to act through
+  tools (record, remember, schedule, update a collection) or would take
+  many steps or minutes. Stored task instructions naming `browse_web` are
+  reworded by the operator; nothing aliases the old name.
+- **The agent is the assistant.** The run row carries the full turn binding
+  (source, chat, thread, assistant, sender, owner rights, correlation) and
+  the runner wraps the loop in `runWithToolContext` with `deliveryKind:
+  "send"`. Toolset = the browser tools + `getToolset({ delivery: "send" })`
+  for that assistant, minus `start_agent` (no nesting). Persona composed
+  into the agent prompt; the browser rules (navigate first when given a
+  URL, refs from the latest page state, the download and no-substitute
+  rules) stay as directives.
+- **It may speak mid-run, silently.** The agent holds the chat's
+  `send_message`; every message it sends during the run goes out
+  **silent** — no notification ping, mirrored into history, kept (these
+  are progress notes, not acknowledgements, so the settle does not delete
+  them). The runner still posts the **final report** with a ping, combined
+  with staged files as today; `quiet: true` posts the final report only
+  when the outcome check says the goal failed (batches started from
+  fires). The silent flag rides the tool call's `_meta` turn binding so
+  the transports' delivery tools honour it — an additive contract field, a
+  minor SDK release.
+- **The browser role becomes the agent role** in Settings
+  (`agent_backend_id`, `agent_model`; chat model by default) — one role for
+  background agents.
+- **Goal plus context, no transcript.** A run sees what the caller wrote,
+  plus the triggering message's URLs appended verbatim by code, as today.
+
+Consequences (to implement):
+
+- `browser_agent_runs` → `agent_runs` (+ `context`, `quiet`, the turn
+  binding columns); the runner keeps its operating model — queue = table,
+  one run at a time, advisory lock, crash sweep, the transient "on it"
+  acknowledgement deleted on settle, staged files delivered with the
+  report.
+- `/browser-agent` → `/agents`: the runs list shows the assistant and the
+  chat; "start a run" from the dashboard picks an assistant. A
+  dashboard-started run has no chat: chat-bound tools (delivery, tasks)
+  answer "no chat", and the report stays on the run row.
+- Feature id `browser-agent` → `agents` for the runs and the runner; the
+  tool-call trace id follows. Old traces keep their id; the Debug facet
+  lists both.
+- A restricted run (rule-driven in a group, or rights lent to a non-owner)
+  keeps the URL fence for downloads; every other tool gates on the bound
+  owner flags exactly as in a turn.
+- The reply toolset changes once (`browse_web` out, `start_agent` in); the
+  agent's toolset is stable per assistant.
+- Tests: the description pinned (the must-call cases), toolset composition
+  inside a run (no `start_agent`, `send_message` present, browser tools
+  present), the context binding, the persona composed, silent mid-run
+  sends and the pinged final report, quiet both ways, restricted gates, a
+  dashboard run without a chat, and the live suite with a goal that records
+  through a tool.
 
 ## The honesty gate cannot judge a retrospective turn (`todo` — observing, 2026-08-15)
 
