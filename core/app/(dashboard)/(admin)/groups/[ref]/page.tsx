@@ -2,7 +2,7 @@ import { ArrowLeft, Database } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { isScopedRef } from "@assistant-hub-swarm/contracts";
+import { isScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { Button, EmptyState, PageHeader, Tabs } from "@/components/ui";
 import { LiveIndicator } from "@/components/realtime/LiveIndicator";

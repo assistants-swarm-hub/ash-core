@@ -2,7 +2,7 @@ import "server-only";
 
 import { desc, eq } from "drizzle-orm";
 
-import { scopedRef, type SourceId } from "@assistant-hub-swarm/contracts";
+import { scopedRef, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import { addressingExclusions, type AddressingExclusionRow } from "../../../store/schema";
 import { getStoreDb, type StoreDb } from "@/server/store/db";

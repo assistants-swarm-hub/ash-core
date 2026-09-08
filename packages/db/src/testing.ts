@@ -8,7 +8,7 @@ import { Pool } from "pg";
 
 /**
  * Testcontainers plumbing for store integration tests
- * (`@assistant-hub-swarm/db/testing` — test-only subpath, not the server-only
+ * (`@assistants-swarm-hub/db/testing` — test-only subpath, not the server-only
  * package root). One Postgres container (the production pgvector image), any
  * number of databases created inside it.
  */

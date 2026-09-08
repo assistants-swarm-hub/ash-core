@@ -1,6 +1,6 @@
 import "server-only";
 
-import { scopedRef, turnCorrelationId, type SourceId } from "@assistant-hub-swarm/contracts";
+import { scopedRef, turnCorrelationId, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { ApiError } from "@/lib/api-error";

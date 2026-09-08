@@ -1,6 +1,6 @@
-# ahw-core
+# ash-core
 
-The core of **assistant-hub-swarm**, a multi-user assistant platform: accounts
+The core of **assistants-swarm-hub**, a multi-user assistant platform: accounts
 run their own AI assistants — personas, Telegram bots, standing tasks, tools —
 on one shared brain (an OpenAI-compatible chat completions API, or a native
 Anthropic, Google or Z.ai backend), with a web chat and a control/observability
@@ -8,7 +8,7 @@ dashboard. This repository is the core: the dashboard, the web chat, the whole
 pipeline and one Postgres database. Messaging platforms connect as
 **transports** — separate services in their own repositories that register
 themselves; Telegram's is
-[ahw-transport-telegram](https://github.com/assistant-hub-swarm/ahw-transport-telegram). Grown out of the
+[ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram). Grown out of the
 [ollama-tg-bot](https://github.com/drumslave-git/ollama-tg-bot) MVP through a
 full Next.js rewrite and the v2 redesign (see [docs/PLAN.md](docs/PLAN.md)).
 Pending work is tracked in [`docs/TODO.md`](docs/TODO.md).
@@ -47,7 +47,7 @@ docker compose up -d
 # dashboard: http://localhost:3200  ·  health: http://localhost:3200/api/health
 ```
 
-That runs **released images** — the core on `AHW_VERSION` (pinned, so a clone
+That runs **released images** — the core on `ASH_VERSION` (pinned, so a clone
 runs a known-good build) and the Telegram transport on its own version from its
 own repository. No toolchain on the host and no build to wait for. To build
 this working tree's core instead, add the dev override:
@@ -109,14 +109,14 @@ change to the core.
 | `core/store/` | THE database module: the Drizzle schema (`schema.ts`) and the one migration chain (`migrations/`). |
 | `core/lib/` | Small shared utilities and pure contracts importable by both client and server. |
 | `core/test/` | Test support (stubs, fixtures, the Testcontainers database helper). |
-| — | Transports are **not** in this repository. Each is its own repository and its own image, built on `packages/transport-sdk` and connected by registration alone; Telegram's is [ahw-transport-telegram](https://github.com/assistant-hub-swarm/ahw-transport-telegram), the reference for [adding a transport](docs/development/adding-a-transport.md). |
-| `packages/contracts/` | Cross-app zod schemas (`@assistant-hub-swarm/contracts`): scoped refs, transport events, reply delivery and turn lifecycle, the internal APIs, the trace contract, realtime topics. |
-| `packages/bus/` | Redis plumbing (`@assistant-hub-swarm/bus`): BullMQ queues with `attempts: 1` and the pub/sub bus. |
-| `packages/service/` | What every transport service needs once (`@assistant-hub-swarm/service`): env access, the internal-token guard, serving an MCP server over Hono, the bus trace client. |
-| `packages/media/` | Image normalization to a bounded JPEG (`@assistant-hub-swarm/media`), shared by the core and the transports. |
-| `packages/db/` | Shared database tooling (`@assistant-hub-swarm/db`): pool helpers, the production migration runner (`migrate/`), Testcontainers helpers (`/testing`). |
-| `packages/ui/` | Shared dashboard components and the live-event hook (`@assistant-hub-swarm/ui`). |
-| `packages/transport-sdk/` | The one **published** package (`@assistant-hub-swarm/transport-sdk`): the wire half of the four packages above, bundled into built output so a transport in its own repository resolves nothing private. Also generates the language-neutral wire contract in [`docs/api/transport/`](docs/api/transport/). |
+| — | Transports are **not** in this repository. Each is its own repository and its own image, built on `packages/transport-sdk` and connected by registration alone; Telegram's is [ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram), the reference for [adding a transport](docs/development/adding-a-transport.md). |
+| `packages/contracts/` | Cross-app zod schemas (`@assistants-swarm-hub/contracts`): scoped refs, transport events, reply delivery and turn lifecycle, the internal APIs, the trace contract, realtime topics. |
+| `packages/bus/` | Redis plumbing (`@assistants-swarm-hub/bus`): BullMQ queues with `attempts: 1` and the pub/sub bus. |
+| `packages/service/` | What every transport service needs once (`@assistants-swarm-hub/service`): env access, the internal-token guard, serving an MCP server over Hono, the bus trace client. |
+| `packages/media/` | Image normalization to a bounded JPEG (`@assistants-swarm-hub/media`), shared by the core and the transports. |
+| `packages/db/` | Shared database tooling (`@assistants-swarm-hub/db`): pool helpers, the production migration runner (`migrate/`), Testcontainers helpers (`/testing`). |
+| `packages/ui/` | Shared dashboard components and the live-event hook (`@assistants-swarm-hub/ui`). |
+| `packages/transport-sdk/` | The one **published** package (`@assistants-swarm-hub/transport-sdk`): the wire half of the four packages above, bundled into built output so a transport in its own repository resolves nothing private. Also generates the language-neutral wire contract in [`docs/api/transport/`](docs/api/transport/). |
 
 ### Import boundary
 
@@ -124,7 +124,7 @@ Server-only modules (`server/env.ts`, `server/http.ts`, …) import `server-only
 so they cannot be pulled into a client bundle. Pure contracts that the dashboard
 needs to render (`lib/api-error.ts`, `lib/trace.ts`) are intentionally **not**
 server-only. Path alias `@/*` maps to the `core` root; workspace packages
-are imported by name (`@assistant-hub-swarm/*`).
+are imported by name (`@assistants-swarm-hub/*`).
 
 ## Database
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { OperatorChat, OperatorUser } from "@assistant-hub-swarm/contracts";
+import type { OperatorChat, OperatorUser } from "@assistants-swarm-hub/contracts";
 
 import { listDirectoryChats, listDirectoryUsers, type DirectorySource } from "./directory";
 import type { SourceDirectoryClient } from "./operator-client";

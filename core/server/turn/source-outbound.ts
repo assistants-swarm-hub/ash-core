@@ -7,9 +7,9 @@ import {
   internalSentPhotosResponseSchema,
   internalSentVoiceResponseSchema,
   internalSetTitleResponseSchema,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 import { webChatOutbound } from "@/features/web-chat/server/outbound";
 import { findMessageRefs } from "@/lib/message-refs";

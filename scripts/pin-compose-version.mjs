@@ -14,8 +14,8 @@
  * workflow's verify job, so a version can neither ship with a stale pin nor
  * have one hand-edited out of sync.
  *
- * Only the DEFAULT inside `${AHW_VERSION:-…}` is touched. An operator setting
- * `AHW_VERSION` still wins at runtime; this file has no opinion about that.
+ * Only the DEFAULT inside `${ASH_VERSION:-…}` is touched. An operator setting
+ * `ASH_VERSION` still wins at runtime; this file has no opinion about that.
  *
  * `--list` covers the pins this script does NOT own: a transport's image is
  * released from its own repository on its own version, so nothing here can
@@ -32,8 +32,8 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const COMPOSE = join(ROOT, "docker-compose.yml");
 
-/** `${AHW_VERSION:-1.2.3}` — the default is group 1. */
-const PIN = /(\$\{AHW_VERSION:-)([^}]*)(\})/g;
+/** `${ASH_VERSION:-1.2.3}` — the default is group 1. */
+const PIN = /(\$\{ASH_VERSION:-)([^}]*)(\})/g;
 
 /** Every `image:` line, with `${VAR:-default}` resolved to its default. */
 const IMAGE_LINE = /^\s*image:\s*(\S+)\s*$/gm;

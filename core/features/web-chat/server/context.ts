@@ -7,7 +7,7 @@ import {
   type HistoryMessage,
   type Participant,
   type SenderInfo,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import type { StoreDb } from "@/server/store/db";
 

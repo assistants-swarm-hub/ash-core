@@ -5,7 +5,7 @@ import {
   applyMigrations,
   startTestPostgres,
   type TestPostgres,
-} from "@assistant-hub-swarm/db/testing";
+} from "@assistants-swarm-hub/db/testing";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -21,7 +21,7 @@ import * as storeSchema from "../../../store/schema";
 import { createAssistant } from "@/features/assistants/server/service";
 import { findLinksForRefs, listMembersOfLinks } from "@/features/person-links/server/repository";
 import { silencedAssistantIds } from "@/server/ownership";
-import { CONTRACT_MAJOR } from "@assistant-hub-swarm/contracts";
+import { CONTRACT_MAJOR } from "@assistants-swarm-hub/contracts";
 
 import { desiredTransportState } from "@/server/transports/service";
 

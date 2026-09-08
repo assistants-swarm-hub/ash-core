@@ -2,9 +2,9 @@ import {
   BUS_EVENTS_CHANNEL,
   CONTRACT_MAJOR,
   type SourceTraceClient,
-} from "@assistant-hub-swarm/contracts";
-import { openPublisher, openSubscriber, type BusPublisher, type BusSubscription } from "@assistant-hub-swarm/bus";
-import { busTraceClient, optionalEnv, requireEnv } from "@assistant-hub-swarm/service";
+} from "@assistants-swarm-hub/contracts";
+import { openPublisher, openSubscriber, type BusPublisher, type BusSubscription } from "@assistants-swarm-hub/bus";
+import { busTraceClient, optionalEnv, requireEnv } from "@assistants-swarm-hub/service";
 import { serve } from "@hono/node-server";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 

@@ -47,7 +47,7 @@ That token is what lets a transport register with the core — with it unset,
 every internal route answers 401 and any transport retries registration
 forever. A transport is a separate service with its own checkout and its own
 `.env` carrying the **same** token (Telegram's is
-[ahw-transport-telegram](https://github.com/assistant-hub-swarm/ahw-transport-telegram)); the core runs fine with none, it just has
+[ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram)); the core runs fine with none, it just has
 no platform to speak on. Then apply the schema:
 
 ```bash
@@ -64,7 +64,7 @@ The dashboard is at <http://localhost:3200>. On first contact it redirects to
 `/setup`.
 
 To talk to Telegram as well, run its transport from its own checkout against
-the same Redis and token ([ahw-transport-telegram](https://github.com/assistant-hub-swarm/ahw-transport-telegram)): it listens on 3210
+the same Redis and token ([ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram)): it listens on 3210
 and logs `registered with the core` once the dashboard is up. The core runs
 fine without it — there is simply no platform to speak on.
 
@@ -102,7 +102,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
 Compose has working defaults, so a `.env` at the repo root is optional — create
 one to set a real `INTERNAL_API_TOKEN` (the default is the placeholder
-`change-me`), to pin a different `AHW_VERSION`, or to change credentials, ports,
+`change-me`), to pin a different `ASH_VERSION`, or to change credentials, ports,
 or the host data directories.
 
 The core container runs pending migrations before it serves, so it never answers

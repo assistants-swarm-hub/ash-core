@@ -1,6 +1,6 @@
 import "server-only";
 
-import { parseScopedRef, scopedRef, type SourceId } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef, scopedRef, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { formatKnownUserLabel } from "@/features/known-users/format";

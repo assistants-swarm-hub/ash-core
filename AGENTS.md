@@ -1,7 +1,7 @@
 # Agent Guide
 
-This repository is **ahw-core**, the core of **assistant-hub-swarm** (GitHub:
-[assistant-hub-swarm/ahw-core](https://github.com/assistant-hub-swarm/ahw-core)):
+This repository is **ash-core**, the core of **assistants-swarm-hub** (GitHub:
+[assistants-swarm-hub/ash-core](https://github.com/assistants-swarm-hub/ash-core)):
 a multi-user assistant platform — accounts run
 their own AI assistants (personas, Telegram bots, standing tasks, tools) on
 one shared brain, with a web chat and a control/observability dashboard.
@@ -13,9 +13,9 @@ workspace) is historical reference only. Do not hardcode absolute
 filesystem paths in docs, code, scripts, or tests.
 
 This repository is normally checked out inside an **org workdir** next to
-its transports (`ahw-core/`, `ahw-transport-telegram/`, …), whose root
+its transports (`ash-core/`, `ash-transport-telegram/`, …), whose root
 `CLAUDE.md` maps the layout. Nothing here may depend on that: a transport
-consumes the published `@assistant-hub-swarm/transport-sdk`, never a
+consumes the published `@assistants-swarm-hub/transport-sdk`, never a
 relative path, because that is the position every third-party transport is
 in.
 
@@ -25,7 +25,7 @@ One app in a Turborepo: **core** (Next.js — dashboard, web chat, the
 whole brain/pipeline, ONE Postgres database whose schema and migration
 chain live in `core/store/`). Transports are **not** in this
 repository: each is its own repository and image (Telegram's is
-`assistant-hub-swarm/ahw-transport-telegram`), self-registering with the
+`assistants-swarm-hub/ash-transport-telegram`), self-registering with the
 core at boot, forwarding every update as transport events over the Redis
 queue, performing sends, and hosting its platform's MCP tools. Shared zod
 contracts live in `packages/contracts`
@@ -160,7 +160,7 @@ the broader checks when the change is large enough:
 - `npm run lint`
 - `npm run typecheck`
 - `npm run test` (unit; no Docker needed)
-- `npm run test:integration -w @assistant-hub-swarm/core` (Testcontainers;
+- `npm run test:integration -w @assistants-swarm-hub/core` (Testcontainers;
   Docker required)
 - `npm run build`
 

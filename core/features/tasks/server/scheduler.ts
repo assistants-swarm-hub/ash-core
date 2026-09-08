@@ -3,7 +3,7 @@ import "server-only";
 import { ApiError } from "@/lib/api-error";
 import { silencedAssistantIds } from "@/server/ownership";
 import type { TraceTrigger } from "@/lib/trace";
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 import { getChatContext, getChatLanguage } from "@/features/known-groups/server/service";
 import { getToolset } from "@/features/mcp-tools/server/service";
@@ -65,7 +65,7 @@ import { getActiveTasksForChat } from "./service";
 const TICK_MS = 30_000;
 
 const FEATURE = FEATURES.tasks;
-const STORE_KEY = Symbol.for("assistant-hub-swarm.tasks.scheduler");
+const STORE_KEY = Symbol.for("assistants-swarm-hub.tasks.scheduler");
 
 /**
  * Collaborators the due-run loop needs. Injected so the whole tick can be

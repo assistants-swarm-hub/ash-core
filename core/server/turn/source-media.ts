@@ -1,6 +1,6 @@
 import "server-only";
 
-import { WEB_CHAT_SOURCE, type SourceId } from "@assistant-hub-swarm/contracts";
+import { WEB_CHAT_SOURCE, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import type { MediaStorePort } from "@/features/vision/server/service";
 import type { MediaRecord } from "@/features/vision/server/repository";

@@ -6,7 +6,7 @@ import {
   BUS_EVENTS_CHANNEL,
   assistantDeletedEventSchema,
   type AssistantDeletedEvent,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import { ApiError } from "@/lib/api-error";
 import { FEATURES } from "@/lib/features";

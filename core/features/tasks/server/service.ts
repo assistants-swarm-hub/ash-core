@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { parseScopedRef, scopedRef, type SourceId } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef, scopedRef, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import { getAssistantById } from "@/features/assistants/server/repository";
 import { getGroupMembers, isGroupChat } from "@/features/known-groups/server/repository";

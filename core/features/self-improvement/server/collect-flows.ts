@@ -9,7 +9,7 @@ import {
   type FeedbackRecordedEvent,
   type SourceId,
   type TransportReactionEvent,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import { publishBusEvent } from "@/server/bus/publisher";
 import { publishEvent } from "@/server/realtime/hub";

@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import type { SourceTrace } from "@assistant-hub-swarm/contracts";
+import type { SourceTrace } from "@assistants-swarm-hub/contracts";
 
 import { publishEvent } from "@/server/realtime/hub";
 

@@ -1,13 +1,13 @@
 /**
- * `@assistant-hub-swarm/transport-sdk` — everything a **transport** needs to
- * connect a messaging platform to an assistant-hub-swarm core, and nothing else.
+ * `@assistants-swarm-hub/transport-sdk` — everything a **transport** needs to
+ * connect a messaging platform to an assistants-swarm-hub core, and nothing else.
  *
  * A transport is a stateless service that owns exactly one platform: it
  * registers with a running core, forwards every update it sees as normalized
  * events, performs the sends the core asks for, and hosts its platform's own
  * actions as MCP tools. It has no database and no files. The whole contract is
  * re-exported here — see
- * [Adding a transport](https://github.com/assistant-hub-swarm/ahw-core/blob/main/docs/development/adding-a-transport.md)
+ * [Adding a transport](https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/development/adding-a-transport.md)
  * for the manual that walks it in the order you meet it.
  *
  * The surface is deliberately narrower than the core's own contracts package:
@@ -40,10 +40,10 @@ export {
   type ScopedRef,
   type ScopedRefString,
   type SourceId,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 // ---- The wire's major version ---------------------------------------------
-export { CONTRACT_MAJOR } from "@assistant-hub-swarm/contracts";
+export { CONTRACT_MAJOR } from "@assistants-swarm-hub/contracts";
 
 // ---- Registration, desired state, and the updates you publish -------------
 export {
@@ -88,7 +88,7 @@ export {
   type TransportReplyContext,
   type TransportUpdateEvent,
   type TransportUser,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 // ---- What the core publishes back, and the ids one turn shares -------------
 export {
@@ -129,7 +129,7 @@ export {
   type ReplyTarget,
   type SenderInfo,
   type TurnLifecycleEvent,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 // ---- The HTTP surface the core calls on you (sends only) -------------------
 export {
@@ -152,7 +152,7 @@ export {
   type InternalSentMessageResponse,
   type InternalSentPhotosResponse,
   type InternalSentVoiceResponse,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 // ---- Your MCP tools: the turn they are bound to, the delivery they report --
 export {
@@ -166,7 +166,7 @@ export {
   turnToolMetaSchema,
   type ToolDelivery,
   type TurnToolMeta,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 // ---- Traces: what you did, in the core's one debug explorer ----------------
 export {
@@ -178,7 +178,7 @@ export {
   type SourceTraceClient,
   type SourceTraceRecorder,
   type TraceRecordedEvent,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 // ---- Redis: the update queue and the event bus -----------------------------
 export {
@@ -188,7 +188,7 @@ export {
   openWorker,
   type BusPublisher,
   type BusSubscription,
-} from "@assistant-hub-swarm/bus";
+} from "@assistants-swarm-hub/bus";
 
 // ---- Service plumbing: env, the token guard, MCP over Hono, bus helpers ----
 export {
@@ -200,14 +200,14 @@ export {
   requireEnv,
   serveMcp,
   type EventPublisher,
-} from "@assistant-hub-swarm/service";
+} from "@assistants-swarm-hub/service";
 
 // ---- Media: the bounded JPEG the core's vision endpoints accept ------------
 export {
   VISION_MAX_DIMENSION,
   normalizeImageForChat,
   type ImagePayload,
-} from "@assistant-hub-swarm/media";
+} from "@assistants-swarm-hub/media";
 
 // ---- The runtime: everything that is the same for every platform ----------
 // A transport supplies a descriptor, a platform adapter, a normalizer and an

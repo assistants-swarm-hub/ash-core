@@ -1,5 +1,5 @@
 {
-  "name": "@assistant-hub-swarm/bus",
+  "name": "@assistants-swarm-hub/bus",
   "version": "0.0.0",
   "private": true,
   "description": "Redis-backed cross-app plumbing: the BullMQ inbound queue (attempts: 1 — the turn runner alone decides re-enqueue) and the pub/sub event bus every app publishes on.",

@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { scopedRef } from "@assistant-hub-swarm/contracts";
+import { scopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { FEATURES } from "@/lib/features";

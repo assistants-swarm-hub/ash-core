@@ -1,4 +1,4 @@
-# assistant-hub-swarm — v2 Redesign Plan
+# assistants-swarm-hub — v2 Redesign Plan
 
 The source of truth for the v2 target architecture. The redesign closed on
 2026-08-31; what is still open is tracked in [TODO.md](TODO.md). This
@@ -14,7 +14,7 @@ target below is what phases 6–10 build.
 ## Vision
 
 The Telegram bot becomes one connectable transport on top of a general
-assistant platform named **assistant-hub-swarm**. The generic foundation —
+assistant platform named **assistants-swarm-hub**. The generic foundation —
 pipeline, memory, tools, traces, dashboard, web chat — is the product;
 Telegram and any future transport (Signal, mobile apps) are interchangeable
 stateless transport apps that plug into it **without any core changes**.
@@ -66,7 +66,7 @@ Transports are not workspaces here. Each is its own repository and its own
 image, built on `transport-sdk` — the Telegram one (one grammY poller per
 enabled connection, media fetching, update normalization, reply delivery,
 typing, and an MCP server for Telegram's outbound actions) is
-`assistant-hub-swarm/ahw-transport-telegram`. None has a database.
+`assistants-swarm-hub/ash-transport-telegram`. None has a database.
 
 Domain logic lives inside `core`; only genuinely cross-app code is a
 package. The build-time extension registry from the original design is
@@ -154,7 +154,7 @@ There are no capability flags anywhere in the contract. The core supports
 all media kinds natively; typing is lifecycle rendering; platform actions
 are MCP tools.
 
-The Telegram transport (`assistant-hub-swarm/ahw-transport-telegram`) is
+The Telegram transport (`assistants-swarm-hub/ash-transport-telegram`) is
 the first implementation; adding Signal later means writing another
 transport on the SDK, publishing its image, and adding one service to the
 operator's compose file.
@@ -344,8 +344,8 @@ runbook with a rollback path (restore backup, redeploy last v1 image).
 ## Deployment
 
 Docker images on the org's GitHub Container Registry:
-`ghcr.io/assistant-hub-swarm/ahw-core` from this repository, and one per
-transport from its own (`ahw-transport-telegram`, …), each named after its
+`ghcr.io/assistants-swarm-hub/ash-core` from this repository, and one per
+transport from its own (`ash-transport-telegram`, …), each named after its
 repository. Each release pipeline builds and publishes on its own version
 bump; compose pins every service to a version, the core's and each
 transport's separately. Compose runs one Postgres database (core's) and one
@@ -366,7 +366,7 @@ them landed by 2026-08-31; the commits are the record.
   (all messages, edits, deletions, membership) and hands media bytes to
   the core; context composition moves into the core; connection config
   becomes opaque sections on assistants with schema-driven forms
-  replacing `ahw-transport-telegram's UI`; transport self-registration + reconcile over
+  replacing `ash-transport-telegram's UI`; transport self-registration + reconcile over
   the bus; the transport contract replaces the source-app contract; tg's
   database is deleted.
 - **Phase 8 — Accounts.** The users table, roles, sessions; first-run
@@ -380,7 +380,7 @@ them landed by 2026-08-31; the commits are the record.
   public-address guard; visibility scoping (own assistants' chats,
   threads, tasks, traces); offboarding (deactivate / cascade delete).
 - **Phase 10 — Cutover.** Rehearsed migration into the final shape,
-  runbook execution, rename to assistant-hub-swarm, release pipeline, docs
+  runbook execution, rename to assistants-swarm-hub, release pipeline, docs
   rewrite (AGENTS.md describes v1 and must be updated).
 
 Out of scope for v2 (planned, not built): stdio MCP execution, token

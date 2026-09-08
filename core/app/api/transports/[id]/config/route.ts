@@ -1,4 +1,4 @@
-import { sourceIdSchema } from "@assistant-hub-swarm/contracts";
+import { sourceIdSchema } from "@assistants-swarm-hub/contracts";
 import { z } from "zod";
 
 import { ApiError } from "@/lib/api-error";

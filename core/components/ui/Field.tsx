@@ -1,2 +1,2 @@
-// Moved to @assistant-hub-swarm/ui (Phase 3, connections slice).
-export { Field } from "@assistant-hub-swarm/ui";
+// Moved to @assistants-swarm-hub/ui (Phase 3, connections slice).
+export { Field } from "@assistants-swarm-hub/ui";

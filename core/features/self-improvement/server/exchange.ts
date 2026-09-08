@@ -1,6 +1,6 @@
 import "server-only";
 
-import { scopedRef, turnCorrelationId, type SourceId } from "@assistant-hub-swarm/contracts";
+import { scopedRef, turnCorrelationId, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import { FEATURES } from "@/lib/features";
 import type { Trace } from "@/lib/trace";

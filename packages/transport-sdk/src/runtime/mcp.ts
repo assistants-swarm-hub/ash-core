@@ -3,7 +3,7 @@ import {
   toolDeliveryResult,
   type SourceTraceClient,
   type TurnToolMeta,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 

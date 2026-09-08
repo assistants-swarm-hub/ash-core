@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 import { getSpeechRuntime } from "@/features/settings/server/service";
 import { FEATURES } from "@/lib/features";

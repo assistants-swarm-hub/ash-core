@@ -1,4 +1,4 @@
-import { CONTRACT_MAJOR, type SourceId } from "@assistant-hub-swarm/contracts";
+import { CONTRACT_MAJOR, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import { registerTransport } from "@/server/transports/service";
 import type { StoreDb } from "@/server/store/db";

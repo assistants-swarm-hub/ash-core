@@ -3,7 +3,7 @@
 # tagged, with no toolchain on the host and no build to wait for.
 #
 #   docker compose up -d                                     # run the release
-#   AHW_VERSION=1.47.0 docker compose up -d                  # run another one
+#   ASH_VERSION=1.47.0 docker compose up -d                  # run another one
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 #                                                            # build from source
 #
@@ -15,7 +15,7 @@
 # registers itself with the core, and the core needs no dependency on it.
 services:
   app:
-    image: ghcr.io/assistant-hub-swarm/ahw-core:${AHW_VERSION:-1.48.1}
+    image: ghcr.io/assistants-swarm-hub/ash-core:${ASH_VERSION:-1.49.0}
     ports:
       - "${PORT:-3200}:3200"
     depends_on:
@@ -63,11 +63,11 @@ services:
     # learns about each one when it registers, never from this file.
     #
     # Its own repository, its own release schedule, its own version — which is
-    # why it does NOT follow AHW_VERSION. The number the two sides must agree
+    # why it does NOT follow ASH_VERSION. The number the two sides must agree
     # on is the wire's CONTRACT_MAJOR, and a mismatch is refused by name on the
     # dashboard rather than failing quietly.
-    # https://github.com/assistant-hub-swarm/ahw-transport-telegram
-    image: ghcr.io/assistant-hub-swarm/ahw-transport-telegram:${AHW_TELEGRAM_VERSION:-1.1.0}
+    # https://github.com/assistants-swarm-hub/ash-transport-telegram
+    image: ghcr.io/assistants-swarm-hub/ash-transport-telegram:${ASH_TELEGRAM_VERSION:-1.2.0}
     depends_on:
       redis:
         condition: service_healthy

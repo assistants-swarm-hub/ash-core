@@ -6,8 +6,8 @@ import {
   inboundMessageEventSchema,
   turnCorrelationId,
   type InboundMessageEvent,
-} from "@assistant-hub-swarm/contracts";
-import { normalizeImageForChat } from "@assistant-hub-swarm/media";
+} from "@assistants-swarm-hub/contracts";
+import { normalizeImageForChat } from "@assistants-swarm-hub/media";
 
 import { ApiError } from "@/lib/api-error";
 import { publishEvent } from "@/server/realtime/hub";
@@ -30,7 +30,7 @@ import {
   type ThreadListing,
 } from "./repository";
 import { resolveOwnerRights } from "@/server/owner-rights";
-import { scopedRef } from "@assistant-hub-swarm/contracts";
+import { scopedRef } from "@assistants-swarm-hub/contracts";
 import { threadTurns } from "./turns";
 
 /**

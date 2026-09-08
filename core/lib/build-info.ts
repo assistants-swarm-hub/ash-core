@@ -6,6 +6,6 @@
  * unset and the fallbacks apply.
  */
 export const buildInfo = {
-  name: process.env.NEXT_PUBLIC_APP_NAME ?? "assistant-hub-swarm",
+  name: process.env.NEXT_PUBLIC_APP_NAME ?? "assistants-swarm-hub",
   version: process.env.NEXT_PUBLIC_APP_VERSION ?? "dev",
 } as const;

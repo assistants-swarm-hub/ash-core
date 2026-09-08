@@ -1,4 +1,4 @@
-import { scopedRef, turnCorrelationId } from "@assistant-hub-swarm/contracts";
+import { scopedRef, turnCorrelationId } from "@assistants-swarm-hub/contracts";
 
 import type { CoreApi } from "./core-api";
 import type { SendContext } from "./send";

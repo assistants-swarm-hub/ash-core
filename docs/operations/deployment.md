@@ -20,16 +20,16 @@ host:
 
 | Service | Image | Notes |
 | --- | --- | --- |
-| `app` | `ghcr.io/assistant-hub-swarm/ahw-core:${AHW_VERSION}` | The dashboard, the web chat and the whole pipeline. Publishes `${PORT:-3200}:3200` |
-| `tg` | `ghcr.io/assistant-hub-swarm/ahw-transport-telegram:${AHW_TELEGRAM_VERSION}` | The Telegram transport: stateless pollers that register with the core, forward every update as transport events, perform the sends, and host the platform's MCP tools. Its own repository and its own version, so it does **not** follow `AHW_VERSION`. **No published port** — its internal API is for the core only |
+| `app` | `ghcr.io/assistants-swarm-hub/ash-core:${ASH_VERSION}` | The dashboard, the web chat and the whole pipeline. Publishes `${PORT:-3200}:3200` |
+| `tg` | `ghcr.io/assistants-swarm-hub/ash-transport-telegram:${ASH_TELEGRAM_VERSION}` | The Telegram transport: stateless pollers that register with the core, forward every update as transport events, perform the sends, and host the platform's MCP tools. Its own repository and its own version, so it does **not** follow `ASH_VERSION`. **No published port** — its internal API is for the core only |
 | `redis` | `redis:7-alpine`, started with `--appendonly yes` | The cross-app bus and the two queues (`transport-updates`, `inbound-messages`). Publishes `${REDIS_PORT:-6379}:6379` |
 | `db` | `pgvector/pgvector:pg17` | The one database. Publishes `${POSTGRES_PORT:-5432}:5432` |
 
-`AHW_VERSION` defaults to the version this checkout releases, so a clone runs a
+`ASH_VERSION` defaults to the version this checkout releases, so a clone runs a
 known-good core rather than a moving `latest`. Set it in `.env` to run another
 one; `npm run release:*` rewrites the default when the version is bumped, and
 the release workflow refuses to ship if the two ever drift. Each transport
-carries its own variable (`AHW_TELEGRAM_VERSION`) because each releases on its
+carries its own variable (`ASH_TELEGRAM_VERSION`) because each releases on its
 own schedule; the only thing the two sides must agree on is the wire's
 `CONTRACT_MAJOR`.
 
@@ -54,7 +54,7 @@ Running one is **one service**, and no change to anything else in the file:
 
 ```yaml
   discord:
-    image: ghcr.io/someone/ahw-transport-discord:1.0.0
+    image: ghcr.io/someone/ash-transport-discord:1.0.0
     depends_on:
       redis: { condition: service_healthy }
     environment:
@@ -152,7 +152,7 @@ Every core variable also accepts a `<NAME>_FILE` variant pointing at a file whos
 contents are used instead (Docker secrets). Transport base URLs are **not** env on the
 core side: a transport announces its own at registration.
 
-The Telegram transport ([its own repository](https://github.com/assistant-hub-swarm/ahw-transport-telegram)) reads — as any transport
+The Telegram transport ([its own repository](https://github.com/assistants-swarm-hub/ash-transport-telegram)) reads — as any transport
 does, these are the contract's variables:
 
 | Variable | Compose sets it to | Notes |
@@ -187,7 +187,7 @@ connection.
 
 ## The images
 
-### `ahw-core`
+### `ash-core`
 
 Multi-stage, from `node:24-alpine`.
 
@@ -231,7 +231,7 @@ unset it warns and exits 0 rather than failing the container.
 
 Not built here — each transport builds its own, in its own repository, and this
 repo's release workflow has one entry: the core. The Telegram one
-([Dockerfile](https://github.com/assistant-hub-swarm/ahw-transport-telegram/blob/main/Dockerfile)) is the shape to copy: `node:24-alpine`,
+([Dockerfile](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/Dockerfile)) is the shape to copy: `node:24-alpine`,
 `npm install` (its own manifest, no workspace context), the SDK pulled from
 GitHub Packages, `ffmpeg` from apk for video frame sampling, a non-root user,
 `EXPOSE 3210`, and `npx tsx src/index.ts`. No migrations and no volumes:
@@ -239,7 +239,7 @@ stateless is the contract.
 
 ## Upgrading
 
-Bump `AHW_VERSION` in `.env` (or pull a new checkout, whose pinned default moves
+Bump `ASH_VERSION` in `.env` (or pull a new checkout, whose pinned default moves
 with each release), then:
 
 ```bash
@@ -312,8 +312,8 @@ all; a forced SDK run re-verifies and re-tags it instead of failing red.)
 
 A release is all-or-nothing: nothing reaches the registry and no tag is created
 unless every image built and started. This repository's image is
-`ghcr.io/assistant-hub-swarm/ahw-core`; each transport publishes its own from
-its own repository (`ahw-transport-telegram`, …). The workflow:
+`ghcr.io/assistants-swarm-hub/ash-core`; each transport publishes its own from
+its own repository (`ash-transport-telegram`, …). The workflow:
 
 1. **plan** — asks the registries what exists: each image tag, the SDK version,
    and both git tags. It emits the build matrix (exactly the images that are
@@ -327,7 +327,7 @@ its own repository (`ahw-transport-telegram`, …). The workflow:
    image it names must exist in a registry** — a transport's pin is released
    from another repository entirely, so nothing here can keep it honest, and an
    operator would otherwise meet a stale one as a pull failure on their server.
-3. **build** — one entry per missing image (`ahw-core` from
+3. **build** — one entry per missing image (`ash-core` from
    `core/Dockerfile`), built with layer caching and handed to the next job
    as an artifact — nothing is pushed. One failing image fails the release.
    Transports are not in the matrix: each releases from its own repository.

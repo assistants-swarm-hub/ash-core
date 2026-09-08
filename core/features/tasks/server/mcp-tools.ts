@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 import { z } from "zod";
 
 import { ApiError } from "@/lib/api-error";

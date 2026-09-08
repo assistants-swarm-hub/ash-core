@@ -1,6 +1,6 @@
 import "server-only";
 
-import { scopedRef, turnCorrelationId } from "@assistant-hub-swarm/contracts";
+import { scopedRef, turnCorrelationId } from "@assistants-swarm-hub/contracts";
 
 import { getSingleAssistantPersona } from "@/features/assistants/server/service";
 import { getBackgroundRuntime } from "@/features/settings/server/service";

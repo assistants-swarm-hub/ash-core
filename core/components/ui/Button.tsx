@@ -1,8 +1,8 @@
-// Moved to @assistant-hub-swarm/ui (Phase 3, connections slice) — the shared home
+// Moved to @assistants-swarm-hub/ui (Phase 3, connections slice) — the shared home
 // for primitives the source apps' `ui` subpackages also render.
 export {
   Button,
   type ButtonProps,
   type ButtonSize,
   type ButtonVariant,
-} from "@assistant-hub-swarm/ui";
+} from "@assistants-swarm-hub/ui";

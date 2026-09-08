@@ -1,6 +1,6 @@
 import "server-only";
 
-import { tryParseScopedRef } from "@assistant-hub-swarm/contracts";
+import { tryParseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getAssistantById } from "@/features/assistants/server/repository";
 import {

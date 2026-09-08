@@ -4,7 +4,7 @@ import type {
   TransportConfigField,
   TransportMedia,
   TransportUser,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 /**
  * What a transport must supply, and nothing more.

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { parseScopedRef, scopedRef, tryParseScopedRef, type SourceId } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef, scopedRef, tryParseScopedRef, type SourceId } from "@assistants-swarm-hub/contracts";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
 import { tasks, type TaskRow } from "../../../store/schema";

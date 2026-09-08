@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { OperatorChat, OperatorChatMember, OperatorUser } from "@assistant-hub-swarm/contracts";
+import type { OperatorChat, OperatorChatMember, OperatorUser } from "@assistants-swarm-hub/contracts";
 
 import { ApiError } from "@/lib/api-error";
 import type { SourceDirectoryClient } from "@/server/source/operator-client";

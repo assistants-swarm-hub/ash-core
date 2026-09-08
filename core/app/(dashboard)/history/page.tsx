@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button, EmptyState, PageHeader } from "@/components/ui";
 import { LiveIndicator } from "@/components/realtime/LiveIndicator";
 import { featureDebugHref } from "@/lib/features";
-import { parseScopedRef } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { actingAccount } from "@/server/auth/acting";
 import { chatKey, servedChatKeys } from "@/server/ownership";

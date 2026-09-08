@@ -5,7 +5,7 @@ import {
   scopedRef,
   tryParseScopedRef,
   type SourceId,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import { getAccountById } from "@/server/auth/accounts";
 import { getStoreDb, type StoreDb } from "@/server/store/db";

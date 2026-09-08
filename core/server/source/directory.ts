@@ -8,7 +8,7 @@ import {
   type OperatorChatMember,
   type OperatorUser,
   type SourceId,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import { ApiError, isApiError } from "@/lib/api-error";
 

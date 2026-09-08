@@ -5,7 +5,7 @@ import {
   turnMetaEnvelope,
   type SourceId,
   type TurnToolMeta,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 import type { ChatCompletionFunctionTool } from "openai/resources/chat/completions";
 
 import { tryGetToolContext } from "@/server/mcp/context";

@@ -1,4 +1,4 @@
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 /**
  * Client-safe shared types for tasks — the unified feature that absorbed

@@ -27,14 +27,14 @@ describe("the generated wire contract", () => {
         committed = readFileSync(file.path, "utf8");
       } catch {
         throw new Error(
-          `${name} is missing. Run: npm run wire:generate -w @assistant-hub-swarm/transport-sdk`,
+          `${name} is missing. Run: npm run wire:generate -w @assistants-swarm-hub/transport-sdk`,
         );
       }
       // Line endings are the working tree's business, not the contract's.
       const normalize = (text: string) => text.replace(/\r\n/g, "\n");
       expect(
         normalize(committed),
-        `${name} is out of date. Run: npm run wire:generate -w @assistant-hub-swarm/transport-sdk`,
+        `${name} is out of date. Run: npm run wire:generate -w @assistants-swarm-hub/transport-sdk`,
       ).toBe(normalize(file.content));
     });
   }

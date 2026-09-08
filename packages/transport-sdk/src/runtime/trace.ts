@@ -1,4 +1,4 @@
-import { scopedRef, type SourceTraceClient, type TurnToolMeta } from "@assistant-hub-swarm/contracts";
+import { scopedRef, type SourceTraceClient, type TurnToolMeta } from "@assistants-swarm-hub/contracts";
 
 import type { TransportDescriptor } from "./types";
 

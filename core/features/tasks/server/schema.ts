@@ -1,4 +1,4 @@
-import { tryParseScopedRef } from "@assistant-hub-swarm/contracts";
+import { tryParseScopedRef } from "@assistants-swarm-hub/contracts";
 import { z } from "zod";
 
 

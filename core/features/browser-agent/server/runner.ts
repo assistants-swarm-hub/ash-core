@@ -9,7 +9,7 @@ import {
   getBotPolicy,
   getBrowserLlmRuntime,
 } from "@/features/settings/server/service";
-import { parseScopedRef } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getChatLanguage } from "@/features/known-groups/server/service";
 import { FEATURES } from "@/lib/features";

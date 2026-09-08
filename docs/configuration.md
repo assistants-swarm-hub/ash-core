@@ -39,7 +39,7 @@ rather than crash-looping.
 Every transport is its own service and its own repository; these are the
 variables the contract gives them, read straight from the environment (the
 SDK's `requireEnv` / `optionalEnv`; no `_FILE` variants). Telegram's is
-[ahw-transport-telegram](https://github.com/assistant-hub-swarm/ahw-transport-telegram).
+[ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ Read by `docker-compose.yml`, not by application code:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `AHW_VERSION` | The version this checkout releases | Which released image tag the `app` and `tg` services run (`ghcr.io/assistant-hub-swarm/ahw-*`). The default is rewritten by `npm run release:*`, so a clone runs a known-good set rather than a moving `latest` |
+| `ASH_VERSION` | The version this checkout releases | Which released image tag the `app` and `tg` services run (`ghcr.io/assistants-swarm-hub/ash-*`). The default is rewritten by `npm run release:*`, so a clone runs a known-good set rather than a moving `latest` |
 | `PORT` | `3200` | Host port published for the core |
 | `INTERNAL_API_TOKEN` | `change-me` | Passed to every app. **Set a real value** — it is what a transport authenticates with too |
 | `POSTGRES_USER` | `bot` | Bundled Postgres user |

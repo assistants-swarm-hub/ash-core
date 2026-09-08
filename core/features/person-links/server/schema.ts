@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { scopedRefSchema } from "@assistant-hub-swarm/contracts";
+import { scopedRefSchema } from "@assistants-swarm-hub/contracts";
 
 /**
  * Person-links validation contract — the single source of truth for the shape

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { parseScopedRef, scopedRef } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef, scopedRef } from "@assistants-swarm-hub/contracts";
 
 import { formatKnownUserLabel } from "@/features/known-users/format";
 import { getKnownUsersByIds } from "@/features/known-users/server/repository";

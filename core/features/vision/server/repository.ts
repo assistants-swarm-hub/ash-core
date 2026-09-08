@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 import { and, asc, count, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 
 import {

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { turnCorrelationId } from "@assistant-hub-swarm/contracts";
+import { turnCorrelationId } from "@assistants-swarm-hub/contracts";
 
 import type { StoreDb } from "@/server/store/db";
 import { buildSystemPrompt } from "@/features/bot-messaging/server/prompt";

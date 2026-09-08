@@ -1,5 +1,5 @@
-import { sourceIdSchema } from "@assistant-hub-swarm/contracts";
-import { INTERNAL_TOKEN_HEADER } from "@assistant-hub-swarm/service";
+import { sourceIdSchema } from "@assistants-swarm-hub/contracts";
+import { INTERNAL_TOKEN_HEADER } from "@assistants-swarm-hub/service";
 
 import { isApiError } from "@/lib/api-error";
 import { getEnv } from "@/server/env";

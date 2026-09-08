@@ -120,7 +120,7 @@ export function registerNode(): void {
   void startSourceEventsConsumerFromEnv()
     .then((consumer) => {
       eventsConsumer = consumer;
-      if (consumer) console.log("Source events consumer started (channel: assistant-hub-swarm:events)");
+      if (consumer) console.log("Source events consumer started (channel: assistants-swarm-hub:events)");
     })
     .catch((err) => {
       console.error("Source events consumer failed to start:", err);

@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import {
   TRANSPORT_UPDATES_QUEUE,
   type TransportUpdateEvent,
-} from "@assistant-hub-swarm/contracts";
-import { openQueue } from "@assistant-hub-swarm/bus";
+} from "@assistants-swarm-hub/contracts";
+import { openQueue } from "@assistants-swarm-hub/bus";
 import type { Queue } from "bullmq";
 
 /**

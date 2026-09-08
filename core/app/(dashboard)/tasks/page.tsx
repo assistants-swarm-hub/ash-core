@@ -1,6 +1,6 @@
 import { Bug, Database } from "lucide-react";
 import Link from "next/link";
-import { scopedRef } from "@assistant-hub-swarm/contracts";
+import { scopedRef } from "@assistants-swarm-hub/contracts";
 
 import { Button, EmptyState, PageHeader } from "@/components/ui";
 import { LiveIndicator } from "@/components/realtime/LiveIndicator";

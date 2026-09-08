@@ -3,7 +3,7 @@ import "server-only";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { scopedRef } from "@assistant-hub-swarm/contracts";
+import { scopedRef } from "@assistants-swarm-hub/contracts";
 
 import { isGroupChat } from "@/features/known-groups/server/repository";
 import { getToolContext } from "@/server/mcp/context";

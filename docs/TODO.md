@@ -26,7 +26,7 @@ How to use this file:
 The v2 redesign is complete (2026-08-31; design in `docs/PLAN.md`). Instead
 of renaming the old repository, the redesign branch became `main` of a fresh
 repository —
-[assistant-hub-swarm/ahw-core](https://github.com/assistant-hub-swarm/ahw-core)
+[assistants-swarm-hub/ash-core](https://github.com/assistants-swarm-hub/ash-core)
 (user decision, 2026-09-01); the old `llm-tg-bot-nextjs` repo stays behind as
 the archive. Commit-on-main is back in force. Entries below dated before
 2026-08-21 predate the redesign — re-check their file paths against the
@@ -34,10 +34,11 @@ current tree before acting on them.
 
 ## Transport SDK: a new transport with zero core edits (`in-progress`, opened 2026-09-02)
 
-**Where it stands (2026-09-07):** all seven phases have landed and every check
-passes. The SDK is published at **3.1.0** and both transports run on it;
-**3.2.0** (item 8) is committed here and waits for a push. What is left is the
-pushes only the user can make.
+**Where it stands (2026-09-08):** all seven phases have landed and every check
+passes. The organization and every repository were renamed (item 12): the SDK
+is **4.0.0** on contract major **4** and both transports run on it locally;
+nothing under the new names is published yet. What is left is the pushes only
+the user can make, in the order item 12 gives.
 
 **Problem (user, 2026-09-02).** `docs/PLAN.md` and the overview promise that a
 transport connects "without any core change", while
@@ -82,23 +83,23 @@ Any core edit for a new source id is a bug.
   timed task fire iterate the registered transports instead of the `"tg"`
   literal. This **reverses the 2026-08-27 decision** that the content plane is
   Telegram-only.
-- **One published package, `@assistant-hub-swarm/transport-sdk`**, bundling the
+- **One published package, `@assistants-swarm-hub/transport-sdk`**, bundling the
   contracts, the queue/bus helpers, the token guard, `serveMcp`, the trace
   client, dashboard refresh and image normalization. Built output (ESM +
   d.ts), not raw sources.
 - Registry: **GitHub Packages**, whose npm scope must equal the owning
-  GitHub account. The user created the organization **`assistant-hub-swarm`**
+  GitHub account. The user created the organization **`assistants-swarm-hub`**
   and moved the repository to
-  [assistant-hub-swarm/ahw-core](https://github.com/assistant-hub-swarm/ahw-core)
+  [assistants-swarm-hub/ash-core](https://github.com/assistants-swarm-hub/ash-core)
   (2026-09-02). Follow-on naming (user, 2026-09-02): the SDK is
-  `@assistant-hub-swarm/transport-sdk`; **every workspace package is scoped
-  `@assistant-hub-swarm/*`** (renamed, so nothing suggests a scope that does
+  `@assistants-swarm-hub/transport-sdk`; **every workspace package is scoped
+  `@assistants-swarm-hub/*`** (renamed, so nothing suggests a scope that does
   not exist); images live in the org's **GitHub Container Registry** as
-  `ghcr.io/assistant-hub-swarm/ahw-core` and `ghcr.io/assistant-hub-swarm/ahw-tg`
+  `ghcr.io/assistants-swarm-hub/ash-core` and `ghcr.io/assistants-swarm-hub/ash-tg`
   (the release job authenticates with its own `GITHUB_TOKEN`; no Docker Hub
-  secrets) — the `ahw-tg` half was superseded by phase 4, which moved the
-  Telegram image to `ahw-transport-telegram` and its own repository; the transport repositories will be **`ahw-transport-telegram`**
-  and **`ahw-transport-discord`** (an image published from one of them is
+  secrets) — the `ash-tg` half was superseded by phase 4, which moved the
+  Telegram image to `ash-transport-telegram` and its own repository; the transport repositories will be **`ash-transport-telegram`**
+  and **`ash-transport-discord`** (an image published from one of them is
   named after its repository).
 - The wire contract also ships language-neutral: **JSON Schema** generated
   from the zod event schemas and **OpenAPI** for the internal routes in both
@@ -107,7 +108,7 @@ Any core edit for a new source id is a bug.
 - **SDK semver with a contract-major handshake**: registration carries the
   contract major; a core that does not speak it refuses with a reason that
   shows on the dashboard's transport roster (never a silent drop).
-- Compose ships **pinned published images** (`ghcr.io/assistant-hub-swarm/…`)
+- Compose ships **pinned published images** (`ghcr.io/assistants-swarm-hub/…`)
   for core and tg with a `docker-compose.dev.yml` override that builds from
   source; the core stops `depends_on` any transport.
 - **`apps/tg` moves to its own repository** on the published SDK, with its
@@ -212,7 +213,7 @@ Any core edit for a new source id is a bug.
      analytics,tasks,vision,browser-agent}.md`, `architecture/data-model.md`.
      Proof: `npm run typecheck` (8/8), `npm run lint`, `npm run test`
      (contracts 16, service 3, tg 44, core 1158 passed / 26 skipped),
-     `npm run test:integration -w @assistant-hub-swarm/core` (41 files: 420
+     `npm run test:integration -w @assistants-swarm-hub/core` (41 files: 420
      passed, 30 skipped; the suites that walk the roster register a fixture
      transport via `test/transports.ts` and point the default store handle
      at their container, like the ingest suite), migration 0015 applied to
@@ -246,7 +247,7 @@ Any core edit for a new source id is a bug.
      it, which is how a broken tg build passed `npm run typecheck` here.
      Proof: `npm run lint`, `npm run typecheck` (8/8), `npm run test`
      (contracts 20, service 3, tg 44, core 1159 passed / 26 skipped),
-     `npm run test:integration -w @assistant-hub-swarm/core` (41 files: 420
+     `npm run test:integration -w @assistants-swarm-hub/core` (41 files: 420
      passed, 30 skipped), migration 0016 applied to the dev database. Docs:
      the manual (contract major 2, the binding's field names), `contributing.md`,
      `architecture/{observability,data-model}.md`, `docs/api/openapi.yaml`.
@@ -254,7 +255,7 @@ Any core edit for a new source id is a bug.
 2. **SDK package** (`done`, 2026-09-03).
    - `packages/transport-sdk` at **1.0.0**: one curated public surface
      (`src/index.ts`) over `contracts` + `bus` + `service` + `media`, built by
-     tsup to `dist/` as ESM + `.d.ts` with `noExternal: [/^@assistant-hub-swarm\//]`
+     tsup to `dist/` as ESM + `.d.ts` with `noExternal: [/^@assistants-swarm-hub\//]`
      — the four packages are `devDependencies` and are **bundled in**, so the
      published manifest names no dependency an outsider cannot install. Hono,
      its node adapter, the MCP SDK and zod are `peerDependencies` (the author
@@ -272,7 +273,7 @@ Any core edit for a new source id is a bug.
      been a document that lies. The surface is sends-only now.
    - **The wire ships language-neutral**: `packages/transport-sdk/scripts/
      generate-wire-contract.ts` (`npm run wire:generate -w
-     @assistant-hub-swarm/transport-sdk`) writes `docs/api/transport/
+     @assistants-swarm-hub/transport-sdk`) writes `docs/api/transport/
      events.schema.json` (JSON Schema 2020-12 for every event, from
      `z.toJSONSchema` with `unrepresentable: "throw"`) and `docs/api/transport/
      openapi.yaml` (OpenAPI 3.1 for both HTTP directions). Only prose is
@@ -305,7 +306,7 @@ Any core edit for a new source id is a bug.
    - **The declaration build was the whole difficulty, and it is fixed.**
      `noExternal` inlines the JS, but tsup's dts pass is a separate program
      that ignored it and emitted `export { … } from
-     "@assistant-hub-swarm/contracts"` — a 3 KB `.d.ts` that resolves to
+     "@assistants-swarm-hub/contracts"` — a 3 KB `.d.ts` that resolves to
      nothing on an installer's machine, so every type in the package would
      have been `any` for the author who installed it. `dts: { resolve: [...] }`
      did not help either: the private packages export raw `.ts`, which
@@ -316,7 +317,7 @@ Any core edit for a new source id is a bug.
      `zod`, `hono`, `@modelcontextprotocol/sdk` and `bullmq`.
    - **Proof.** `npm run lint`; `npm run typecheck` (9/9); `npm run test`
      (contracts 20, service 3, tg 44, **transport-sdk 3**, core 1161 passed /
-     26 skipped); `npm run build -w @assistant-hub-swarm/transport-sdk`
+     26 skipped); `npm run build -w @assistants-swarm-hub/transport-sdk`
      (ESM 45 KB + d.ts 73 KB). The integration suite's 420-passed run is the
      one recorded on the entry above, taken **before** this slice's contracts
      pruning; Docker Desktop stopped before it could be repeated. What the
@@ -331,11 +332,11 @@ Any core edit for a new source id is a bug.
      peers — it typechecks (`skipLibCheck: true`, `@types/node`) and runs,
      printing `contractMajor: 2`, `signal:chat:group.abc:42:assistant-1` from
      `turnCorrelationId`, the reply target read back off a turn binding, and
-     a `delivery` result — with no `@assistant-hub-swarm/*` anywhere in its
+     a `delivery` result — with no `@assistants-swarm-hub/*` anywhere in its
      `node_modules`. Not run: the release workflow itself (needs a version
      bump on main), and a live boot of core + tg.
 3. **Compose on images** (`done`, 2026-09-03). `docker-compose.yml` runs
-   released images — `ghcr.io/assistant-hub-swarm/ahw-{core,tg}:${AHW_VERSION:-<version>}`
+   released images — `ghcr.io/assistants-swarm-hub/ash-{core,tg}:${ASH_VERSION:-<version>}`
    — and builds nothing; `docker-compose.dev.yml` is the override that adds a
    `build:` back to those two services and changes nothing else (so the two
    files cannot drift on ports, volumes, environment or healthchecks). The
@@ -343,22 +344,22 @@ Any core edit for a new source id is a bug.
    all, which is what makes "add a transport" one service and no core edit.
    - **The pin cannot go stale.** A literal pin in the operator's own artifact
      would silently start a clone on an old build, so `scripts/pin-compose-version.mjs`
-     rewrites the `${AHW_VERSION:-…}` defaults from the root `package.json`;
+     rewrites the `${ASH_VERSION:-…}` defaults from the root `package.json`;
      `npm run release:{patch,minor,major}` call it (`release:pin`), and the
      release workflow's verify job runs it with `--check` and refuses to ship
-     on a mismatch. Only the default is touched — an operator's `AHW_VERSION`
+     on a mismatch. Only the default is touched — an operator's `ASH_VERSION`
      still wins.
    - Docs: `docs/operations/deployment.md` gained an **Adding a transport**
      section (the one service, the three things easy to get wrong: the shared
      token, no published port, no `depends_on` edge on the core) and its
      upgrade section now says a transport upgrades on its own schedule with
      `CONTRACT_MAJOR` as the only agreement. `README.md`,
-     `docs/getting-started.md`, `docs/configuration.md` (`AHW_VERSION`) and
+     `docs/getting-started.md`, `docs/configuration.md` (`ASH_VERSION`) and
      the transport manual's Step 9 follow.
    - Proof: `docker compose config` on the base file (images pinned, no
      `build`, `depends_on` = db + redis only), on the base + dev override
      (both services build, still tagged with the pinned name), and with
-     `AHW_VERSION=1.47.0` (both images move); `npm run lint`; the pin script
+     `ASH_VERSION=1.47.0` (both images move); `npm run lint`; the pin script
      exercised end to end — a bumped version fails `--check`, `npm run
      release:pin` rewrites both pins, `--check` then passes, restored. Not
      run: an actual `docker compose up` against the registry (the images for
@@ -366,17 +367,17 @@ Any core edit for a new source id is a bug.
      and the Docker daemon was down for anything needing it.
 4. **tg split** (`done` in this repository, 2026-09-03 — the new repository is
    **staged locally and unpushed**; see "on the user" below).
-   - **The new repository was staged as `ahw-transport-telegram`** beside this
+   - **The new repository was staged as `ash-transport-telegram`** beside this
      one in the org workdir (`git init`, three commits, **no remote — nothing
      was pushed** at the time). 39 files: `src/**` moved verbatim, a standalone
      `package.json`/`tsconfig.json`, a standalone `Dockerfile` (no workspace
      context, `.npmrc` for the SDK's scope, its own `HEALTHCHECK`), its own
      `release.yml` (a changed `version` on main builds, pushes
-     `ghcr.io/<owner>/ahw-transport-telegram:<version>` + `:latest`, tags), and
+     `ghcr.io/<owner>/ash-transport-telegram:<version>` + `:latest`, tags), and
      a README that doubles as the worked example's index.
    - **Every import is the SDK's.** The 14 files that imported
-     `@assistant-hub-swarm/{contracts,bus,service,media}` now import
-     `@assistant-hub-swarm/transport-sdk`, merged into one statement per file.
+     `@assistants-swarm-hub/{contracts,bus,service,media}` now import
+     `@assistants-swarm-hub/transport-sdk`, merged into one statement per file.
      Comments naming files that repository does not have were rewritten; the
      README explains that "Phase N"/"v1" citations refer to this repo's history.
    - **The split found a real dependency bug.** `apps/tg` declared
@@ -391,19 +392,19 @@ Any core edit for a new source id is a bug.
      path on one machine.
    - **The core-side cutover is done here** (user decision, 2026-09-03: cut over
      now rather than waiting for the new repo to publish). `apps/tg` is deleted;
-     the release matrix has one entry (`ahw-core`); `docker-compose.yml`'s `tg`
-     service is `ghcr.io/assistant-hub-swarm/ahw-transport-telegram` on its own
-     `AHW_TELEGRAM_VERSION` (it no longer follows `AHW_VERSION`);
+     the release matrix has one entry (`ash-core`); `docker-compose.yml`'s `tg`
+     service is `ghcr.io/assistants-swarm-hub/ash-transport-telegram` on its own
+     `ASH_TELEGRAM_VERSION` (it no longer follows `ASH_VERSION`);
      `docker-compose.dev.yml` builds only the core. Every `apps/tg` reference in
      the docs and in core comments is gone — the manual's worked-example links
      point at the new repository, and the code pointers in the pipeline and
-     feature docs read `ahw-transport-telegram/src/…`.
+     feature docs read `ash-transport-telegram/src/…`.
    - **Proof (this repo)**: `npm run lint`, `npm run typecheck` (8/8),
      `npm run test` (contracts 20, service 3, transport-sdk 3, core 1161 passed
      / 26 skipped), `docker compose config` on base and base+dev, the compose
      pin check. `git grep apps/tg` is empty outside this entry.
    - **Known window, accepted by the user:** until the new repository is pushed
-     and releases its first image, `ghcr.io/assistant-hub-swarm/ahw-transport-telegram:1.0.0`
+     and releases its first image, `ghcr.io/assistants-swarm-hub/ash-transport-telegram:1.0.0`
      does not exist, so `docker compose up` cannot start the `tg` service, and
      `npm run dev` here starts only the core. Both resolve the moment step (2)
      below lands.
@@ -425,9 +426,9 @@ Any core edit for a new source id is a bug.
      back in `setup-node`, resolved from the registry rather than a packed
      tarball.
 5. **Discord transport** (`done`, 2026-09-04 — the user created and pushed
-   [assistant-hub-swarm/ahw-transport-discord](https://github.com/assistant-hub-swarm/ahw-transport-discord);
+   [assistants-swarm-hub/ash-transport-discord](https://github.com/assistants-swarm-hub/ash-transport-discord);
    the runtime port of phase 6 sits unpushed on top of it).
-   - **Staged as `ahw-transport-discord`** beside this one in the org workdir
+   - **Staged as `ash-transport-discord`** beside this one in the org workdir
      (`git init`, no remote). On discord.js 14 and the SDK's API — written
      against `docs/development/adding-a-transport.md` and the SDK alone, with
      no access to this repository assumed.
@@ -533,7 +534,7 @@ Any core edit for a new source id is a bug.
      message content, so there is no obvious equivalent. Not invented; ask the
      user what a Discord citation should look like before wiring it.
    - **Published by the user, 2026-09-04**, and both transports moved onto it:
-     `npm install` in each resolved `@assistant-hub-swarm/transport-sdk@3.0.0`
+     `npm install` in each resolved `@assistants-swarm-hub/transport-sdk@3.0.0`
      from GitHub Packages (Telegram's lockfile updated; Discord's lockfile was
      never committed at all, so it is now). Typecheck and tests pass in both
      against the PUBLISHED package rather than a hand-copied build — Telegram
@@ -724,7 +725,7 @@ Any core edit for a new source id is a bug.
      pieces that could be run locally were: `imagetools inspect --format
      '{{.Manifest.Digest}}'` against a real image, the matrix JSON the plan job
      builds, the compose-pin sweep against the live registries (it correctly
-     exempts `ahw-core:1.48.1` as this release's own and confirms the other
+     exempts `ash-core:1.48.1` as this release's own and confirms the other
      three), and the SDK's whole published-package verification against the
      real 3.0.0 — which caught a bug in the check itself: `require('<pkg>/
      package.json')` throws `ERR_PACKAGE_PATH_NOT_EXPORTED`, because the
@@ -733,9 +734,9 @@ Any core edit for a new source id is a bug.
      themselves** — they need a push, and the current versions are all already
      released, so the first real exercise will be the Telegram transport's
      1.1.0.
-   - **Known state at the time of writing:** `ahw-core:1.48.1`, `v1.48.1`,
-     `transport-sdk-v3.0.0` and `ahw-transport-telegram:1.0.0` are all in the
-     registry, so a push to `ahw-core` today releases nothing. The Discord
+   - **Known state at the time of writing:** `ash-core:1.48.1`, `v1.48.1`,
+     `transport-sdk-v3.0.0` and `ash-transport-telegram:1.0.0` are all in the
+     registry, so a push to `ash-core` today releases nothing. The Discord
      repository has never released, so its first push runs the whole thing on
      1.0.0 — and the core's compose pin for Telegram stays at 1.0.0 until
      1.1.0 is actually in the registry, since the new pin check would (rightly)
@@ -790,11 +791,54 @@ Any core edit for a new source id is a bug.
      `describeError` once 3.2.0 is on the registry and each transport has
      installed it.
 
+12. **The organization is renamed** (`done` locally, 2026-09-08 — waits for
+    three pushes, in order).
+    - **What changed (user, 2026-09-08):** the GitHub organization is
+      `assistants-swarm-hub` (was `assistant-hub-swarm`) and every repository
+      is `ash-*` (was `ahw-*`). The user renamed the organization and the
+      repositories on GitHub; everything else moved here: the npm scope of
+      all eight workspaces, the SDK package name, the GHCR image names, the
+      compose variables (`ASH_VERSION`, `ASH_TELEGRAM_VERSION`), the wire
+      strings (`assistants-swarm-hub:events`, `assistants-swarm-hub/turn`),
+      the `Symbol.for` keys, the trace-bundle schema id, the link-fetch
+      user-agent, the dashboard title, the docs, the generated wire contract
+      under `docs/api/`, the three checkout folders and their `origin`.
+    - **Wire major 4.** The name is on the wire (major 3 exists for exactly
+      that reason), so `CONTRACT_MAJOR` is 4, the SDK is **4.0.0**, and a
+      transport on the old scope is refused by name. Core is **1.49.0**
+      (compose pins `ash-core:1.49.0` and `ash-transport-telegram:1.2.0`);
+      the transports are telegram **1.2.0** and discord **1.1.0**, both on
+      `^4.0.0`.
+    - **GitHub Packages already serves the new scope:** `npm view
+      @assistants-swarm-hub/transport-sdk versions` lists 1.0.0–3.2.0 and the
+      old scope answers 404, so nothing under the old name installs any more
+      — every consumer has to move at once, which is what this item does.
+    - **Push order, and why:** (1) core — its release workflow publishes SDK
+      4.0.0 and `ghcr.io/assistants-swarm-hub/ash-core:1.49.0`; (2) each
+      transport — its verify job installs `^4.0.0` from the registry, which
+      does not exist until (1) has run. Until then each transport's
+      `package-lock.json` deliberately carries no SDK entry (a lock entry
+      needs the published tarball's integrity hash); after the publish, run
+      `npm install` in each transport and commit the lock.
+    - **Proof.** Core: `npm run lint`, `npm run typecheck` (8/8), `npm run
+      test` (106 files, 1165 tests), `npm run build`, `npm run test:integration` (32 files, 423 tests).
+      The SDK was built and packed locally and that tarball dropped into each
+      transport's `node_modules` (not committed): both typecheck and test
+      green (telegram 35, discord 22). The dev server's login page titles
+      itself `assistants-swarm-hub`. An old-name sweep over the whole workdir
+      (build output excluded) finds nothing but the history note in
+      `contract-version.ts`.
+    - **Also done:** the compose project was taken down as `ahw-core` and
+      brought back as `ash-core` on the same bind mounts; the CodeGraph index
+      was rebuilt; the workdir `CLAUDE.md` and the IDE module files follow.
+      Trace bundles exported from now on carry the new schema id; nothing
+      reads bundles back, so the old exports lose nothing.
+
 **Landed with the org move (`done`, 2026-09-02):** local `origin` repointed;
 the guide, the tracker and the link-fetch user-agent name the new repository;
-all workspaces renamed `@assistant-hub-swarm/*` → `@assistant-hub-swarm/*` (157
+all workspaces renamed `@assistants-swarm-hub/*` → `@assistants-swarm-hub/*` (157
 files, lockfile regenerated by `npm install`); `release.yml` pushes
-`ghcr.io/<owner>/ahw-core` and `ahw-tg` with `GITHUB_TOKEN` (`packages:
+`ghcr.io/<owner>/ash-core` and `ash-tg` with `GITHUB_TOKEN` (`packages:
 write`); `docs/operations/deployment.md` and `docs/PLAN.md` name the GHCR
 images. Proof: `npm run typecheck` (8/8), `npm run lint`, `npm run test`
 (contracts 16, service 3, tg 44, core 1175). Not run: the release workflow
@@ -806,7 +850,7 @@ buys on each registry: a public
 every request even for a public package — so a transport author always needs
 one with `read:packages`, and the docs say so. **Confirmed empirically**
 (2026-09-03, with the SDK published and public): an unauthenticated GET of
-`https://npm.pkg.github.com/@assistant-hub-swarm%2ftransport-sdk` answers
+`https://npm.pkg.github.com/@assistants-swarm-hub%2ftransport-sdk` answers
 `401 {"error":"authentication token not provided"}`. The earlier claim that
 the SDK needed no token was wrong; do not reinstate it.
 

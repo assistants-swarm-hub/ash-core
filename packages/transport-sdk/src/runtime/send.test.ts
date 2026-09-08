@@ -1,4 +1,4 @@
-import type { TransportUpdateEvent } from "@assistant-hub-swarm/contracts";
+import type { TransportUpdateEvent } from "@assistants-swarm-hub/contracts";
 import { describe, expect, it } from "vitest";
 
 import { sendChatMessage, type SendContext } from "./send";

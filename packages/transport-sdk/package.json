@@ -1,25 +1,25 @@
 {
-  "name": "@assistant-hub-swarm/transport-sdk",
-  "version": "3.2.0",
-  "description": "Everything a transport needs to connect a messaging platform to an assistant-hub-swarm core: the wire contracts, the Redis queue and bus helpers, the internal-token guard, an MCP server over Hono, the trace client and image normalization.",
+  "name": "@assistants-swarm-hub/transport-sdk",
+  "version": "4.0.0",
+  "description": "Everything a transport needs to connect a messaging platform to an assistants-swarm-hub core: the wire contracts, the Redis queue and bus helpers, the internal-token guard, an MCP server over Hono, the trace client and image normalization.",
   "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=24.0.0"
   },
   "keywords": [
-    "assistant-hub-swarm",
+    "assistants-swarm-hub",
     "transport",
     "mcp",
     "chatbot"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/assistant-hub-swarm/ahw-core.git",
+    "url": "git+https://github.com/assistants-swarm-hub/ash-core.git",
     "directory": "packages/transport-sdk"
   },
-  "homepage": "https://github.com/assistant-hub-swarm/ahw-core/blob/main/docs/development/adding-a-transport.md",
-  "bugs": "https://github.com/assistant-hub-swarm/ahw-core/issues",
+  "homepage": "https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/development/adding-a-transport.md",
+  "bugs": "https://github.com/assistants-swarm-hub/ash-core/issues",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -54,10 +54,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@assistant-hub-swarm/bus": "*",
-    "@assistant-hub-swarm/contracts": "*",
-    "@assistant-hub-swarm/media": "*",
-    "@assistant-hub-swarm/service": "*",
+    "@assistants-swarm-hub/bus": "*",
+    "@assistants-swarm-hub/contracts": "*",
+    "@assistants-swarm-hub/media": "*",
+    "@assistants-swarm-hub/service": "*",
     "@hono/node-server": "^1.14.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^20",

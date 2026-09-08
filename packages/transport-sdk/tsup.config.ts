@@ -22,15 +22,15 @@ export default defineConfig({
   format: ["esm"],
   // `noExternal` inlines the JS; the declaration build is a SEPARATE pass that
   // does not read it, and left alone it emits `export { … } from
-  // "@assistant-hub-swarm/contracts"` — a d.ts that resolves to nothing on any
+  // "@assistants-swarm-hub/contracts"` — a d.ts that resolves to nothing on any
   // machine but this one, so every type in the package would be `any` for the
   // author who installed it. `dts.resolve` makes that pass follow the same
   // packages and inline their declarations too.
-  dts: { resolve: [/^@assistant-hub-swarm\//] },
+  dts: { resolve: [/^@assistants-swarm-hub\//] },
   sourcemap: true,
   clean: true,
   treeshake: true,
   target: "node24",
   platform: "node",
-  noExternal: [/^@assistant-hub-swarm\//],
+  noExternal: [/^@assistants-swarm-hub\//],
 });

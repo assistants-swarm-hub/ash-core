@@ -2,7 +2,7 @@
  * Generates the transport wire contract in language-neutral form, from the
  * zod schemas the SDK exports — the same objects the core parses with.
  *
- *   npm run wire:generate -w @assistant-hub-swarm/transport-sdk
+ *   npm run wire:generate -w @assistants-swarm-hub/transport-sdk
  *
  * Two files land in `docs/api/transport/`:
  *
@@ -74,7 +74,7 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(HERE, "..", "..", "..", "docs", "api", "transport");
 
-const REPO = "https://github.com/assistant-hub-swarm/ahw-core";
+const REPO = "https://github.com/assistants-swarm-hub/ash-core";
 const MANUAL = `${REPO}/blob/main/docs/development/adding-a-transport.md`;
 
 /**
@@ -207,7 +207,7 @@ const SHAPES: Record<string, Named> = {
   TurnToolMeta: {
     schema: turnToolMetaSchema,
     io: "output",
-    note: "The turn binding the core attaches to every tool call as request `_meta` under `assistant-hub-swarm/turn`. Refuse a call that carries none, or one naming another source.",
+    note: "The turn binding the core attaches to every tool call as request `_meta` under `assistants-swarm-hub/turn`. Refuse a call that carries none, or one naming another source.",
   },
   ToolDelivery: {
     schema: toolDeliverySchema,
@@ -326,12 +326,12 @@ function eventsDocument(): Record<string, unknown> {
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $id: `${REPO}/blob/main/docs/api/transport/events.schema.json`,
-    title: "assistant-hub-swarm transport wire contract",
+    title: "assistants-swarm-hub transport wire contract",
     description:
-      "Every shape that crosses the boundary between an assistant-hub-swarm core and a " +
+      "Every shape that crosses the boundary between an assistants-swarm-hub core and a " +
       "transport, in both directions. GENERATED from the zod schemas of " +
-      "@assistant-hub-swarm/transport-sdk — do not edit by hand; run " +
-      "`npm run wire:generate -w @assistant-hub-swarm/transport-sdk`. " +
+      "@assistants-swarm-hub/transport-sdk — do not edit by hand; run " +
+      "`npm run wire:generate -w @assistants-swarm-hub/transport-sdk`. " +
       `The manual is at ${MANUAL}.`,
     "x-contract-major": CONTRACT_MAJOR,
     "x-redis": {
@@ -452,10 +452,10 @@ function openapiDocument(): Record<string, unknown> {
   return {
     openapi: "3.1.0",
     info: {
-      title: "assistant-hub-swarm transport HTTP contract",
+      title: "assistants-swarm-hub transport HTTP contract",
       version: `contract-major-${CONTRACT_MAJOR}`,
       description: [
-        "The HTTP that crosses the boundary between an assistant-hub-swarm core and a transport,",
+        "The HTTP that crosses the boundary between an assistants-swarm-hub core and a transport,",
         "in both directions. Two servers are described:",
         "",
         "- **A transport's own surface** (`/health`, `/internal/*`, `/mcp`) — what the core",
@@ -466,8 +466,8 @@ function openapiDocument(): Record<string, unknown> {
         "",
         "Everything else is asynchronous, over Redis: see `events.schema.json`.",
         "",
-        "GENERATED from the zod schemas of `@assistant-hub-swarm/transport-sdk` — do not edit",
-        "by hand; run `npm run wire:generate -w @assistant-hub-swarm/transport-sdk`.",
+        "GENERATED from the zod schemas of `@assistants-swarm-hub/transport-sdk` — do not edit",
+        "by hand; run `npm run wire:generate -w @assistants-swarm-hub/transport-sdk`.",
         `The manual is at ${MANUAL}.`,
       ].join("\n"),
     },

@@ -72,7 +72,7 @@ interface PriorityGateStore {
   interactiveWaiters: Array<() => void>;
 }
 
-const STORE_KEY = Symbol.for("assistant-hub-swarm.llm.priority-gate");
+const STORE_KEY = Symbol.for("assistants-swarm-hub.llm.priority-gate");
 
 function store(): PriorityGateStore {
   const g = globalThis as typeof globalThis & { [STORE_KEY]?: PriorityGateStore };

@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { scopedRef, type SourceId } from "@assistant-hub-swarm/contracts";
+import { scopedRef, type SourceId } from "@assistants-swarm-hub/contracts";
 import { z } from "zod";
 
 import { resolveChatUserByReference } from "@/features/known-users/server/service";

@@ -117,7 +117,7 @@ API.
 const { db, pool, connectionUri, truncate, stop } = await startTestStoreDb();
 ```
 
-Starts a `pgvector/pgvector:pg17` container (through `@assistant-hub-swarm/db/testing`'s
+Starts a `pgvector/pgvector:pg17` container (through `@assistants-swarm-hub/db/testing`'s
 `startTestPostgres` — one container, any number of databases inside it), creates a
 database, builds a Drizzle handle, and **runs the real migrations** from
 `core/store/migrations`. That last part is load-bearing: it means the integration
@@ -249,7 +249,7 @@ so a transport author can validate their events against
 [`events.schema.json`](../api/transport/events.schema.json) and trust that the
 core's half is covered.
 
-The [Telegram transport](https://github.com/assistant-hub-swarm/ahw-transport-telegram) is the worked example: a plain `vitest.config.ts`
+The [Telegram transport](https://github.com/assistants-swarm-hub/ash-transport-telegram) is the worked example: a plain `vitest.config.ts`
 (no aliases, no `server-only` guard) and five unit files under `src/` covering
 the structural addressing verdicts, one-event-per-update, the HTML renderer's
 balance, and the split-and-send path. It has no integration suite: it is
@@ -289,7 +289,7 @@ fails when the committed copies differ. When it does, the fix is to run the
 generator and commit its output:
 
 ```bash
-npm run wire:generate -w @assistant-hub-swarm/transport-sdk
+npm run wire:generate -w @assistants-swarm-hub/transport-sdk
 ```
 
 `npm run typecheck` and `npm run test` declare `dependsOn: ["^typecheck"]` in

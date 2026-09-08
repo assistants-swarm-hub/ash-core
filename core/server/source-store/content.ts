@@ -1,7 +1,7 @@
 import "server-only";
 
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 

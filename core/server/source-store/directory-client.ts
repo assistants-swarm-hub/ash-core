@@ -5,7 +5,7 @@ import type {
   OperatorChatMember,
   OperatorUser,
   SourceId,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import { formatKnownUserLabel } from "@/features/known-users/format";
 import { ApiError } from "@/lib/api-error";

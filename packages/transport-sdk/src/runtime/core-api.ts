@@ -6,9 +6,9 @@ import {
   type TransportCallbackRequest,
   type TransportDesiredState,
   type TransportMessageLookupResponse,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
-import { INTERNAL_TOKEN_HEADER } from "@assistant-hub-swarm/service";
+import { INTERNAL_TOKEN_HEADER } from "@assistants-swarm-hub/service";
 
 import { describeError } from "./errors";
 import type { TransportDescriptor } from "./types";

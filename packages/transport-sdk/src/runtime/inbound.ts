@@ -6,7 +6,7 @@ import {
   type TransportMessageEvent,
   type TransportReceiver,
   type TransportUpdateEvent,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import { updateEnvelope, type SeenCache } from "./updates";
 import type {

@@ -6,7 +6,7 @@ import {
   deleteAddressingExclusion,
   listAddressingExclusions,
 } from "@/features/bot-messaging/server/exclusions-repository";
-import { scopedRef, type SourceId } from "@assistant-hub-swarm/contracts";
+import { scopedRef, type SourceId } from "@assistants-swarm-hub/contracts";
 
 import { getUserLabelsByRef } from "@/features/known-users/server/service";
 import { getLlmRuntime } from "@/features/settings/server/service";

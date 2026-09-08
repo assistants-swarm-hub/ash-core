@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { SourceTrace } from "@assistant-hub-swarm/contracts";
+import type { SourceTrace } from "@assistants-swarm-hub/contracts";
 
 import { setupTempTraceStore } from "@/test/trace-store";
 import { ingestSourceTrace } from "./ingest";

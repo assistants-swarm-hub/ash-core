@@ -7,8 +7,8 @@ import {
   internalSendVoiceRequestSchema,
   internalSetTitleRequestSchema,
   type InternalSentPhotosResponse,
-} from "@assistant-hub-swarm/contracts";
-import { internalTokenGuard, serveMcp } from "@assistant-hub-swarm/service";
+} from "@assistants-swarm-hub/contracts";
+import { internalTokenGuard, serveMcp } from "@assistants-swarm-hub/service";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Hono } from "hono";
 

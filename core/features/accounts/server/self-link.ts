@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes, randomUUID } from "node:crypto";
 
-import { scopedRef } from "@assistant-hub-swarm/contracts";
+import { scopedRef } from "@assistants-swarm-hub/contracts";
 import { and, eq, gt, isNull, lt } from "drizzle-orm";
 
 import {

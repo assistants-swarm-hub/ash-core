@@ -1,6 +1,6 @@
-import { BUS_EVENTS_CHANNEL, type TransportDesiredState } from "@assistant-hub-swarm/contracts";
-import { openPublisher, type BusPublisher } from "@assistant-hub-swarm/bus";
-import { dashboardRefresh } from "@assistant-hub-swarm/service";
+import { BUS_EVENTS_CHANNEL, type TransportDesiredState } from "@assistants-swarm-hub/contracts";
+import { openPublisher, type BusPublisher } from "@assistants-swarm-hub/bus";
+import { dashboardRefresh } from "@assistants-swarm-hub/service";
 
 import type { CoreApi } from "./core-api";
 import { describeError } from "./errors";

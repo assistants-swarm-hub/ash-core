@@ -2,7 +2,7 @@ import "server-only";
 
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { formatKnownUserLabel } from "@/features/known-users/format";
-import { WEB_CHAT_SOURCE, tryParseScopedRef } from "@assistant-hub-swarm/contracts";
+import { WEB_CHAT_SOURCE, tryParseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getKnownUsersByIds } from "@/features/known-users/server/repository";
 import { FEATURES } from "@/lib/features";

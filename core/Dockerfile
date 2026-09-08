@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Multi-stage build for the self-hosted core app (assistant-hub-swarm-core).
+# Multi-stage build for the self-hosted core app (assistants-swarm-hub-core).
 # Build context is the REPO ROOT (workspace install needs every manifest):
 #   docker build -f core/Dockerfile .
 # Native deps (lightningcss, tailwind oxide) are installed inside the image so
@@ -31,7 +31,7 @@ RUN npm install --no-audit --no-fund
 # root modules plus per-workspace symlinks — carries over intact.
 FROM deps AS builder
 COPY . .
-RUN npm run build --workspace @assistant-hub-swarm/core
+RUN npm run build --workspace @assistants-swarm-hub/core
 
 # --- runner: slim production runtime from Next standalone output ---
 FROM base AS runner

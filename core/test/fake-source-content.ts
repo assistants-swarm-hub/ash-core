@@ -1,4 +1,4 @@
-import { parseScopedRef, scopedRef, type ContentBucketUnit } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef, scopedRef, type ContentBucketUnit } from "@assistants-swarm-hub/contracts";
 
 import { bucketKeyOfInstant } from "@/features/analytics/period";
 import type {

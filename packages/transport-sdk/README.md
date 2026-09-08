@@ -1,7 +1,7 @@
-# `@assistant-hub-swarm/transport-sdk`
+# `@assistants-swarm-hub/transport-sdk`
 
 Everything a **transport** needs to connect a messaging platform (Discord,
-Signal, Matrix, Slack, …) to a running [assistant-hub-swarm][core] core — as a
+Signal, Matrix, Slack, …) to a running [assistants-swarm-hub][core] core — as a
 **runtime** you hand your platform to, over the wire contracts, Redis helpers,
 token guard, MCP server, trace client and image normalization it is built on.
 
@@ -21,11 +21,11 @@ dashboard.
 ## Install
 
 The package is published to **GitHub Packages**, so npm needs to know where to
-look for the `@assistant-hub-swarm` scope. In your project:
+look for the `@assistants-swarm-hub` scope. In your project:
 
 ```
 # .npmrc
-@assistant-hub-swarm:registry=https://npm.pkg.github.com
+@assistants-swarm-hub:registry=https://npm.pkg.github.com
 ```
 
 That registry wants a **token on every request**: a package published there is
@@ -41,7 +41,7 @@ In CI it is the workflow's own `GITHUB_TOKEN`; in an image build, pass it as a
 BuildKit secret rather than a build arg, so it never lands in a layer.
 
 ```bash
-npm install @assistant-hub-swarm/transport-sdk hono @hono/node-server @modelcontextprotocol/sdk zod
+npm install @assistants-swarm-hub/transport-sdk hono @hono/node-server @modelcontextprotocol/sdk zod
 ```
 
 Those four are **peer dependencies**: you construct Hono apps, `McpServer`s and
@@ -64,7 +64,7 @@ the manual's "Before you start" has the exact failure.
 ## A whole transport
 
 ```ts
-import { startTransportService } from "@assistant-hub-swarm/transport-sdk";
+import { startTransportService } from "@assistants-swarm-hub/transport-sdk";
 
 await startTransportService({
   descriptor,   // who you are: id, name, config fields, message cap
@@ -109,7 +109,7 @@ import {
   requireEnv,
   scopedRef,
   transportRegistrationRequestSchema,
-} from "@assistant-hub-swarm/transport-sdk";
+} from "@assistants-swarm-hub/transport-sdk";
 
 const updates = openQueue(TRANSPORT_UPDATES_QUEUE, requireEnv("REDIS_URL"));
 
@@ -156,7 +156,7 @@ its content plane. A transport never speaks them, they change with the
 dashboard, and this package's semver would otherwise promise something it does
 not control.
 
-[core]: https://github.com/assistant-hub-swarm/ahw-core
-[manual]: https://github.com/assistant-hub-swarm/ahw-core/blob/main/docs/development/adding-a-transport.md
-[schema]: https://github.com/assistant-hub-swarm/ahw-core/blob/main/docs/api/transport/events.schema.json
-[openapi]: https://github.com/assistant-hub-swarm/ahw-core/blob/main/docs/api/transport/openapi.yaml
+[core]: https://github.com/assistants-swarm-hub/ash-core
+[manual]: https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/development/adding-a-transport.md
+[schema]: https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/api/transport/events.schema.json
+[openapi]: https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/api/transport/openapi.yaml

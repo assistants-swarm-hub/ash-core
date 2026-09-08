@@ -1,6 +1,6 @@
 import "server-only";
 
-import { parseScopedRef } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { requireSourceContent, type SourceContentClient } from "@/server/source/content";

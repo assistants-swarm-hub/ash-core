@@ -14,7 +14,7 @@ import { expectedToolNames, loadMcpRegistry } from "./runtime";
  * updated. So the registry checks itself against the loaded code.
  */
 
-const STORE_KEY = Symbol.for("assistant-hub-swarm.mcp.registry");
+const STORE_KEY = Symbol.for("assistants-swarm-hub.mcp.registry");
 
 interface Store {
   registry: unknown;

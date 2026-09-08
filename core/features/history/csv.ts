@@ -10,7 +10,7 @@
  */
 
 /** A parsed CSV table: the header row plus the data rows. */
-import { tryParseScopedRef } from "@assistant-hub-swarm/contracts";
+import { tryParseScopedRef } from "@assistants-swarm-hub/contracts";
 
 export interface CsvTable {
   headers: string[];

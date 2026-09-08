@@ -3,7 +3,7 @@ import {
   scopedRef,
   turnCorrelationId,
   type MessageDeliveredEvent,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 
 import { describeError } from "./errors";
 import { splitMessage } from "./split";

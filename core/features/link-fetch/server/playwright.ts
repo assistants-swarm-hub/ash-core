@@ -27,7 +27,7 @@ import { hostResolvesPublic } from "./resolve-safety";
  */
 
 const USER_AGENT =
-  "Mozilla/5.0 (compatible; AssistantHub/1.0; +https://github.com/assistant-hub-swarm/ahw-core)";
+  "Mozilla/5.0 (compatible; AssistantsSwarmHub/1.0; +https://github.com/assistants-swarm-hub/ash-core)";
 
 /**
  * Path to a system Chromium binary to launch instead of Playwright's own download.
@@ -43,7 +43,7 @@ interface BrowserStore {
   launching: Promise<Browser> | null;
 }
 
-const STORE_KEY = Symbol.for("assistant-hub-swarm.link-fetch.chromium");
+const STORE_KEY = Symbol.for("assistants-swarm-hub.link-fetch.chromium");
 
 function store(): BrowserStore {
   const g = globalThis as typeof globalThis & { [STORE_KEY]?: BrowserStore };

@@ -7,7 +7,7 @@ the trace store.
 
 Messaging platforms are **transports**: stateless services that own a platform
 connection and nothing else, each in its own repository and its own image
-(Telegram's is [ahw-transport-telegram](https://github.com/assistant-hub-swarm/ahw-transport-telegram)). They talk to the core over
+(Telegram's is [ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram)). They talk to the core over
 Redis (a BullMQ queue and a pub/sub channel) and over two small
 token-authenticated HTTP surfaces, and they connect by registering — the core
 holds no list of them. A new platform is another container; see
@@ -16,7 +16,7 @@ holds no list of them. A new platform is another container; see
 ```
    Telegram ◄──long polling──► transport  (stateless, its own repo, :3210)
                                   │  queue `transport-updates`          ▲ `reply.delivery`, `turn.lifecycle`
-                                  ▼  (every message, edit, reaction,    │ (Redis pub/sub `assistant-hub-swarm:events`)
+                                  ▼  (every message, edit, reaction,    │ (Redis pub/sub `assistants-swarm-hub:events`)
                                      delivery — media bytes attached)   │
    dashboard ──HTTP──► core (Next.js, :3200)                       │
    (browser) ◄──SSE──   server/ingest ─► queue `inbound-messages` ─► server/turn ─► features/bot-messaging ──┘
@@ -70,7 +70,7 @@ major, not six versions of this repository's internals.
 | `test/` | Stubs, fixtures, the Testcontainers database helper (`test/store-db.ts`) | — |
 
 Path alias: `@/*` maps to `core/`. Workspace packages are imported by name
-(`@assistant-hub-swarm/*`).
+(`@assistants-swarm-hub/*`).
 
 ### The import boundary
 
@@ -192,7 +192,7 @@ message, builds the same turn event, and consumes its own `reply.delivery` /
 
 Several things must exist exactly once per process and must survive Next's bundle
 re-evaluation and dev hot-reload. Each is held on a `globalThis` slot keyed by a
-`Symbol.for("assistant-hub-swarm.…")`, because a module-local would be re-created per
+`Symbol.for("assistants-swarm-hub.…")`, because a module-local would be re-created per
 bundle copy:
 
 | Singleton | Module | Why it must be single |

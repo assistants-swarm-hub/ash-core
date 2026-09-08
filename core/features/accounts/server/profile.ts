@@ -1,6 +1,6 @@
 import "server-only";
 
-import { scopedRef, tryParseScopedRef } from "@assistant-hub-swarm/contracts";
+import { scopedRef, tryParseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getUserMemoriesFor } from "@/features/memory/server/repository";
 import { forgetUser } from "@/features/memory/server/service";

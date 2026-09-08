@@ -1,7 +1,7 @@
 import "server-only";
 
-import { openQueue } from "@assistant-hub-swarm/bus";
-import { INBOUND_MESSAGES_QUEUE, type InboundMessageEvent } from "@assistant-hub-swarm/contracts";
+import { openQueue } from "@assistants-swarm-hub/bus";
+import { INBOUND_MESSAGES_QUEUE, type InboundMessageEvent } from "@assistants-swarm-hub/contracts";
 import type { Queue } from "bullmq";
 
 import { getEnv } from "@/server/env";
@@ -18,7 +18,7 @@ import { getEnv } from "@/server/env";
  * and each bundle would otherwise open its own connection per hot reload.
  */
 
-const STORE_KEY = Symbol.for("assistant-hub-swarm.core.inbound-queue");
+const STORE_KEY = Symbol.for("assistants-swarm-hub.core.inbound-queue");
 
 /** The queue producer, or null when the bus is not configured (dev without Redis). */
 export function inboundQueue(): Queue<InboundMessageEvent> | null {

@@ -25,8 +25,8 @@ author works in another repository and often another language:
   `/api/internal/transports/*`.
 
 Both are generated from the zod schemas of
-`@assistant-hub-swarm/transport-sdk` by `npm run wire:generate -w
-@assistant-hub-swarm/transport-sdk`, and the SDK's test suite regenerates them
+`@assistants-swarm-hub/transport-sdk` by `npm run wire:generate -w
+@assistants-swarm-hub/transport-sdk`, and the SDK's test suite regenerates them
 and fails when the committed copies differ - so the shapes cannot drift from
 the code, and `npm run test` is where you find out.
 

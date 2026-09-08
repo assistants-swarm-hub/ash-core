@@ -5,12 +5,12 @@ import {
   replyDeliveryEventSchema,
   turnLifecycleEventSchema,
   type InboundMessageEvent,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 import {
   applyMigrations,
   startTestPostgres,
   type TestPostgres,
-} from "@assistant-hub-swarm/db/testing";
+} from "@assistants-swarm-hub/db/testing";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 

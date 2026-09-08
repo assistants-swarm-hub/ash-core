@@ -1,5 +1,5 @@
-import type { TransportConfigField } from "@assistant-hub-swarm/contracts";
-import { apiFetch } from "@assistant-hub-swarm/ui";
+import type { TransportConfigField } from "@assistants-swarm-hub/contracts";
+import { apiFetch } from "@assistants-swarm-hub/ui";
 
 /**
  * The dashboard's one client for the transport routes

@@ -4,14 +4,14 @@ import {
   replyDeliveryEventSchema,
   turnLifecycleEventSchema,
   type SourceTraceClient,
-} from "@assistant-hub-swarm/contracts";
+} from "@assistants-swarm-hub/contracts";
 import {
   openPublisher,
   openSubscriber,
   type BusPublisher,
   type BusSubscription,
-} from "@assistant-hub-swarm/bus";
-import { busTraceClient } from "@assistant-hub-swarm/service";
+} from "@assistants-swarm-hub/bus";
+import { busTraceClient } from "@assistants-swarm-hub/service";
 
 import { describeError } from "./errors";
 import { sendChatMessage, type SendContext } from "./send";

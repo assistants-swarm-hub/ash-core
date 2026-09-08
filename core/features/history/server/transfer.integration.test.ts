@@ -1,4 +1,4 @@
-import { parseScopedRef } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef } from "@assistants-swarm-hub/contracts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listTraces } from "@/server/trace";

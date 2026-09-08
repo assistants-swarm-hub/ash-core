@@ -42,7 +42,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SDK_PACKAGE: "@assistant-hub-swarm/transport-sdk"
+  SDK_PACKAGE: "@assistants-swarm-hub/transport-sdk"
   NPM_REGISTRY: https://npm.pkg.github.com
 
 jobs:
@@ -70,7 +70,7 @@ jobs:
         with:
           node-version: 24
           registry-url: https://npm.pkg.github.com
-          scope: "@assistant-hub-swarm"
+          scope: "@assistants-swarm-hub"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -93,7 +93,7 @@ jobs:
           # list: it decides what to release and becomes the build matrix
           # below, so the two can never disagree. Transports are not here —
           # each is its own repository, on its own version.
-          IMAGES="ahw-core=core/Dockerfile"
+          IMAGES="ash-core=core/Dockerfile"
 
           published_image() {
             docker buildx imagetools inspect "$1" >/dev/null 2>&1
@@ -357,7 +357,7 @@ jobs:
         if: env.HAS_IMAGES == 'true'
         run: |
           set -eu
-          ref="${REGISTRY}/ahw-core:${VERSION}"
+          ref="${REGISTRY}/ash-core:${VERSION}"
           docker run -d --name smoke --network host \
             -e NODE_ENV=production \
             -e PORT=3200 \
@@ -490,7 +490,7 @@ jobs:
           # Writes the auth line for GitHub Packages into ~/.npmrc; the
           # package's own publishConfig already points at that registry.
           registry-url: https://npm.pkg.github.com
-          scope: "@assistant-hub-swarm"
+          scope: "@assistants-swarm-hub"
 
       # See the note in `verify` on npm install vs npm ci.
       - run: npm install --no-audit --no-fund
@@ -539,7 +539,7 @@ jobs:
 
           dir=$(mktemp -d)
           cd "$dir"
-          printf '@assistant-hub-swarm:registry=%s\n//npm.pkg.github.com/:_authToken=%s\n' \
+          printf '@assistants-swarm-hub:registry=%s\n//npm.pkg.github.com/:_authToken=%s\n' \
             "$NPM_REGISTRY" "$NODE_AUTH_TOKEN" > .npmrc
           npm init -y >/dev/null
           npm install --no-audit --no-fund \
@@ -574,7 +574,7 @@ jobs:
           #    repository. A d.ts that re-exports one typechecks in this repo
           #    and breaks in every consumer, so grep for it directly.
           decl="node_modules/$SDK_PACKAGE/dist/index.d.ts"
-          if grep -nE "from ['\"]@assistant-hub-swarm/(contracts|bus|service|media|db|ui)['\"]" "$decl"; then
+          if grep -nE "from ['\"]@assistants-swarm-hub/(contracts|bus|service|media|db|ui)['\"]" "$decl"; then
             echo "::error::the published declarations import a private workspace package"
             exit 1
           fi
@@ -587,7 +587,7 @@ jobs:
             type Normalizer,
             type PlatformAdapter,
             type TransportDescriptor,
-          } from "@assistant-hub-swarm/transport-sdk";
+          } from "@assistants-swarm-hub/transport-sdk";
 
           declare const descriptor: TransportDescriptor;
           declare const adapter: PlatformAdapter<unknown>;

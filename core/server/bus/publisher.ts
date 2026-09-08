@@ -1,7 +1,7 @@
 import "server-only";
 
-import { openPublisher, type BusPublisher } from "@assistant-hub-swarm/bus";
-import { BUS_EVENTS_CHANNEL } from "@assistant-hub-swarm/contracts";
+import { openPublisher, type BusPublisher } from "@assistants-swarm-hub/bus";
+import { BUS_EVENTS_CHANNEL } from "@assistants-swarm-hub/contracts";
 
 import { getEnv } from "@/server/env";
 
@@ -13,7 +13,7 @@ import { getEnv } from "@/server/env";
  * surface the skipped publish audibly (trace event), never silently.
  */
 
-const KEY = Symbol.for("assistant-hub-swarm.core.bus.publisher");
+const KEY = Symbol.for("assistants-swarm-hub.core.bus.publisher");
 
 export function getBusPublisher(): BusPublisher | null {
   const env = getEnv();

@@ -7,7 +7,7 @@ import {
   requireSourceContent,
   type SourceContentClient,
 } from "@/server/source/content";
-import { parseScopedRef } from "@assistant-hub-swarm/contracts";
+import { parseScopedRef } from "@assistants-swarm-hub/contracts";
 import { getKnownUsersByIds } from "@/features/known-users/server/repository";
 import { currentSummaryDate, type SummaryDate } from "@/features/history/summary";
 import { FEATURES } from "@/lib/features";

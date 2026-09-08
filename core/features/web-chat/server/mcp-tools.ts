@@ -1,6 +1,6 @@
 import "server-only";
 
-import { toolDeliveryResult } from "@assistant-hub-swarm/contracts";
+import { toolDeliveryResult } from "@assistants-swarm-hub/contracts";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 

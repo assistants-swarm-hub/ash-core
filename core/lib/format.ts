@@ -1,14 +1,14 @@
 /**
  * Shared, deterministic formatters for operator-facing timestamps and durations.
  *
- * The timestamp formatters themselves live in `@assistant-hub-swarm/ui` beside the
+ * The timestamp formatters themselves live in `@assistants-swarm-hub/ui` beside the
  * `<Timestamp>` component, so app-contributed dashboard UI renders instants
  * the same way the shell does; they are re-exported here because that is where
  * this app has always imported them from. Prefer the component over calling
  * them directly.
  */
 
-export { formatTime, formatTimestamp } from "@assistant-hub-swarm/ui";
+export { formatTime, formatTimestamp } from "@assistants-swarm-hub/ui";
 
 /** Elapsed time between two ISO instants, human-readable (`842ms`, `3.2s`, `1m 4s`). */
 export function formatDuration(startIso: string, endIso: string | null): string | null {

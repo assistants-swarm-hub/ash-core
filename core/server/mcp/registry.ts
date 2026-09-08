@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { SourceId } from "@assistant-hub-swarm/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ChatCompletionFunctionTool } from "openai/resources/chat/completions";
@@ -65,7 +65,7 @@ export class BotMcpRegistry {
   private openAiTools: Promise<ChatCompletionFunctionTool[]> | null = null;
 
   constructor() {
-    this.server = new McpServer({ name: "assistant-hub-swarm", version: "1.0.0" });
+    this.server = new McpServer({ name: "assistants-swarm-hub", version: "1.0.0" });
   }
 
   /** Register one feature's tools. Call before {@link finishRegistration}. */
@@ -99,7 +99,7 @@ export class BotMcpRegistry {
     if (!this.connectPromise) {
       this.connectPromise = (async () => {
         const [serverTransport, clientTransport] = InProcessTransport.createLinkedPair();
-        const client = new Client({ name: "assistant-hub-swarm-host", version: "1.0.0" });
+        const client = new Client({ name: "assistants-swarm-hub-host", version: "1.0.0" });
         await this.server.connect(serverTransport);
         await client.connect(clientTransport);
         this.client = client;
