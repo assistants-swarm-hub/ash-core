@@ -18,7 +18,6 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@assistant-hub-swarm/contracts",
     "@assistant-hub-swarm/db",
-    "@assistant-hub-swarm/tg-ui",
     "@assistant-hub-swarm/ui",
   ],
   // Inline only name/version for `lib/build-info` — importing package.json from
