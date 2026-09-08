@@ -11,7 +11,7 @@ import { extractJsonObject } from "@/lib/json";
  * Anything older is recalled by *searching* — and searching raw messages is poor
  * (chat is full of "ok", "lol", and pronouns with no referent). So each chat-day
  * is compressed into a handful of self-contained topics, each carrying the
- * Telegram message ids it came from: search finds the topic, the ids lead back to
+ * source message ids it came from: search finds the topic, the ids lead back to
  * the exact original messages.
  */
 

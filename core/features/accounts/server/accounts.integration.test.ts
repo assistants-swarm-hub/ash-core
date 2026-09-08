@@ -222,24 +222,24 @@ describe("self-link codes", () => {
     expect(first.code).toMatch(/^link-[a-z0-9]{8}$/);
     const second = await mintLinkCode(adminId, trigger, db);
     // The first code was retired by the second mint.
-    expect(await redeemLinkCode({ senderRef: "tg:user:1001", text: first.code }, db)).toEqual({
+    expect(await redeemLinkCode({ senderRef: "acme:user:1001", text: first.code }, db)).toEqual({
       status: "invalid",
     });
 
     const outcome = await redeemLinkCode(
-      { senderRef: "tg:user:1001", text: `  ${second.code.toUpperCase()}  ` },
+      { senderRef: "acme:user:1001", text: `  ${second.code.toUpperCase()}  ` },
       db,
     );
     expect(outcome).toEqual({ status: "linked", accountLabel: "root-admin" });
 
-    // The graph now holds one person: the tg identity and the account's ref.
+    // The graph now holds one person: the transport identity and the account's ref.
     const accountRef = `chat:user:${adminId}`;
-    const links = await findLinksForRefs(db, ["tg:user:1001", accountRef]);
-    expect(links.get("tg:user:1001")).toBeDefined();
-    expect(links.get("tg:user:1001")).toBe(links.get(accountRef));
+    const links = await findLinksForRefs(db, ["acme:user:1001", accountRef]);
+    expect(links.get("acme:user:1001")).toBeDefined();
+    expect(links.get("acme:user:1001")).toBe(links.get(accountRef));
 
     // Burned: the same code answers invalid the second time.
-    expect(await redeemLinkCode({ senderRef: "tg:user:2002", text: second.code }, db)).toEqual({
+    expect(await redeemLinkCode({ senderRef: "acme:user:2002", text: second.code }, db)).toEqual({
       status: "invalid",
     });
     // The trace never carries the code itself.
@@ -250,14 +250,14 @@ describe("self-link codes", () => {
 
   it("ignores non-code text, answers already-linked, and refuses cross-person merges", async () => {
     const adminId = await seedAdmin();
-    expect(await redeemLinkCode({ senderRef: "tg:user:1001", text: "hello there" }, db)).toBeNull();
+    expect(await redeemLinkCode({ senderRef: "acme:user:1001", text: "hello there" }, db)).toBeNull();
 
     const { code } = await mintLinkCode(adminId, trigger, db);
-    await redeemLinkCode({ senderRef: "tg:user:1001", text: code }, db);
+    await redeemLinkCode({ senderRef: "acme:user:1001", text: code }, db);
 
     // Same identity again, fresh code: nothing to do.
     const again = await mintLinkCode(adminId, trigger, db);
-    expect(await redeemLinkCode({ senderRef: "tg:user:1001", text: again.code }, db)).toEqual({
+    expect(await redeemLinkCode({ senderRef: "acme:user:1001", text: again.code }, db)).toEqual({
       status: "already-linked",
       accountLabel: "root-admin",
     });
@@ -269,7 +269,7 @@ describe("self-link codes", () => {
       db,
     );
     const otherCode = await mintLinkCode(other.id, trigger, db);
-    expect(await redeemLinkCode({ senderRef: "tg:user:1001", text: otherCode.code }, db)).toEqual(
+    expect(await redeemLinkCode({ senderRef: "acme:user:1001", text: otherCode.code }, db)).toEqual(
       { status: "conflict" },
     );
   });
@@ -278,20 +278,20 @@ describe("self-link codes", () => {
     const adminId = await seedAdmin();
     const { code } = await mintLinkCode(adminId, trigger, db);
     const afterTtl = new Date(Date.now() + LINK_CODE_TTL_MS + 1000);
-    expect(await redeemLinkCode({ senderRef: "tg:user:1001", text: code }, db, afterTtl)).toEqual({
+    expect(await redeemLinkCode({ senderRef: "acme:user:1001", text: code }, db, afterTtl)).toEqual({
       status: "invalid",
     });
 
     // Link the account first, then a second platform identity joins the
     // SAME link rather than minting a parallel person.
     const one = await mintLinkCode(adminId, trigger, db);
-    await redeemLinkCode({ senderRef: "tg:user:1001", text: one.code }, db);
+    await redeemLinkCode({ senderRef: "acme:user:1001", text: one.code }, db);
     const two = await mintLinkCode(adminId, trigger, db);
-    await redeemLinkCode({ senderRef: "tg:user:2002", text: two.code }, db);
+    await redeemLinkCode({ senderRef: "acme:user:2002", text: two.code }, db);
     const accountRef = `chat:user:${adminId}`;
     const linkId = (await findLinksForRefs(db, [accountRef])).get(accountRef)!;
     const members = (await listMembersOfLinks(db, [linkId])).get(linkId) ?? [];
-    expect(new Set(members)).toEqual(new Set(["tg:user:1001", "tg:user:2002", accountRef]));
+    expect(new Set(members)).toEqual(new Set(["acme:user:1001", "acme:user:2002", accountRef]));
   });
 });
 
@@ -317,18 +317,18 @@ describe("offboarding (Phase 9)", () => {
     );
     await pool.query(
       `INSERT INTO transports (id, name, base_url, enabled, contract_major)
-       VALUES ('tg', 'Telegram', 'http://x', true, $1)`,
+       VALUES ('acme', 'Acme Chat', 'http://x', true, $1)`,
       [CONTRACT_MAJOR],
     );
     await pool.query(
       `INSERT INTO assistant_transports (id, assistant_id, transport, config, enabled)
-       VALUES ('c-mine', $1, 'tg', '{}'::jsonb, true), ('c-admin', $2, 'tg', '{}'::jsonb, true)`,
+       VALUES ('c-mine', $1, 'acme', '{}'::jsonb, true), ('c-admin', $2, 'acme', '{}'::jsonb, true)`,
       [mine.id, admins.id],
     );
 
     await patchAccount(user.id, { active: false }, { id: adminId }, trigger, db);
     expect(await silencedAssistantIds(db)).toEqual(new Set([mine.id]));
-    const state = await desiredTransportState("tg", db);
+    const state = await desiredTransportState("acme", db);
     const byId = new Map(state.connections.map((c) => [c.id, c.enabled]));
     expect(byId.get("c-mine")).toBe(false);
     expect(byId.get("c-admin")).toBe(true);
@@ -336,7 +336,7 @@ describe("offboarding (Phase 9)", () => {
     // Reactivation restores the exact prior state - nothing was mutated.
     await patchAccount(user.id, { active: true }, { id: adminId }, trigger, db);
     expect(await silencedAssistantIds(db)).toEqual(new Set());
-    const restored = await desiredTransportState("tg", db);
+    const restored = await desiredTransportState("acme", db);
     expect(restored.connections.every((c) => c.enabled)).toBe(true);
   });
 
@@ -365,7 +365,7 @@ describe("offboarding (Phase 9)", () => {
     // Link the account to a platform identity; the link dies with them
     // (fewer than two identities would remain).
     const { code } = await mintLinkCode(user.id, trigger, db);
-    await redeemLinkCode({ senderRef: "tg:user:777", text: code }, db);
+    await redeemLinkCode({ senderRef: "acme:user:777", text: code }, db);
 
     // Active - refused; the two-step is the confirm.
     await expect(
@@ -405,41 +405,41 @@ describe("unlinking an identity", () => {
     const adminId = await seedAdmin();
     const accountRef = `chat:user:${adminId}`;
     const { code } = await mintLinkCode(adminId, trigger, db);
-    await redeemLinkCode({ senderRef: "tg:user:1001", text: code }, db);
-    expect((await findLinksForRefs(db, ["tg:user:1001"])).get("tg:user:1001")).toBeDefined();
+    await redeemLinkCode({ senderRef: "acme:user:1001", text: code }, db);
+    expect((await findLinksForRefs(db, ["acme:user:1001"])).get("acme:user:1001")).toBeDefined();
 
-    await unlinkOwnIdentity(adminId, "tg:user:1001", trigger, db);
+    await unlinkOwnIdentity(adminId, "acme:user:1001", trigger, db);
 
     // The link held exactly two identities, so removing one leaves nothing a
     // link could mean — the row goes with it.
-    expect((await findLinksForRefs(db, ["tg:user:1001", accountRef])).size).toBe(0);
+    expect((await findLinksForRefs(db, ["acme:user:1001", accountRef])).size).toBe(0);
   });
 
   it("keeps the rest of a bigger link, and removes only the one asked for", async () => {
     const adminId = await seedAdmin();
     const accountRef = `chat:user:${adminId}`;
-    for (const ref of ["tg:user:1001", "discord:user:2002"]) {
+    for (const ref of ["acme:user:1001", "beta:user:2002"]) {
       const { code } = await mintLinkCode(adminId, trigger, db);
       await redeemLinkCode({ senderRef: ref, text: code }, db);
     }
 
-    await unlinkOwnIdentity(adminId, "discord:user:2002", trigger, db);
+    await unlinkOwnIdentity(adminId, "beta:user:2002", trigger, db);
 
     const links = await findLinksForRefs(db, [accountRef]);
     const linkId = links.get(accountRef);
     expect(linkId).toBeDefined();
     const members = (await listMembersOfLinks(db, [linkId!])).get(linkId!) ?? [];
-    expect([...members].sort()).toEqual([accountRef, "tg:user:1001"].sort());
+    expect([...members].sort()).toEqual([accountRef, "acme:user:1001"].sort());
   });
 
   it("refuses an identity that is not yours, and your own account identity", async () => {
     const adminId = await seedAdmin();
     const { code } = await mintLinkCode(adminId, trigger, db);
-    await redeemLinkCode({ senderRef: "tg:user:1001", text: code }, db);
+    await redeemLinkCode({ senderRef: "acme:user:1001", text: code }, db);
 
     // Someone else's identity: not in this account's person at all.
     await expect(
-      unlinkOwnIdentity(adminId, "tg:user:9999", trigger, db),
+      unlinkOwnIdentity(adminId, "acme:user:9999", trigger, db),
     ).rejects.toThrow(/not linked to you/i);
 
     // The web identity is what links are made TO; unlinking it is meaningless.
@@ -448,6 +448,6 @@ describe("unlinking an identity", () => {
     ).rejects.toThrow(/cannot be unlinked/i);
 
     // Neither refusal touched the graph.
-    expect((await findLinksForRefs(db, ["tg:user:1001"])).get("tg:user:1001")).toBeDefined();
+    expect((await findLinksForRefs(db, ["acme:user:1001"])).get("acme:user:1001")).toBeDefined();
   });
 });

@@ -57,7 +57,7 @@ export interface SelfImprovementDeps {
   model?: string | null;
   /** Publish live per-fold progress to the scheduler (drives the Jobs dashboard). */
   onProgress?: (progress: JobProgress | null) => void;
-  /** The source-owned feedback rows + mirror (real: the tg internal API). */
+  /** The source-owned feedback rows + mirror (real: the conversation store). */
   ports: FeedbackPorts;
   /** The core store the distilled outputs (prefs, corrections) are written to. */
   db?: StoreDb;
@@ -78,7 +78,7 @@ export interface SelfImprovementResult {
 /** System prompt for the per-user preferences fold. */
 const PREFS_FOLD_PROMPT =
   "You maintain a factual profile of what one specific user likes and dislikes about the replies " +
-  "of a Telegram chat bot. You are given the current profile and ONE new piece of feedback from " +
+  "of a chat assistant. You are given the current profile and ONE new piece of feedback from " +
   "that user: the exchange, what they said about it, and the bot's own reflection on why it went " +
   "that way. Update the profile to incorporate the feedback: keep each field to a few short, " +
   "concrete phrases; deduplicate; keep still-valid existing points; drop points the new feedback " +
@@ -88,7 +88,7 @@ const PREFS_FOLD_PROMPT =
 
 /** System prompt for the global self-corrections fold. */
 const CORRECTIONS_FOLD_PROMPT =
-  "You maintain a short list of self-correction guidelines for a Telegram chat bot, distilled " +
+  "You maintain a short list of self-correction guidelines for a chat assistant, distilled " +
   "from feedback across many users. You are given the current guidelines and ONE new piece of " +
   "feedback: the exchange, what the user said about it, and the bot's own reflection on why it " +
   "went that way. Update the guidelines: fold in generalizable complaints or praise; keep them " +

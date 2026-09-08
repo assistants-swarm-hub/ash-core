@@ -12,7 +12,7 @@ import { getChatHistory, getHistoryOverview, loadChatDayTranscript } from "./ser
  * The history feature's read side since the swap: the mirror lives with the
  * owning source (the in-memory fake here), and this side composes the
  * dashboard views and the day transcripts the nightly jobs read. What the
- * source's own SQL does (windows, aggregates) is pinned in the tg content
+ * source's own SQL does (windows, aggregates) is pinned in the conversation-store content
  * suite; what THIS file pins is the composition — labels, annotations,
  * trace links, day filtering.
  */
@@ -79,7 +79,7 @@ beforeEach(async () => {
 });
 
 const CHAT_ID = "555";
-const CHAT = `tg:chat:${CHAT_ID}`;
+const CHAT = `acme:chat:${CHAT_ID}`;
 
 describe("getChatHistory", () => {
   it("annotates rows with media descriptions, reactions, and trace links", async () => {
@@ -130,8 +130,8 @@ describe("getHistoryOverview", () => {
     const overview = await getHistoryOverview();
     expect(overview).toEqual([
       {
-        chatRef: "tg:chat:-1009",
-        sourceLabel: "Telegram",
+        chatRef: "acme:chat:-1009",
+        sourceLabel: "Acme Chat",
         label: "Fixture Group",
         messageCount: 3,
         lastSentAt: "2026-07-14T12:00:00.000Z",
@@ -145,7 +145,7 @@ describe("getHistoryOverview", () => {
 
 describe("loadChatDayTranscript", () => {
   it("loads one wall-clock day with labels and annotations, dropping blank rows", async () => {
-    await upsertKnownUser(ctx.db, "tg", {
+    await upsertKnownUser(ctx.db, "acme", {
       userId: "100",
       username: "alice_example",
       firstName: "Alice",

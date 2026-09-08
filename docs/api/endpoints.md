@@ -277,12 +277,12 @@ every call.
 | `GET` | `/api/users` | admin | — | `{ entries: DirectoryUser[], unavailable: UnavailableSource[] }`, newest activity first |
 | `PATCH` | `/api/users/{id}` | admin | `{ aliases: string[] }` **or** `{ language: string }` | The updated `KnownUser` |
 
-The directory is aggregated across every source (`tg`, `chat`): each entry is
+The directory is aggregated across every source (each transport, `chat`): each entry is
 the source's `{ id, username, firstName, lastName, label, aliases, language,
 firstSeenAt, updatedAt }` plus its origin `{ source, sourceLabel, ref }`. A
 source that could not be read comes back under `unavailable` as `{ source,
 sourceLabel, reason }` rather than as an empty list. `{id}` is the person's
-scoped ref (`tg:user:123`). Aliases are trimmed, blank-stripped and
+scoped ref (`acme:user:123`). Aliases are trimmed, blank-stripped and
 case-insensitively deduplicated, then bounded (≤20, ≤60 chars each). An empty
 `language` clears to null (→ default).
 
@@ -295,7 +295,7 @@ case-insensitively deduplicated, then bounded (≤20, ≤60 chars each). An empt
 
 Each entry is the source's `{ id, kind: "direct" \| "group", title, type, notes,
 language, messageCount, memberCount, lastMessageAt }` plus its origin. `{id}` is
-the chat's scoped ref (`tg:chat:-100…`). Notes are trimmed (≤2000 chars); empty
+the chat's scoped ref (`acme:chat:42`). Notes are trimmed (≤2000 chars); empty
 clears to null.
 
 ## Person links
@@ -360,7 +360,7 @@ session only; the media id is the capability.
 | `GET` | `/api/history/search-index` | admin | — | `SearchIndexStatus` |
 | `POST` | `/api/history/search-index` | admin | — | `SearchIndexStatus` immediately (fire-and-forget) |
 | `DELETE` | `/api/history/search-index` | admin | — | `SearchIndexStatus` + `{ cleared }` |
-| `GET` | `/api/history/export` | admin | `?chatRef=` (optional; a scoped chat ref such as `tg:chat:-100…`) | A CSV attachment: `history-<scope>.csv` |
+| `GET` | `/api/history/export` | admin | `?chatRef=` (optional; a scoped chat ref such as `acme:chat:42`) | A CSV attachment: `history-<scope>.csv` |
 | `POST` | `/api/history/import` | admin | `{ csv, mapping, delimiter? }` | `ImportResult` |
 
 `SummaryJobInfo` = `DailyJobInfoBase` + `{ pendingDays, embeddingsConfigured }`.
@@ -390,7 +390,7 @@ see [History](../features/history.md#csv-transfer). At most 5000 rows per file.
 | `PATCH` | `/api/memory/general` | admin | `{ content }` | The `GeneralMemory` document (upsert — the first edit creates it) |
 | `DELETE` | `/api/memory/general` | admin | — | `{ deleted: true }` |
 
-`{userId}` is the person's scoped ref (`tg:user:123`, `chat:user:<accountId>`) -
+`{userId}` is the person's scoped ref (`acme:user:123`, `chat:user:<accountId>`) -
 the memory keyspace speaks refs, and reads resolve through the person-link
 graph so one person's document follows them across identities.
 `MemoryView` = `{ entries, users, general, generalPendingNotes }`.
@@ -509,7 +509,7 @@ component drives them all. `mood` requires a `chatRef`.
 | `POST` | `/api/traces/prune` | admin | `{ beforeMonth: "YYYY-MM" }` | `{ months: string[], traces: number }`. **Destructive** |
 
 `status` is one of `pending`, `running`, `success`, `error`, `skipped`;
-`triggerKind` one of `telegram`, `chat`, `dashboard`, `cron`, `system`, `api`,
+`triggerKind` one of `transport`, `chat`, `dashboard`, `cron`, `system`, `api`,
 `test`. `correlationId` is exact (every trace of one process); `flow` walks the
 links transitively (the turn that created a task, its tool calls, every fire,
 what each fire sent). A trace carries `assistantId` when the action was one
@@ -528,7 +528,7 @@ bare JSON bodies, errors as `{ "error": { "message" } }`. These are the core's
 half of the transport contract; the transport's half (its `/internal/*` HTTP
 surface, its MCP server, the queue and bus events) is in
 [Adding a transport](../development/adding-a-transport.md). `{id}` is a source
-id (`tg`, `chat`).
+id (a transport's, or `chat`).
 
 | Method | Path | Access | Body/Query | Returns |
 | --- | --- | --- | --- | --- |

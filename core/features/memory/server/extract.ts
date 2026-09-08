@@ -89,7 +89,7 @@ export interface ExtractDeps {
    * own, so a standalone extraction is still internally correlated.
    */
   runCorrelationId?: string;
-  /** The owning source's content (real: the tg internal API). */
+  /** The owning source's content (real: the conversation store). */
   content?: SourceContentClient;
 }
 

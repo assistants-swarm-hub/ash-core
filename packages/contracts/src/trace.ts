@@ -57,9 +57,8 @@ export const sourceTraceSchema = z.object({
   status: z.enum(["success", "error", "skipped"]),
   trigger: z.object({
     // `transport` is any registered transport (the actor and correlation say
-    // which chat); `telegram` is what pre-2026-09-02 rows carry and nothing
-    // stamps it any more.
-    kind: z.enum(["transport", "chat", "dashboard", "cron", "system", "api", "test", "telegram"]),
+    // which chat).
+    kind: z.enum(["transport", "chat", "dashboard", "cron", "system", "api", "test"]),
     actor: z.string().optional(),
     correlationId: z.string().optional(),
   }),

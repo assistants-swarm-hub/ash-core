@@ -24,8 +24,8 @@ import { prefixedToolName } from "./schema";
  * The three scope dimensions (user decision, 2026-08-28) are resolved here,
  * once, for every source: a connection is offered when it is enabled, when
  * its app scope is unset or names this turn's source, and when it is open to
- * every assistant or lists this turn's. Nothing in this file knows what
- * Telegram is — a source is an id it compares.
+ * every assistant or lists this turn's. Nothing in this file knows any
+ * platform — a source is an id it compares.
  *
  * What is offered is always the APPLIED snapshot. The remote server is not
  * asked anything at turn time: its answer could differ from the last one an

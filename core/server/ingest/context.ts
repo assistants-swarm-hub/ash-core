@@ -130,7 +130,7 @@ export async function buildChatInfo(
 ): Promise<ChatInfo> {
   const ref = scopedRef(source, "chat", chat.id);
   if (chat.kind === "direct") {
-    // A telegram private chat's id equals the peer's user id; its reply
+    // A direct chat is one person's conversation; its reply
     // language is the user's setting (v1 semantics). A source whose direct
     // chats have their own ids simply resolves no user here.
     const user = await getSourceUserById(source, chat.id, db);

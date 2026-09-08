@@ -26,7 +26,7 @@ const STORE_MIGRATIONS = fileURLToPath(new URL("../../../store/migrations", impo
 /**
  * Assistants CRUD over the v2 core store: uniqueness, limits, traces, and
  * the delete path's loud no-bus warning (the `assistant.deleted` publish
- * itself rides the shared publisher, exercised in the tg runtime suite).
+ * itself rides the shared publisher, exercised in the transport runtime suite).
  */
 
 describe("assistants service", () => {

@@ -15,7 +15,7 @@ import {
 function client() {
   const published: TraceRecordedEvent[] = [];
   const traces = createSourceTraceRecorder({
-    source: "tg",
+    source: "acme",
     publish: async (event) => {
       published.push(event);
     },
@@ -38,7 +38,7 @@ describe("createSourceTraceRecorder", () => {
 
     expect(published).toHaveLength(1);
     const event = traceRecordedEventSchema.parse(published[0]);
-    expect(event.source).toBe("tg");
+    expect(event.source).toBe("acme");
     expect(event.correlationId).toBe("-500:7");
     expect(event.trace).toMatchObject({
       feature: "bot-messaging",

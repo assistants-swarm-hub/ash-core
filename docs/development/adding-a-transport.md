@@ -1,6 +1,6 @@
 # Adding a transport
 
-How to connect a new messaging platform (Signal, Matrix, Discord, Slack, …) to
+How to connect a new messaging platform (Signal, Matrix, Slack, …) to
 a running assistants-swarm-hub core.
 
 **You do not need this repository.** A transport is developed in its own
@@ -12,11 +12,11 @@ dashboard. Everything a transport must do is published:
 | --- | --- |
 | The contract, as code | [`@assistants-swarm-hub/transport-sdk`](../../packages/transport-sdk/README.md) on GitHub Packages — the **runtime** (registration, reconcile, dedupe, event assembly, sends, HTTP, delivery tools, shutdown) plus every schema and helper underneath it |
 | The contract, language-neutral | [`docs/api/transport/events.schema.json`](../api/transport/events.schema.json) (JSON Schema for every event) and [`docs/api/transport/openapi.yaml`](../api/transport/openapi.yaml) (the HTTP in both directions) — generated from the same schemas and checked against them in CI |
-| A working version of every step | [`assistants-swarm-hub/ash-transport-telegram`](https://github.com/assistants-swarm-hub/ash-transport-telegram) — the Telegram transport, referenced file by file below. It is a separate repository built on the SDK, exactly like yours will be |
+| A working version of every step | The transports published under [assistants-swarm-hub](https://github.com/assistants-swarm-hub) — each a separate repository built on the SDK, exactly like yours will be |
 
 This document walks the contract in the order a new transport meets it. Read
 [Architecture overview](../architecture/overview.md) first for where a
-transport sits, and [The message pipeline](../architecture/telegram-pipeline.md)
+transport sits, and [The message pipeline](../architecture/message-pipeline.md)
 for what the core does with what you send it.
 
 ## What a transport is
@@ -118,7 +118,7 @@ npm install @assistants-swarm-hub/transport-sdk \
 | `hono` + `@hono/node-server` | The HTTP surface the runtime serves on |
 | `@modelcontextprotocol/sdk` | `McpServer`, for the delivery tools and any of your own |
 | `zod` | The schemas' runtime, and your MCP tools' input shapes |
-| Your platform SDK | grammy for Telegram, discord.js for Discord |
+| Your platform SDK | Whatever client library your platform has |
 
 Those last four are the SDK's **peer** dependencies: you construct Hono apps,
 `McpServer`s and zod schemas and hand them across, so one copy of each must be
@@ -136,7 +136,7 @@ Environment (bootstrap only — runtime config comes from the core):
 | --- | --- | --- |
 | `REDIS_URL` | yes | Bus + queue |
 | `INTERNAL_API_TOKEN` | yes | Must equal the core's |
-| `PORT` | no | Your HTTP port (tg: 3210, discord: 3220) |
+| `PORT` | no | Your HTTP port (pick one; under compose it is your service's) |
 | `CORE_API_URL` | no | The core's base URL (default `http://localhost:3200`) |
 | `SELF_URL` | no | The base URL you **announce** — what the core will call. Default `http://localhost:<PORT>`; under compose `http://<service>:<PORT>` |
 
@@ -155,10 +155,10 @@ What is left is your platform, in four pieces:
 
 | You write | It is | Reference |
 | --- | --- | --- |
-| a **descriptor** | who you are: id, name, the config fields the dashboard renders, your message cap and typing refresh | [src/descriptor.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/descriptor.ts) |
-| a **platform adapter** | `connect()` for one connection: the actions you support, and what arrives reported through the runtime's hooks | [src/telegram/adapter.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/adapter.ts), [src/telegram/connection.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/connection.ts) |
-| a **normalizer** | one platform message → the contract's `InboundMessage`, media fetched | [src/inbound/normalize.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/inbound/normalize.ts) |
-| an **addressing rule** | the structural verdict, per receiving bot | [src/inbound/addressing.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/inbound/addressing.ts) |
+| a **descriptor** | who you are: id, name, the config fields the dashboard renders, your message cap and typing refresh | your `descriptor.ts` |
+| a **platform adapter** | `connect()` for one connection: the actions you support, and what arrives reported through the runtime's hooks | your adapter and connection |
+| a **normalizer** | one platform message → the contract's `InboundMessage`, media fetched | your normalizer |
+| an **addressing rule** | the structural verdict, per receiving bot | your addressing rule |
 
 ```ts
 import { startTransportService } from "@assistants-swarm-hub/transport-sdk";
@@ -191,8 +191,7 @@ runtime)`, which hands you the running context (`runtime.send`, `runtime.core`,
 are its own, so each transport registers its own `set_message_reaction` over
 the SDK's `reactToMessage`, which owns the part that is not — the mirror check
 that refuses a guessed id or the bot's own message, and the
-`transport.bot-reaction` record that lets the next turn remember it
-([src/telegram/reaction-tool.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/reaction-tool.ts)).
+`transport.bot-reaction` record that lets the next turn remember it.
 
 Everything below is what the runtime does on your behalf. Read it to
 understand the system, to debug it, or to reimplement it in another language —
@@ -201,8 +200,7 @@ not to write a Node transport.
 ## Step 3 — Register, receive desired state, reconcile
 
 The runtime does all of this (`createCoreApi`, `ConnectionManager`); a transport supplies
-only the descriptor it announces ([src/descriptor.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/descriptor.ts)) and the
-adapter that opens one connection ([src/telegram/adapter.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/adapter.ts)).
+only the descriptor it announces and the adapter that opens one connection.
 
 ### Registration
 
@@ -211,16 +209,16 @@ adapter that opens one connection ([src/telegram/adapter.ts](https://github.com/
 
 ```jsonc
 {
-  "id": "tg",                       // your source id — any slug of the right shape
-  "name": "Telegram",               // what the dashboard calls you
+  "id": "acme",                     // your source id — any slug of the right shape
+  "name": "Acme Chat",              // what the dashboard calls you
   "contractMajor": 4,               // CONTRACT_MAJOR of the contracts package you built against
-  "baseUrl": "http://tg:3210",      // SELF_URL — the core calls you here
+  "baseUrl": "http://acme:3220",    // SELF_URL — the core calls you here
   "mcpPath": "/mcp",                // or null if you host no tools
   "connectionConfigSchema": [       // one section per assistant, in the editor
     { "key": "botToken", "label": "Bot token", "kind": "secret", "required": true,
       "help": "From @BotFather. Stored by the core; never shown again." }
   ],
-  "transportConfigSchema": []       // transport-wide settings (tg has none)
+  "transportConfigSchema": []       // transport-wide settings (none here)
 }
 ```
 
@@ -262,7 +260,7 @@ event). Serialize refetches so a burst collapses into one reconcile.
 `applyDesiredState` must be idempotent:
 
 - stop and forget every running connection whose id is absent or `enabled: false`;
-- leave an unchanged running connection alone (tg compares the token it was
+- leave an unchanged running connection alone (compare the token it was
   started with — secrets are not readable off a live client);
 - start or restart the rest; start always replaces a running instance.
 
@@ -274,7 +272,7 @@ assistant editor's badge flips without a reload.
 Supervision is split. The runtime restarts a still-desired connection on a
 flat 15 s interval whenever the adapter reports an error status, and stops
 retrying the moment the core stops asking for it. What counts AS an error is
-the platform's to say: Telegram's poller caps its own fetch retries at 30 s
+the platform's to say: a long-polling client, say, caps its own fetch retries
 before giving up to the runtime, and a revoked token surfaces the same way a
 network blip does — visibly, on the dashboard, rather than as a silent
 retry loop nobody can see.
@@ -283,9 +281,7 @@ retry loop nobody can see.
 
 The runtime assembles and publishes every event below (`buildInboundEvent`,
 `openUpdatePublisher`). A transport supplies the normalizer
-([src/inbound/normalize.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/inbound/normalize.ts), with
-[src/telegram/media/ingest.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/media/ingest.ts) for the bytes) and the
-addressing rule ([src/inbound/addressing.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/inbound/addressing.ts)).
+(with its media ingest for the bytes) and the addressing rule.
 
 Everything leaves as one job per event on the BullMQ queue
 `TRANSPORT_UPDATES_QUEUE` (`transport-updates`), payload validated by
@@ -321,7 +317,7 @@ Every event shares the envelope:
 
 **Stream rules.** A group is one shared stream: pass `assistantId: null` to
 `messageDedupeKey`, forward the message **once** even if several of your bots
-received it (tg keeps an in-process seen-cache with a 10-minute TTL), and list
+received it (the SDK's in-process seen-cache, a 10-minute TTL, does this), and list
 every running connection in `receivers`. A direct chat is one stream per bot:
 pass the receiving assistant's id, and list only the receiving connection.
 The core enforces uniqueness on `(source, dedupeKey)`, so a re-forwarded
@@ -372,8 +368,8 @@ talk to your platform's file API — and attach them:
 | `unavailable` | `true` with empty `frames` when the bytes could not be loaded — recorded once, never re-attempted |
 
 Run every image through `normalizeImageForChat` (longest edge 768 px, under
-900 KB). Video and GIF frames are sampled with ffmpeg in tg
-(`src/telegram/media/frames.ts`); the thumbnail is the fallback. The core
+900 KB). Video and GIF frames are sampled with ffmpeg on your side; the
+thumbnail is the fallback. The core
 stores the row as pending media, describes or transcribes it, drops the bytes,
 and from then on the transcript line reads ` [photo: …]`. A failed download
 still opens the turn — the pipeline answers from the text.
@@ -388,7 +384,7 @@ content edit. Skip edits with no textual content. Forward a group edit once
 
 `{ source, chat, assistantId, sourceMessageId, reaction: "up" | "down", user }`
 — a human put a feedback-worthy reaction on a message. You map your platform's
-emoji to the two values (tg: a freshly **added** 👍/👎; removals and other
+emoji to the two values (typically a freshly **added** 👍/👎; removals and other
 emoji are ignored) and forward once per group. The core checks whether the
 target is one of its replies and runs the feedback collection flow, which
 posts an options menu through your `/internal/chats/:chatId/menu` endpoint
@@ -413,7 +409,7 @@ events, the internal send API, your MCP tools — from one function
 | `assistantId` | the authoring assistant, or null when the caller could not say |
 | `sourceMessageId`, `dedupeKey` | the delivered message, same stream rules as inbound |
 | `content` | the delivered text — a voice reply's spoken words, a file's caption |
-| `replyToSourceMessageId` | what the platform **actually** attached, read back from the sent message (Telegram silently drops a reply target it will not attach) |
+| `replyToSourceMessageId` | what the platform **actually** attached, read back from the sent message (a platform may silently drop a reply target it will not attach) |
 | `silent` | a transient acknowledgement: mirrored, never cross-fed |
 | `image` | `{ fileId, fileUniqueId, base64 }` for a generated picture you delivered — the core stores it as pending media so the describer recognizes what the bot drew |
 | `running` | every connection running right now: `{ assistantId, botId, identity }` — the cross-feed roster |
@@ -426,8 +422,7 @@ failed send.
 ## Step 5 — Consume deliveries and render the turn lifecycle
 
 The runtime runs this consumer (`startDeliveryConsumer`); a transport supplies
-`sendMessage` and `sendTyping` on its connection
-([src/telegram/connection.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/connection.ts)).
+`sendMessage` and `sendTyping` on its connection.
 
 Subscribe to `BUS_EVENTS_CHANNEL` (`assistants-swarm-hub:events`), parse by `type`,
 and ignore anything whose `source` is not yours. Failures are logged, never
@@ -447,15 +442,14 @@ every chat.
 | `linkableSourceMessageIds` | the mirror-checked whitelist of `#<id>` citations you may render as tappable message links; anything else stays plain text |
 
 Render the text for your platform at this boundary and nowhere earlier: the
-mirror, the traces and the pipeline all keep the raw text. Telegram converts
-Markdown to its small HTML tag set by construction
-([src/telegram/html.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/html.ts)) and
+mirror, the traces and the pipeline all keep the raw text. A platform with a
+small markup tag set gets a by-construction conversion, and the transport
 falls back to a plain-text send when the platform still rejects the markup —
 that fallback triggers only on a parse error, because any other retry could
 double-deliver. **You split.** The core publishes the whole answer as one
 `reply.delivery` and knows no platform's cap (user decision, 2026-09-02):
-cut a long text at natural boundaries under yours (Telegram:
-the runtime's `splitMessage`, paragraph → line →
+cut a long text at natural boundaries under yours (the runtime's
+`splitMessage`: paragraph → line →
 sentence → word), send the parts in order with the same reply target, and
 report every part as `message.delivered` so the mirror holds the whole
 answer.
@@ -475,8 +469,8 @@ delivered id back.
 never an MCP tool: start your platform's typing indicator on `accepted` (and
 keep it on `progress`, whose `activity` names the tool running), stop it on
 `settled`. Key the loop per `chatId:sourceMessageId` so concurrent chats never
-share one; Telegram refreshes every 4.5 s because its chat action expires
-after about 5 s. `settled` is published on every terminal path, ignored turns
+share one; refresh at whatever interval your platform's indicator expires
+(a few seconds, typically). `settled` is published on every terminal path, ignored turns
 included, so a loop always ends.
 
 You do nothing else on `settled` — the core releases its own mirror hold.
@@ -484,8 +478,7 @@ You do nothing else on `settled` — the core releases its own mirror hold.
 ## Step 6 — The HTTP surface
 
 The runtime serves this whole table (`createTransportApi`), mounting only the routes
-whose action your connection actually implements
-([src/telegram/connection.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/connection.ts)).
+whose action your connection actually implements.
 
 Guard everything under `/internal` and `/mcp` with
 `internalTokenGuard(INTERNAL_API_TOKEN)`. `/health` stays open: it carries no
@@ -502,7 +495,7 @@ secrets, and the core probes it unauthenticated.
 | `POST /internal/chats/:chatId/menu?assistantId=` | `internalSendMenuRequestSchema`: `{ text, keyboard: [[{ text, callbackData }]], replyToSourceMessageId }` | `{ sourceMessageId }` | The feedback flow's options menu |
 | `PATCH /internal/chats/:chatId/menu/:messageId?assistantId=` | `{ text, keyboard \| null }` | `{ ok: true }` | Rewriting the menu (`null` removes the buttons) |
 | `DELETE /internal/chats/:chatId/menu/:messageId?assistantId=` | — | `{ deleted }` | Removing the menu |
-| `PUT /internal/chats/:chatId/title` | `{ title }` | `{ title }` | Only for sources whose conversations have provisional names (`chatInfo.titleProvisional`) — Telegram does not serve it |
+| `PUT /internal/chats/:chatId/title` | `{ title }` | `{ title }` | Only for sources whose conversations have provisional names (`chatInfo.titleProvisional`) — most platforms do not serve it |
 | `ALL /mcp` | MCP Streamable HTTP | — | The core's MCP client, on this platform's turns |
 
 `assistantId` in the query says whose bot performs the send; absent, use
@@ -528,8 +521,7 @@ no reaction tool. The contract carries no capability flags.
 
 The runtime hosts the two delivery tools (`registerDeliveryTools`) and the mirror-gated
 half of reacting (`reactToMessage`); a transport registers the reaction tool itself,
-because the emoji are the platform's
-([src/telegram/reaction-tool.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/telegram/reaction-tool.ts)).
+because the emoji are the platform's.
 
 Serve an `McpServer` at the `mcpPath` you announced, with `serveMcp` from the
 SDK: one server instance per request, no session ids — every call carries its
@@ -564,7 +556,7 @@ and **refuse** when it is absent or names another source:
 
 The core withholds the delivery tool that does not match `deliveryKind`;
 check it on your side as well, so a call that arrives anyway cannot smuggle a
-send into the wrong turn. Telegram's three tools:
+send into the wrong turn. A typical transport's three tools:
 
 | Tool | Does | Refuses when |
 | --- | --- | --- |
@@ -641,8 +633,7 @@ A transport is delivered as a container image. Nothing about it is special:
 one process, one HTTP port, no database, no migrations, no volumes.
 
 **Dockerfile.** Install dependencies, copy your source, install whatever
-system packages your platform needs (Telegram's needs `ffmpeg` for video frame
-sampling; `sharp`, which the SDK brings for image normalization, ships its own
+system packages your platform needs (video frame sampling needs `ffmpeg`; `sharp`, which the SDK brings for image normalization, ships its own
 libvips), run as a non-root user, and start your entrypoint. Commit the
 `.npmrc` line for the scope and mount the registry token as a **BuildKit
 secret**, appended and deleted inside the same layer so nothing about it
@@ -656,9 +647,9 @@ RUN --mount=type=secret,id=npm_token     set -eu;     printf '//npm.pkg.github.c
 
 **Publish it** wherever the operator can pull from — a container registry of
 your own, or your repository's (`ghcr.io/<you>/<repo>`). Tag a real version
-rather than only `latest`, so an operator can pin one. The Telegram and
-Discord transports are released by their own repositories' workflows, on the
-same shape as this repo's [release workflow](../../.github/workflows/release.yml),
+rather than only `latest`, so an operator can pin one. The organization's
+transports are released by their own repositories' workflows, on the same
+shape as this repo's [release workflow](../../.github/workflows/release.yml),
 which is worth copying for one reason: it gates on the REGISTRY, not on a
 version field that changed. It asks whether this image tag is already there
 and ships only what is missing, so a release that fails half-way is finished
@@ -733,18 +724,16 @@ Before any of that, prove your shapes offline: every event and body is in
 [`events.schema.json`](../api/transport/events.schema.json), so a schema
 validator over your own fixtures catches a malformed event in a unit test
 rather than in a queue that drops the job. The seams worth pinning are the
-ones the Telegram transport pins: one event per platform update (with dedupe
-and per-assistant streams), the structural addressing verdicts and their
-reasons, and the split-and-send path
-([src/inbound/normalize.test.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/inbound/normalize.test.ts),
-[src/inbound/addressing.test.ts](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/src/inbound/addressing.test.ts)).
+ones every transport pins: one event per platform update (with dedupe and
+per-assistant streams), the structural addressing verdicts and their reasons,
+and the split-and-send path.
 
-## Reference: the worked example, duty by duty
+## Reference: who does what, duty by duty
 
-[The Telegram transport](https://github.com/assistants-swarm-hub/ash-transport-telegram),
-as the files that carry each duty. It is a separate repository on the published
-SDK — the same position yours will be in — so it is worth reading as a whole
-once, not only per step.
+The runtime's duties against yours. The organization's own transports are
+separate repositories on the published SDK — the same position yours will be
+in — and follow exactly this split; read one as a whole once, not only per
+step.
 
 | Duty | Where |
 | --- | --- |
@@ -755,18 +744,18 @@ once, not only per step.
 | The one send: split under the cap, each part reported as `message.delivered` | the SDK (`splitMessage`, `sendChatMessage`) |
 | HTTP surface: health, `/internal/*`, `/mcp` | the SDK (`createTransportApi`) |
 | The two delivery tools and the turn binding | the SDK (`registerDeliveryTools`, `turnOf`) |
-| Who this transport is | `src/descriptor.ts` |
-| Connection lifecycle and update handlers | `src/telegram/adapter.ts` |
-| Platform actions (HTML render, link whitelist, files by mime, menus, reactions) | `src/telegram/connection.ts`, `src/telegram/html.ts`, `src/telegram/ids.ts` |
-| Normalizing a message, media | `src/inbound/normalize.ts`, `src/telegram/media/*` |
-| Structural addressing verdicts | `src/inbound/addressing.ts` |
-| The reaction tool (the emoji Telegram accepts) | `src/telegram/reaction-tool.ts` |
+| Who this transport is | yours: the descriptor |
+| Connection lifecycle and update handlers | yours: the adapter |
+| Platform actions (markup render, link whitelist, files by mime, menus, reactions) | yours: the connection |
+| Normalizing a message, media | yours: the normalizer and media ingest |
+| Structural addressing verdicts | yours: the addressing rule |
+| The reaction tool (the emoji your platform accepts) | yours |
 
-Its folders follow the **one boundary that matters**: `telegram/` is the only
-code that knows the Bot API exists, `inbound/` reads a platform message into
+Keep the **one boundary that matters** in your tree: one folder is the only
+code that knows your platform's API exists, one reads a platform message into
 the contract's vocabulary, and `index.ts` hands all of it to the runtime. That
-first folder is what you replace to get a different transport — the Discord
-transport is the same tree with `discord/` in its place.
+first folder is what changes between transports; everything else is the same
+tree.
 
 ## What the dashboard shows for your transport
 
@@ -774,7 +763,7 @@ Nothing in the core is keyed by a platform literal: every surface that names
 a source walks the registration table, and every surface that names a chat
 or a person speaks a scoped ref (`<source>:chat:<id>`, `<source>:user:<id>`)
 or a `(source, local id)` pair. Once your transport has registered and its
-events land, an operator sees it everywhere a Telegram deployment does:
+events land, an operator sees it everywhere any other transport is seen:
 
 | Surface | What it reads |
 | --- | --- |
@@ -798,5 +787,5 @@ Two conventions your transport must follow for those surfaces to work:
   `<chatRef>:<sourceMessageId>` — the chat's ref, so your turns can never be
   confused with another platform's chat that happens to share an id.
 
-If you find a surface that shows Telegram and not you, that is a core bug —
+If you find a surface that shows another transport and not you, that is a core bug —
 file it against the "Transport SDK" entry in `docs/TODO.md`.

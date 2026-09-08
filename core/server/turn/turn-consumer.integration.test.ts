@@ -38,18 +38,18 @@ function inboundEvent(overrides?: {
     occurredAt: new Date().toISOString(),
     correlationId: "-300:11",
     type: "message.inbound",
-    source: "tg",
+    source: "acme",
     assistantId: "assistant-1",
     connection: { botUsername: "fixture_bot", botDisplayName: "Fixture" },
     chat: {
-      ref: "tg:chat:-300",
+      ref: "acme:chat:-300",
       kind: "group",
       title: "Fixture Group",
       notes: "seeded for the consumer test",
       language: "English",
     },
     sender: {
-      ref: "tg:user:5001",
+      ref: "acme:user:5001",
       isOwner: false,
       label: "Alice (@alice_example)",
       username: "alice_example",
@@ -76,7 +76,7 @@ function inboundEvent(overrides?: {
         {
           sourceMessageId: "10",
           role: "user",
-          senderRef: "tg:user:5002",
+          senderRef: "acme:user:5002",
           senderLabel: "Bob (@bob_example)",
           content: "earlier chatter",
           sentAt: new Date(Date.now() - 60_000).toISOString(),
@@ -92,8 +92,8 @@ function inboundEvent(overrides?: {
         },
       ],
       participants: [
-        { ref: "tg:user:5001", label: "Alice (@alice_example)", aliases: ["Al"] },
-        { ref: "tg:user:5002", label: "Bob (@bob_example)", aliases: [] },
+        { ref: "acme:user:5001", label: "Alice (@alice_example)", aliases: ["Al"] },
+        { ref: "acme:user:5002", label: "Bob (@bob_example)", aliases: [] },
       ],
     },
   });
@@ -152,12 +152,12 @@ describe("inbound turn consumer", () => {
       occurredAt: new Date().toISOString(),
       correlationId: "-300:40:assistant-2",
       type: "message.inbound",
-      source: "tg",
+      source: "acme",
       assistantId: "assistant-2",
       connection: { botUsername: "second_bot", botDisplayName: "Second Bot" },
-      chat: { ref: "tg:chat:-300", kind: "group", title: "Fixture Group" },
+      chat: { ref: "acme:chat:-300", kind: "group", title: "Fixture Group" },
       // The authoring bot's ACCOUNT — never a person.
-      sender: { ref: "tg:user:9001", isOwner: false, label: "First Bot" },
+      sender: { ref: "acme:user:9001", isOwner: false, label: "First Bot" },
       authoredByAssistantId: "assistant-1",
       addressing: { addressed: true, source: "mention", needsAnalyzer: false },
       message: {
@@ -180,7 +180,7 @@ describe("inbound turn consumer", () => {
       sourceMessageId: input.id,
       role: input.role,
       assistantId: input.role === "assistant" ? (input.assistantId ?? "assistant-1") : null,
-      senderRef: input.role === "user" ? "tg:user:5001" : null,
+      senderRef: input.role === "user" ? "acme:user:5001" : null,
       senderLabel: input.role === "user" ? "Alice (@alice_example)" : null,
       content: input.content,
       sentAt: new Date().toISOString(),
@@ -210,7 +210,7 @@ describe("inbound turn consumer", () => {
     );
     const { getStoreDb } = await import("@/server/store/db");
     const { upsertKnownUser } = await import("@/features/known-users/server/repository");
-    await upsertKnownUser(getStoreDb(), "tg", {
+    await upsertKnownUser(getStoreDb(), "acme", {
       userId: "5001",
       username: "alice_example",
       firstName: "Alice",
@@ -218,7 +218,7 @@ describe("inbound turn consumer", () => {
     });
     await insertPreference(getStoreDb(), {
       id: crypto.randomUUID(),
-      userRef: "tg:user:5001",
+      userRef: "acme:user:5001",
       model: "fixture-model",
       likes: "short answers",
       dislikes: "emoji walls",
@@ -251,7 +251,7 @@ describe("inbound turn consumer", () => {
     ]);
     const delivery = replyDeliveryEventSchema.parse(published[1]);
     expect(delivery).toMatchObject({
-      chatRef: "tg:chat:-300",
+      chatRef: "acme:chat:-300",
       assistantId: "assistant-1",
       replyToSourceMessageId: "11",
       text: "the consumer answer",
@@ -259,7 +259,7 @@ describe("inbound turn consumer", () => {
     });
     for (const lifecycle of [published[0], published[2]]) {
       expect(turnLifecycleEventSchema.parse(lifecycle)).toMatchObject({
-        chatRef: "tg:chat:-300",
+        chatRef: "acme:chat:-300",
         sourceMessageId: "11",
       });
     }
@@ -306,7 +306,7 @@ describe("inbound turn consumer", () => {
   });
 
   it("runs a web-thread turn: no bot account, its own surface, its own trigger", async () => {
-    // The same pipeline, from the source that has none of Telegram's
+    // The same pipeline, from the source that has none of a transport's
     // furniture: no connection identity, uuid ids, and a trigger Debug can
     // tell apart from an operator pressing a button.
     const event = inboundMessageEventSchema.parse({
@@ -347,13 +347,13 @@ describe("inbound turn consumer", () => {
       correlationId: "thread-abc:7:assistant-1",
     });
 
-    // The model is told where it is — and it is not Telegram.
+    // The model is told where it is — and it is not a transport.
     const systemBlocks = seen[0]
       .filter((message) => message.role === "system")
       .map((message) => String(message.content))
       .join(" | ");
     expect(systemBlocks).toContain("web chat");
-    expect(systemBlocks).not.toContain("Telegram");
+    expect(systemBlocks).not.toContain("Acme Chat");
 
     // The trace says which way in this was, with an id that is a real id.
     const traces = await listTraces({ correlationId: "thread-abc:7:assistant-1" });
@@ -612,7 +612,7 @@ describe("inbound turn consumer", () => {
   it("recognizes a pending photo through the media store and folds the text into the turn", async () => {
     let record: MediaRecord = {
       id: "media-1",
-      source: "tg",
+      source: "acme",
       chatId: "-300",
       sourceMessageId: "12",
       kind: "photo",

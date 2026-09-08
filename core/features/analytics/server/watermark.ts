@@ -12,10 +12,9 @@ import { bucketKeyOfInstant } from "../period";
  * proven that every hour below some point is scored, no later scan can find new
  * work there — with two exceptions, both handled explicitly:
  *
- * - Telegram can deliver a backlogged update up to ~24 hours old (its
- *   `getUpdates` retention), landing a fresh row in an old hour. The floor
- *   therefore never advances closer than {@link BACKLOG_SAFETY_HOURS} behind
- *   "now".
+ * - A platform can deliver a backlogged update up to about a day late,
+ *   landing a fresh row in an old hour. The floor therefore never advances
+ *   closer than {@link BACKLOG_SAFETY_HOURS} behind "now".
  * - A history CSV import writes, and a regenerate un-scores, arbitrarily old
  *   hours. Both call {@link resetInsightScanFloor}, so the next scan is
  *   unbounded and sees them.
@@ -45,7 +44,7 @@ function slot(): { current: FloorState | null } {
   return g[STORE_KEY];
 }
 
-/** Telegram's backlog-delivery retention (~24 h), generously rounded up. */
+/** How late a platform may deliver a backlogged update (about a day), rounded up. */
 const BACKLOG_SAFETY_HOURS = 25;
 
 /**
@@ -62,7 +61,7 @@ export function getInsightScanFloor(timeZone: string): string | null {
  * Record what a completed due-scan proved: every hour below its oldest pending
  * find (or below the scan's `currentHour`, when nothing was pending) is scored.
  * The stored floor is additionally clamped to {@link BACKLOG_SAFETY_HOURS}
- * behind `now`, so a late-delivered Telegram update can never land below it.
+ * behind `now`, so a late-delivered update can never land below it.
  */
 export function advanceInsightScanFloor(params: {
   oldestPendingHour: string | null;

@@ -14,7 +14,7 @@ const recorder = vi.hoisted(() => ({
 vi.mock("@/server/trace", () => ({ startTrace: vi.fn().mockResolvedValue(recorder) }));
 
 import { openPolicy } from "@/test/__mocks__/policy";
-import { BOT, BOT_USER, makeMessage } from "@/test/__mocks__/telegram";
+import { BOT } from "@/test/__mocks__/bot";
 import {
   recordLlmRequest,
   recordLlmResponse,
@@ -27,6 +27,34 @@ import { ACTION_CLAIM_ENFORCEMENT_DIRECTIVE, ACTION_NOT_TAKEN_REPLY } from "./ac
 import { REPLY_INTEGRITY_DIRECTIVE, REPLY_NOT_PRODUCED_REPLY } from "./reply-integrity";
 import { BASE_SYSTEM_PROMPT } from "./prompt";
 import { handleIncomingMessage, type BotMessagingDeps, type IncomingMessage } from "./service";
+import { DETERMINISTIC_REASONS, type AddressResult } from "./addressing";
+
+// The deterministic verdicts as the turn consumer hands them over: the
+// transport's structural half, or the core's name match. The service never
+// sees a platform's wire shape.
+const PRIVATE: AddressResult = {
+  addressed: true,
+  source: "private",
+  reason: DETERMINISTIC_REASONS.private,
+};
+const MENTION: AddressResult = {
+  addressed: true,
+  source: "mention",
+  reason: DETERMINISTIC_REASONS.mention,
+};
+const REPLY: AddressResult = {
+  addressed: true,
+  source: "reply",
+  reason: DETERMINISTIC_REASONS.reply,
+};
+const named = (word: string): AddressResult => ({
+  addressed: true,
+  source: "name",
+  reason: `the assistant's name is spoken: "${word}"`,
+  matchedText: word,
+});
+/** Group text naming neither the @handle nor the display name: undecided. */
+const CHATTER: AddressResult = { addressed: false, needsAnalyzer: true };
 
 /** The connection the fakes pretend to send to (named in recorded request events). */
 const TEST_CONN = { baseUrl: "https://llm.test/v1" };
@@ -52,8 +80,8 @@ async function recordExchange(
 
 function incoming(partial: Partial<IncomingMessage>): IncomingMessage {
   return {
-    message: makeMessage({ message_id: 7, chat: { id: 5, type: "private" } }),
-    source: "tg",
+    addressing: PRIVATE,
+    source: "acme",
     chatId: "5",
     chatType: "private",
     sourceMessageId: "7",
@@ -143,9 +171,8 @@ describe("handleIncomingMessage", () => {
 
   it("ignores un-addressed group chatter without tracing", async () => {
     const d = deps();
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" }, text: "chatter" });
     const out = await handleIncomingMessage(
-      incoming({ message: m, chatType: "group", text: "chatter" }),
+      incoming({ addressing: CHATTER, chatType: "group", text: "chatter" }),
       d,
     );
     expect(out).toEqual({ status: "ignored", reason: "not_addressed" });
@@ -207,9 +234,14 @@ describe("handleIncomingMessage", () => {
       fail: vi.fn().mockResolvedValue(undefined),
     };
     const d = deps({ trace: pre });
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" }, text: "" });
     const out = await handleIncomingMessage(
-      incoming({ message: m, chatType: "group", text: "unrelated words", isVoice: true, hasVision: true }),
+      incoming({
+        addressing: CHATTER,
+        chatType: "group",
+        text: "unrelated words",
+        isVoice: true,
+        hasVision: true,
+      }),
       d,
     );
     expect(out).toMatchObject({ status: "ignored", reason: "not_addressed" });
@@ -396,13 +428,7 @@ describe("handleIncomingMessage", () => {
   });
 
   it("injects a group addressing hint naming the sender and address source", async () => {
-    // A group message that mentions the bot by @username entity.
-    const m = makeMessage({
-      message_id: 7,
-      chat: { id: 5, type: "group" },
-      text: "@MyBot explain",
-      entities: [{ type: "mention", offset: 0, length: 6 }],
-    });
+    // A group message the transport marked as an @mention of the bot.
     const d = deps({
       loadChatContext: vi.fn().mockResolvedValue({ content: "roster", data: {} }),
       loadCurrentTurn: vi.fn().mockResolvedValue({
@@ -412,7 +438,7 @@ describe("handleIncomingMessage", () => {
       }),
       loadHistory: vi.fn().mockResolvedValue({ messages: [{ role: "user", content: "t" }], count: 1 }),
     });
-    await handleIncomingMessage(incoming({ message: m, chatType: "group", text: "@MyBot explain" }), d);
+    await handleIncomingMessage(incoming({ addressing: MENTION, chatType: "group", text: "@MyBot explain" }), d);
 
     const messages = (d.generateReply as ReturnType<typeof vi.fn>).mock.calls[0][0];
     // system prompt, chat context, transcript, addressing hint, current message.
@@ -719,15 +745,9 @@ describe("handleIncomingMessage", () => {
   it("keeps the owner fully functional in a group during maintenance (reply-to-bot)", async () => {
     // Reply-to-bot addressing (not a direct mention) still gets a normal reply —
     // maintenance mode imposes no extra restriction on the owner.
-    const m = makeMessage({
-      message_id: 7,
-      chat: { id: 5, type: "group" },
-      text: "thanks",
-      reply_to_message: { message_id: 1, from: BOT_USER },
-    });
     const d = deps({ policy: { maintenanceModeEnabled: true }, senderIsOwner: true });
     const out = await handleIncomingMessage(
-      incoming({ message: m, chatType: "group", text: "thanks", fromId: "7" }),
+      incoming({ addressing: REPLY, chatType: "group", text: "thanks", fromId: "7" }),
       d,
     );
     expect(out).toEqual({ status: "replied", text: "hi back" });
@@ -875,8 +895,7 @@ describe("handleIncomingMessage — LLM addressing check", () => {
 
   /** A group message naming neither the @handle nor the literal display name. */
   function groupChatter(text: string) {
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" }, text });
-    return incoming({ message: m, chatType: "group", text });
+    return incoming({ addressing: CHATTER, chatType: "group", text });
   }
 
   /**
@@ -1072,13 +1091,8 @@ describe("handleIncomingMessage — LLM addressing check", () => {
   it("does not pay for the analyzer when the message already named the bot", async () => {
     const analyzeAddressing = analyzer("exact");
     const d = deps({ analyzeAddressing });
-    const m = makeMessage({
-      message_id: 7,
-      chat: { id: 5, type: "group" },
-      text: "aria, hello",
-    });
     const out = await handleIncomingMessage(
-      incoming({ message: m, chatType: "group", text: "aria, hello" }),
+      incoming({ addressing: named("aria"), chatType: "group", text: "aria, hello" }),
       d,
     );
 
@@ -1185,11 +1199,10 @@ describe("voice turns", () => {
   });
 
   it("addresses a group voice message by its transcript (spoken display name)", async () => {
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" } });
     const d = deps();
     const out = await handleIncomingMessage(
       incoming({
-        message: m,
+        addressing: named("aria"),
         chatType: "group",
         text: "aria, what time is it?",
         isVoice: true,
@@ -1205,11 +1218,10 @@ describe("voice turns", () => {
   });
 
   it("ignores a group voice message whose transcript names nobody (no analyzer wired)", async () => {
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" } });
     const d = deps();
     const out = await handleIncomingMessage(
       incoming({
-        message: m,
+        addressing: CHATTER,
         chatType: "group",
         text: "how was your weekend?",
         isVoice: true,
@@ -1252,8 +1264,7 @@ describe("handleIncomingMessage — standing tasks", () => {
   });
 
   function groupChatter(text: string) {
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" }, text });
-    return incoming({ message: m, chatType: "group", text });
+    return incoming({ addressing: CHATTER, chatType: "group", text });
   }
 
   const matched = (directive: string | null = "RULE DIRECTIVE") =>
@@ -1467,8 +1478,7 @@ describe("handleIncomingMessage — a rule turn that called no tool", () => {
   });
 
   function groupChatter(text: string) {
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" }, text });
-    return incoming({ message: m, chatType: "group", text });
+    return incoming({ addressing: CHATTER, chatType: "group", text });
   }
 
   const matched = () =>
@@ -1855,9 +1865,7 @@ describe("handleIncomingMessage — the honesty gate", () => {
       applyStandingTasks: vi.fn().mockResolvedValue({ directive: "RULE DIRECTIVE", taskIds: ["r1"] }),
       generateReply: allTalk("downloaded the video"),
     });
-    const m = makeMessage({ message_id: 7, chat: { id: 5, type: "group" }, text });
-
-    const out = await handleIncomingMessage(incoming({ message: m, chatType: "group", text }), d);
+    const out = await handleIncomingMessage(incoming({ addressing: CHATTER, chatType: "group", text }), d);
 
     expect(out.status).toBe("error");
     expect(checkActionClaim).not.toHaveBeenCalled();

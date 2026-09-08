@@ -34,9 +34,9 @@ function str(value: unknown): string | null {
  */
 const DECIDED_WITHOUT_ANALYZER: Record<string, string> = {
   private: "a direct chat decides itself — the analyzer is never asked in one",
-  reply: "Telegram marked the message as a reply to this assistant",
-  mention: "Telegram marked an @mention of this bot's username",
-  command: "Telegram marked a /command addressed to this bot's username",
+  reply: "the transport marked the message as a reply to this assistant",
+  mention: "the transport marked an @mention of this bot's username",
+  command: "the transport marked a /command addressed to this bot's username",
   name: "the assistant's name matched literally, which settles the turn on its own",
   task: "a standing task claimed the message",
 };

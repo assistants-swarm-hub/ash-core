@@ -39,7 +39,7 @@ async function seedPending(
   await seedSourceMessage(ctx, { chatId, sourceMessageId, processed: over?.processed });
   return insertMedia(ctx.db, {
     id: crypto.randomUUID(),
-    source: "tg",
+    source: "acme",
     chatId,
     sourceMessageId: String(sourceMessageId),
     kind: "photo",
@@ -51,13 +51,13 @@ async function seedPending(
   });
 }
 
-/** The source seam over this test's database — what the tg API provides live. */
+/** The source seam over this test's database — what a transport provides live. */
 function source(): VisionBackfillSource {
   return {
-    source: "tg",
-    store: dbMediaStore(ctx.db, "tg"),
-    listPending: (limit) => listPendingMedia(ctx.db, "tg", limit),
-    countPending: () => countPendingMedia(ctx.db, "tg"),
+    source: "acme",
+    store: dbMediaStore(ctx.db, "acme"),
+    listPending: (limit) => listPendingMedia(ctx.db, "acme", limit),
+    countPending: () => countPendingMedia(ctx.db, "acme"),
   };
 }
 
@@ -88,7 +88,7 @@ describe("runVisionBackfill", () => {
     expect(result.described).toBe(3);
     expect(result.unresolved).toBe(0);
     expect(result.interrupted).toBe(false);
-    expect(await countPendingMedia(ctx.db, "tg")).toBe(0);
+    expect(await countPendingMedia(ctx.db, "acme")).toBe(0);
 
     // The batch run is traced under vision-backfill; each row under vision.
     const runTraces = await listTraces({ feature: "vision-backfill" });
@@ -122,7 +122,7 @@ describe("runVisionBackfill", () => {
     );
     expect(result.described).toBe(0);
     expect(result.unresolved).toBe(1);
-    expect(await countPendingMedia(ctx.db, "tg")).toBe(1);
+    expect(await countPendingMedia(ctx.db, "acme")).toBe(1);
   });
 
   it("stops early when aborted, leaving the rest pending", async () => {
@@ -145,7 +145,7 @@ describe("runVisionBackfill", () => {
 
     expect(result.interrupted).toBe(true);
     expect(result.described).toBe(1);
-    expect(await countPendingMedia(ctx.db, "tg")).toBe(2);
+    expect(await countPendingMedia(ctx.db, "acme")).toBe(2);
   });
 
   it("leaves media alone while its message is still held by the live pipeline", async () => {
@@ -153,7 +153,7 @@ describe("runVisionBackfill", () => {
     await seedPending(11); // released — a genuine leftover
 
     // The scan itself excludes the held row…
-    expect((await listPendingMedia(ctx.db, "tg")).map((r) => r.sourceMessageId)).toEqual(["11"]);
+    expect((await listPendingMedia(ctx.db, "acme")).map((r) => r.sourceMessageId)).toEqual(["11"]);
 
     // …so a run describes only the leftover and never races the live pass.
     const result = await runVisionBackfill(
@@ -163,7 +163,7 @@ describe("runVisionBackfill", () => {
       ctx.db,
     );
     expect(result.described).toBe(1);
-    expect(await countPendingMedia(ctx.db, "tg")).toBe(1);
+    expect(await countPendingMedia(ctx.db, "acme")).toBe(1);
   });
 
   it("reclaims a held row once the hold times out (crashed pipeline)", async () => {
@@ -175,7 +175,7 @@ describe("runVisionBackfill", () => {
       .set({ createdAt: new Date(Date.now() - 11 * 60_000) })
       .where(eq(sourceMedia.id, row!.id));
 
-    expect(await listPendingMedia(ctx.db, "tg")).toHaveLength(1);
+    expect(await listPendingMedia(ctx.db, "acme")).toHaveLength(1);
   });
 
   it("skips (does not run) when the advisory lock is already held", async () => {
@@ -196,7 +196,7 @@ describe("runVisionBackfill", () => {
       expect(inner.result.described).toBe(0);
     }
     // The row was never touched — still pending for the next run.
-    expect(await listPendingMedia(ctx.db, "tg")).toHaveLength(1);
+    expect(await listPendingMedia(ctx.db, "acme")).toHaveLength(1);
   });
 });
 

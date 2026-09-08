@@ -16,12 +16,12 @@ import { threadTurns } from "./turns";
  * The web chat's half of the turn's outbound events, consumed in-process
  * since the dissolve (the chat app's bus consumer, relocated): the pipeline
  * publishes `reply.delivery` and `turn.lifecycle` for every source on the
- * bus, tg's app consumes its own, and the core consumes the web chat's here
+ * bus, each transport consumes its own, and the core consumes the web chat's here
  * (wired in `server/source/events-consumer.ts`).
  *
  * "Delivering" to a web thread is storing the reply and pinging the
  * dashboard, because the thread is already on screen — there is no platform
- * to hand it to. The trace, the correlation and the refresh ping are what tg
+ * to hand it to. The trace, the correlation and the refresh ping are what a transport
  * records for its sends, which is why the model never has to remember to
  * send its own answer here either.
  *

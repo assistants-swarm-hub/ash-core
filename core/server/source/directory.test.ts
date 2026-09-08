@@ -90,18 +90,18 @@ const failing = (id: DirectorySource["id"], label: string, message: string): Dir
 describe("listDirectoryUsers", () => {
   it("tags every row with its source and scoped ref, newest first", async () => {
     const listing = await listDirectoryUsers([
-      source("tg", "Telegram", { users: [user("1", "2026-08-20T00:00:00.000Z")] }),
+      source("acme", "Acme Chat", { users: [user("1", "2026-08-20T00:00:00.000Z")] }),
       source("chat", "Web chat", { users: [user("abc", "2026-08-25T00:00:00.000Z")] }),
     ]);
 
     expect(listing.unavailable).toEqual([]);
-    expect(listing.entries.map((entry) => entry.ref)).toEqual(["chat:user:abc", "tg:user:1"]);
+    expect(listing.entries.map((entry) => entry.ref)).toEqual(["chat:user:abc", "acme:user:1"]);
     expect(listing.entries[0]).toMatchObject({ source: "chat", sourceLabel: "Web chat" });
   });
 
   it("names the sources it could not read instead of dropping them silently", async () => {
     const listing = await listDirectoryUsers([
-      source("tg", "Telegram", { users: [user("1", "2026-08-20T00:00:00.000Z")] }),
+      source("acme", "Acme Chat", { users: [user("1", "2026-08-20T00:00:00.000Z")] }),
       failing("chat", "Web chat", "connection refused"),
     ]);
 
@@ -116,7 +116,7 @@ describe("listDirectoryUsers", () => {
   });
 
   it("reports an unconfigured source as unavailable, not as empty", async () => {
-    const listing = await listDirectoryUsers([unconfigured("tg", "Telegram")]);
+    const listing = await listDirectoryUsers([unconfigured("acme", "Acme Chat")]);
 
     expect(listing.entries).toEqual([]);
     expect(listing.unavailable).toHaveLength(1);
@@ -127,7 +127,7 @@ describe("listDirectoryUsers", () => {
 describe("listDirectoryChats", () => {
   it("orders by last message and keeps chats that have never had one", async () => {
     const listing = await listDirectoryChats([
-      source("tg", "Telegram", {
+      source("acme", "Acme Chat", {
         chats: [chat("-100", null), chat("-200", "2026-08-26T00:00:00.000Z")],
       }),
       source("chat", "Web chat", { chats: [chat("t1", "2026-08-27T00:00:00.000Z")] }),
@@ -135,8 +135,8 @@ describe("listDirectoryChats", () => {
 
     expect(listing.entries.map((entry) => entry.ref)).toEqual([
       "chat:chat:t1",
-      "tg:chat:-200",
-      "tg:chat:-100",
+      "acme:chat:-200",
+      "acme:chat:-100",
     ]);
   });
 });

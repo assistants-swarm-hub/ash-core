@@ -6,7 +6,6 @@ import {
   turnCorrelationId,
   type SourceId,
 } from "@assistants-swarm-hub/contracts";
-import type { Message } from "@grammyjs/types";
 
 import type { StoreDb } from "@/server/store/db";
 import { FEATURES } from "@/lib/features";
@@ -39,15 +38,15 @@ import {
   REPLY_NOT_PRODUCED_REPLY,
   checkReplyIntegrity,
 } from "./reply-integrity";
-import { checkAddressed, type AddressResult, type AddressSource, type BotIdentity } from "./addressing";
+import type { AddressResult, AddressSource, BotIdentity } from "./addressing";
 import { checkMaintenance, type BotPolicy } from "./policy";
 import { buildAddressingHint, buildSystemPrompt, hasPersonality } from "./prompt";
 
 /**
- * Bot-messaging domain service — the boundary the Telegram runtime calls for
+ * Bot-messaging domain service — the boundary the turn consumer calls for
  * each incoming message. It owns addressing, ignore policy, reply generation,
  * delivery, and trace recording. Collaborators (reply generation, delivery) are
- * injected so the policy is unit-testable without a live LLM or Telegram.
+ * injected so the policy is unit-testable without a live LLM or transport.
  *
  * Messages the bot acts on are traced. So is every message it *asked the LLM
  * about* and then stayed silent on (see {@link BotMessagingDeps.analyzeAddressing}):
@@ -105,26 +104,19 @@ export interface GeneratedReply {
   responseBody?: unknown;
 }
 
-/** Normalized view of an incoming Telegram message (built by the runtime). */
+/** Normalized view of an incoming message (built by the turn consumer). */
 export interface IncomingMessage {
-  /** Which source app this message came from — the namespace of every id here. */
+  /** Which source this message came from — the namespace of every id here. */
   source: SourceId;
   /**
-   * The raw source update, when the in-process telegram runtime is the
-   * caller — the deterministic addressing check reads its wire shapes.
-   * Absent on the queue-consumer path (redesign Phase 2), which supplies
-   * {@link addressing} instead: the source computed the deterministic
-   * verdict, and the wire format never crosses the contract.
+   * The deterministic addressing verdict, already decided: the transport's
+   * structural half (direct chat, reply, mention, command) merged with the
+   * core's name match. The wire format never crosses the contract; only the
+   * LLM analyzer still runs here, for the undecided case.
    */
-  message?: Message;
+  addressing: AddressResult;
   /**
-   * Pre-decided deterministic addressing verdict from the source app.
-   * When present, {@link checkAddressed} is not run here; only the LLM
-   * analyzer still runs for the undecided case.
-   */
-  addressing?: AddressResult;
-  /**
-   * The conversation's SOURCE-LOCAL id, verbatim — a Telegram chat id, a web
+   * The conversation's SOURCE-LOCAL id, verbatim — a platform chat id, a web
    * thread's uuid. A string because ids are the owning app's to shape, and
    * parsing one as a number turned a uuid into `NaN` in every trace it
    * reached.
@@ -305,7 +297,7 @@ export interface BotMessagingDeps {
    * Begin showing the "typing…" chat action, returning a function that stops it.
    * Called as soon as a message is addressed and stopped once the turn settles,
    * so the user sees activity during reply generation. The runtime owns
-   * refreshing the action (Telegram expires it after a few seconds).
+   * refreshing the action (a platform expires it after a few seconds).
    */
   startTyping: () => () => void;
   /** Maintenance-mode state, resolved from settings by the runtime. */
@@ -519,7 +511,7 @@ async function runActionClaimGate(
 
 /**
  * Open the reply trace for an incoming message — the single trace the whole
- * turn records into. Exported so the Telegram runtime can open it *before* this
+ * turn records into. Exported so the turn consumer can open it *before* this
  * service runs when pre-reply work must land on it (the eager voice
  * transcription), passing it in via {@link BotMessagingDeps.trace}.
  */
@@ -557,7 +549,7 @@ export async function startReplyTrace(input: {
 }
 
 /**
- * Handle one incoming Telegram message end to end: decide, generate, deliver,
+ * Handle one incoming message end to end: decide, generate, deliver,
  * and trace. Cheap ignore checks run before any trace is opened — but a trace
  * the runtime already opened (voice) is settled even on those paths, so no
  * trace is ever left running.
@@ -595,17 +587,7 @@ export async function handleIncomingMessage(
   // is processed like any other message rather than ignored as empty.
   if (!text && !incoming.hasVision) return ignoredEarly("no_content");
 
-  let decision =
-    incoming.addressing ??
-    (incoming.message
-      ? checkAddressed(
-          incoming.message,
-          incoming.chatType,
-          deps.bot,
-          incoming.isVoice ? incoming.text : undefined,
-        )
-      : // Neither a raw update nor a pre-decided verdict: nothing to judge.
-        ({ addressed: false } satisfies AddressResult));
+  let decision = incoming.addressing;
   // Maintenance mode turns the analyzer off entirely (owner included): settling
   // an undecided message costs an LLM call, and maintenance means no LLM work
   // except turns the deterministic checks already addressed. The undecided

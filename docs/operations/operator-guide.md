@@ -108,7 +108,7 @@ fails — loudly, on the run that attempted it. The probe exists so you find out
 this page rather than from a user's failed request.
 
 Under the status grid, one block per registered transport (titled with the name
-it announced — **Telegram bots**, **Discord bots**, …) lists one row per
+it announced — **<Transport> bots**) lists one row per
 connection: its state badge (Running / Error / Stopped), the assistant it serves,
 the bot's `@username` (or the masked config, `botToken …xxxx`, while nothing is
 polling yet), a Start/Stop button, and the error text when there is one. A
@@ -220,9 +220,9 @@ Each field saves on its own and the input is replaced with what was actually sto
 so you can see the normalization (trimming, deduplication) applied.
 
 **Linked people** — the person-link graph: the declaration that several identities
-(a Telegram user, a dashboard account's web identity, …) are one human. Two things
+(a platform user, a dashboard account's web identity, …) are one human. Two things
 resolve through these links. **Memory**: what the bot knows about someone follows them
-across every identity they reach it by. **Owner rights**: a Telegram sender holds owner
+across every identity they reach it by. **Owner rights**: a chat sender holds owner
 rights over an assistant when the account their identity is linked to *owns* that
 assistant; admins hold them over every assistant. Nothing is chosen "as owner"
 anywhere any more — the global owner setting is retired.
@@ -237,7 +237,7 @@ to any connected bot from the identity they want linked.
 
 Every shared conversation the bot takes part in, across every source (a direct chat's
 identity is its person, so those are listed under Users). Each links to
-`/groups/{ref}` — addressed by scoped ref, e.g. `tg:chat:-100…` — with two tabs:
+`/groups/{ref}` — addressed by scoped ref, e.g. `acme:chat:42` — with two tabs:
 
 | Tab | Contents |
 | --- | --- |
@@ -259,12 +259,12 @@ predate accounts. A user-role account sees and manages only the assistants it ow
 prompt on every reply this assistant sends — and, once the assistant exists, one
 connection section per registered transport.
 
-The **Telegram connection** section is rendered from the field schema the transport
-announced at registration:
+Each transport's connection section is rendered from the field schema the
+transport announced at registration. With a bot token as the typical field:
 
-- Not connected yet: a **Bot token** field (from @BotFather; stored by the core and
-  never shown again) and **Connect**. Connecting stores the token and the bot starts
-  polling at once — a saved connection means "run this"; **Stop** is how you park one.
+- Not connected yet: a **Bot token** field (stored by the core and never shown
+  again) and **Connect**. Connecting stores the token and the bot starts at
+  once — a saved connection means "run this"; **Stop** is how you park one.
 - Connected: a status badge and the token hint (`botToken …xxxx`), the token field
   again (type a new one and **Save changes** to replace it), **Stop** / **Start**, and
   **Disconnect…** (confirm with **Really disconnect**), which removes the connection
@@ -272,13 +272,13 @@ announced at registration:
 
 | Badge | Means |
 | --- | --- |
-| Running | The transport is polling as `@username` |
-| Error | The poller failed and the message is shown — an invalid token, or Telegram refusing a second `getUpdates` consumer for the same token |
+| Running | The transport is connected as `@username` |
+| Error | The connection failed and the message is shown — an invalid token, or the platform refusing a second session for the same token |
 | Not tracked | The connection is enabled but the transport reports nothing for it: the service is down, unreachable at the URL it announced, or has not reconciled yet |
 | Stopped | Parked by you |
 
-If the section reads "Telegram has not announced itself yet — is its service
-running?", the transport has never registered with this core; "No transport has
+If the section reads "<Transport> has not announced itself yet — is its service
+running?", that transport has never registered with this core; "No transport has
 registered with this core yet" means none has. Both are
 [Troubleshooting](troubleshooting.md#the-assistant-editor-says-the-transport-has-not-announced-itself-yet)
 material. The badge flips live: the transport publishes every poller change and the
@@ -329,7 +329,7 @@ applied:
 - A connection is a **name**, a **slug** (it prefixes the server's tool names, so two
   servers can both have a `search`), an **endpoint URL** and optional **auth headers**
   — write-only: stored values are never shown again, type one to replace it. "Where it
-  applies" is every source, Telegram turns only, or web chat turns only; "Which
+  applies" is every source, one transport's turns only, or web chat turns only; "Which
   assistants may call it" is every assistant or a ticked subset.
 - **Discover** asks the server what it offers and shows the drift (`2 new, 1 changed,
   1 gone`); **Apply** hands that set to the assistants. The two verbs are separate on
@@ -338,7 +338,7 @@ applied:
   and thought about without running conversations noticing. Delete stops offering its
   tools immediately.
 - A connection badged **provided by the hub** is one of the platform's own MCP servers
-  (the Telegram transport's delivery and reaction tools). Its address and credentials
+  (a transport's delivery and reaction tools). Its address and credentials
   come from configuration and its tools follow the deployed release; only where it
   applies is yours to edit, and it cannot be deleted.
 
@@ -413,7 +413,7 @@ round will still produce a report from what was gathered.
 One size setting under Settings → General: `browserDownloadLimitGb` is the ceiling on
 what may be downloaded **at all**; past it the file tool gives up, the stream tool
 keeps a truncated but playable video, and the media tool refuses before it starts.
-The chat-attach ceiling is fixed at Telegram's 50 MB upload limit. A larger file
+The chat-attach ceiling is the platform's, enforced by its transport. A larger file
 from one of your own direct requests (or your own DM rules) is kept in the
 `downloads/` folder and reported by name; a rule-driven run in a group — your own
 message included — deletes it instead and reports the delivery as failed, without
@@ -464,7 +464,7 @@ password change has its own endpoint and button.
 | Tab | Contents |
 | --- | --- |
 | **Models** | All nine LLM roles as stacked cards on one tab (user decision, 2026-08-14): Chat, Embeddings, Images, Speech (plus the voice name), Audio (plus the transcription mode), Vision, Browser agent, Classifiers, Background jobs. Each picks a backend from the catalog and a model from that backend's live list, has its own Test button, and wears a badge saying what it is set to — the model, "Chat model", "Off", "No model selected", or "*model* — not served" |
-| **Telegram** | Maintenance mode: when on, senders with owner rights (an assistant's owning account, and admins) keep full replies; everyone else gets a static notice. Bot tokens are no longer here — they are per assistant, in the assistant editor, and the tab links there |
+| **Bots** | Maintenance mode: when on, senders with owner rights (an assistant's owning account, and admins) keep full replies; everyone else gets a static notice. Bot tokens are no longer here — they are per assistant, in the assistant editor, and the tab links there |
 | **General** | Timezone (IANA), daily jobs run time (`HH:MM` in that zone), **assistant replies in a row** (0–10: how many assistant messages a chat may hold in a row before every assistant there goes quiet until a person speaks; 0 stops assistants answering each other at all), browser download size limit (1–100 GB) |
 | **Integrations** | Tavily API key — the browsing agent's search fallback |
 | **Security** | The signed-in account's password: current password, new password, its own button. The same form lives on Profile |
@@ -586,7 +586,7 @@ rename it, **Delete** to remove it for good.
 The composer takes text, an attached image, or a voice note recorded in the browser.
 Sending is message-at-once: the reply arrives when the turn produces it, over the same
 live stream every other page uses — not as streamed tokens. Web-chat turns run through
-the same pipeline as Telegram turns (same tools, memory, persona), and the model is
+the same pipeline as a transport's turns (same tools, memory, persona), and the model is
 told it is in the web chat.
 
 ## Profile (`/profile`)
@@ -596,7 +596,7 @@ Every account's own page — identity, password, and its own memory. Four cards:
 | Card | What you can do |
 | --- | --- |
 | **Who you are** | The username you signed in as and an editable display name (how you appear in chats; empty means the username) |
-| **Your identities** | The platform identities linked to this person; memory and owner rights follow these links. **Link another identity** mints a one-time code (`link-xxxxxxxx`, valid 15 minutes, one live code per account — minting again replaces it). Send it, as the whole message, to any connected bot from the identity you want linked, e.g. your Telegram; the bot confirms in the chat and the identity appears here |
+| **Your identities** | The platform identities linked to this person; memory and owner rights follow these links. **Link another identity** mints a one-time code (`link-xxxxxxxx`, valid 15 minutes, one live code per account — minting again replaces it). Send it, as the whole message, to any connected bot from the identity you want linked; the bot confirms in the chat and the identity appears here |
 | **What the assistant remembers about you** | One document per linked identity, readable in full; **Forget** deletes one. There is no way to write memory by hand |
 | **Password** | Current password, new password. Other sessions of this account are signed out; this one stays |
 

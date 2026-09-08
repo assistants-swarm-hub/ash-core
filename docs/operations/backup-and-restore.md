@@ -20,7 +20,7 @@ Nothing needs the trace archive to *run*. What it needs it for is history: Analy
 token and model-performance figures are read from those files, so pruning or losing a
 month erases those numbers for that month even though nothing breaks.
 
-The Telegram transport itself holds nothing: no database, no files. Everything it
+A transport itself holds nothing: no database, no files. Everything it
 needs — bot tokens included — it fetches from the core at registration.
 
 ## Database

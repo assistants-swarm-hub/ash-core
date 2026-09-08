@@ -15,14 +15,14 @@ import { getPeriodInsight } from "./repository";
 import { resetInsightScanFloor } from "./watermark";
 
 /** Fixture chats, named the way every dashboard surface names them. */
-const C1 = "tg:chat:c1";
-const C2 = "tg:chat:c2";
-const C9 = "tg:chat:c9";
+const C1 = "acme:chat:c1";
+const C2 = "acme:chat:c2";
+const C9 = "acme:chat:c9";
 
 let ctx: TestStoreDb;
 // The mirror lives with the owning source since the swap; these tests seed the
 // contract-faithful in-memory client (SQL bucket semantics are pinned in the
-// tg app's own analytics suite against a real database).
+// the first transport's own analytics suite against a real database).
 let content: FakeSourceContent;
 
 /**
@@ -780,7 +780,7 @@ describe("insight due-scan floor", () => {
     expect(third.unitsComputed).toBe(1);
   });
 
-  it("still finds a late-delivered message within the Telegram backlog window", async () => {
+  it("still finds a late-delivered message within the late-delivery backlog window", async () => {
     // An empty run advances the floor as far as it may go: 25 h behind now.
     const empty = await runAnalyticsInsights(deps());
     expect(empty.summary).toBe("nothing to compute");

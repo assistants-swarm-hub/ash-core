@@ -80,9 +80,9 @@ async function tryEmbed(text: string): Promise<number[] | null> {
  * unconditionally and a deployment with no links behaves exactly as before.
  *
  * Ids are resolved in the CALLER's source (a web thread's sender is a
- * `chat:user:…`, not a telegram one), and a linked identity from any source
+ * `chat:user:…`, not a transport's), and a linked identity from any source
  * contributes its document: the memory keyspace is SCOPED REFS since the
- * Phase 10 cutover, so a telegram identity and an account's web identity sit
+ * Phase 10 cutover, so a platform identity and an account's web identity sit
  * side by side and a person link makes them one body of knowledge.
  */
 async function identitiesOf(

@@ -18,7 +18,7 @@ import type { GeneralMemory, MemoryEntry, MemoryScope, UserMemory } from "../typ
 
 /**
  * Typed persistence for memory over the core store. The person keyspace is
- * SCOPED REFS since the Phase 10 cutover (`tg:user:123`,
+ * SCOPED REFS since the Phase 10 cutover (`acme:user:123`,
  * `chat:user:<accountId>`) — the `userId`/`chatId` field names survive for
  * the callers, but every value is a ref. Pure data access: no LLM, no
  * embedding, no tracing, no policy — the service and the consolidation job

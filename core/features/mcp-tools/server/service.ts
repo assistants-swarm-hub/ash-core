@@ -31,7 +31,7 @@ import type { ToolsView, ToolView } from "./schema";
  *
  * Deliberately unscoped — this is the catalog, not one turn's toolset. A
  * connection's own scope travels with each of its tools, so the page can say
- * "offered on Telegram turns" without the operator having to imagine a turn
+ * "offered on <transport> turns" without the operator having to imagine a turn
  * to find out.
  */
 export async function getToolsView(db?: StoreDb): Promise<ToolsView> {

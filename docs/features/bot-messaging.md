@@ -12,7 +12,7 @@ The transport contract — what a source app forwards, what it consumes, and
 which tools it hosts — is documented in
 [Adding a transport](../development/adding-a-transport.md) and is not repeated
 here. The stage-by-stage composition of a reply is in
-[the message pipeline](../architecture/telegram-pipeline.md). This page covers
+[the message pipeline](../architecture/message-pipeline.md). This page covers
 the feature's own modules, the two queue hops a turn crosses, configuration and
 failure modes.
 
@@ -35,9 +35,9 @@ failure modes.
 | `server/turn/loop-guard.ts` | Pure | The bot-to-bot loop guard |
 | `server/turn/render.ts` | Pure | History window, chat context and current turn rendered from the event |
 | `server/ingest/consumer.ts` | Core | The ingest stage: mirror, presence, fan-out |
-| `ash-transport-telegram/src/addressing.ts` | Transport, pure | The structural half of addressing (entities, replies, commands) |
-| `ash-transport-telegram/src/telegram-html.ts` | Transport, pure | Model Markdown → Telegram HTML |
-| `ash-transport-telegram/src/mcp.ts` | Transport | The reply, send and reaction tools |
+| the transport's addressing rule | Transport, pure | The structural half of addressing (entities, replies, commands) |
+| the transport's renderer | Transport, pure | Model Markdown → the platform's markup |
+| the transport's MCP server | Transport | The reply, send and reaction tools |
 | `ui/BotControl.tsx` | Client | Per-connection Start/Stop of the transport's pollers, live on the `status` topic |
 
 Collaborators (reply generation, delivery, history load, vision load, analyzer)
@@ -91,7 +91,7 @@ The deterministic check is split along the contract:
 
 | Half | Where | Verdicts |
 | --- | --- | --- |
-| Structural — what the wire shape alone proves | The transport (`ash-transport-telegram/src/addressing.ts`), per receiving bot | `private` (always), `reply` to one of this bot's messages, `/command@thisbot`, an @mention entity or literal `@username` |
+| Structural — what the wire shape alone proves | The transport's addressing rule, per receiving bot | `private` (always), `reply` to one of this bot's messages, `/command@thisbot`, an @mention entity or literal `@username` |
 | Name — does the text speak the **assistant's** name | The core (`server/turn/consume.ts` → `matchBotName`) | `name` on a literal match; a name too generic to match skips the analyzer entirely (a bot named "Bot" must not answer every message about bots) |
 
 The transport never matches the assistant's display name: the name lives in
@@ -192,7 +192,7 @@ endpoint (`gemma-4-26B-A4B-it-abliterated`, 2026-08-24), **10 of 10** replies to
 one real turn were the model's raw deliberation — the transcript echoed back,
 options weighed, "I'll say X" repeated to the token cap — with the thought
 channel never opened, so there was nothing for the server to strip. One went out
-as three Telegram messages.
+as three chat messages.
 
 Nothing downstream can tell such an answer from a real one, so the turn checks
 the **shape** of what came back, before anything else judges what it says. Two
@@ -219,13 +219,12 @@ rather than being sent the notes or left in silence.
 - The core keeps the model's **raw text**: history, traces and the pipeline all
   see it unrendered. A long answer leaves whole as one `reply.delivery`; the
   core knows no platform's cap, so the transport splits it under its own
-  (Telegram: `ash-transport-telegram/src/split.ts`, never truncated) and reports every part.
-- Markdown → Telegram HTML at the transport boundary only
-  (`ash-transport-telegram/src/telegram-html.ts`). Telegram's HTML mode accepts a small tag
-  set and rejects the entire send otherwise, so conversion is by-construction
-  (code spans lifted out, everything else entity-escaped, tags only from paired
-  replacements) and the transport falls back to a plain-text send if Telegram
-  still refuses — on a parse error only, because any other retry could
+  (the SDK's `splitMessage`, never truncated) and reports every part.
+- Markdown → the platform's markup at the transport boundary only. A platform
+  that accepts a small tag set and rejects the entire send otherwise gets a
+  by-construction conversion (code spans lifted out, everything else
+  entity-escaped, tags only from paired replacements), and the transport falls
+  back to a plain-text send if the platform still refuses — on a parse error only, because any other retry could
   double-deliver.
 - **Message citations become links.** A reply that says "the first photo was in
   #13488, the other two in #15114 and #15115" has every reference rendered as a
@@ -239,8 +238,9 @@ rather than being sent the notes or left in silence.
 - **The reply always lands under the message it answers.** The model cannot
   move it: the delivery tools take text and nothing else. They are the
   transport's own, served from its MCP server and reached as the managed
-  connection `tg` (`ash-transport-telegram/src/mcp.ts`, offered as `tg__reply_to_message`,
-  `tg__send_message`, `tg__set_message_reaction` on Telegram turns only); the
+  connection named after the source (offered as `<source>__reply_to_message`,
+  `<source>__send_message`, `<source>__set_message_reaction` on that transport's
+  turns only); the
   web chat has its in-process twins `chat_reply_to_message` /
   `chat_send_message` and no reaction tool. Which delivery tool a turn is
   offered is a fact about the turn — `reply` for a turn a `message` task
@@ -249,24 +249,24 @@ rather than being sent the notes or left in silence.
   pick a target is what produced the outage described in
   [tasks.md](tasks.md#how-a-task-delivers--no-hardcoded-sending).
 - **The bot can react to a message** instead of, or alongside, saying
-  something. `set_message_reaction` puts one of Telegram's fixed reaction
+  something. `set_message_reaction` puts one of the platform's reaction
   emoji on a message of this chat (an empty emoji takes it back off; a bot
   gets one reaction per message, so reacting again replaces it). Available in
-  every Telegram turn — a reply turn and a task fire alike — because a
+  every transport turn — a reply turn and a task fire alike — because a
   reaction is not a message and cannot double-deliver. The transport asks the
   core's mirror first (`GET /api/internal/transports/messages`) so a guessed
   id is refused without a platform call, and the bot's **own** messages are
-  refused there — Telegram would allow the reaction, but a badge on its own
+  refused there — the platform would allow the reaction, but a badge on its own
   message says nothing to anyone (another bot's message is an ordinary
-  participant message and can be reacted to). A Telegram refusal (an emoji
-  this chat does not allow, a message too old, the poller down) is relayed to
+  participant message and can be reacted to). A platform refusal (an emoji
+  this chat does not allow, a message too old, the connection down) is relayed to
   the model rather than swallowed, so it never tells the chat it reacted when
   it did not. The badge is reported back as `transport.bot-reaction` and
   recorded on the mirror row ([History](history.md#the-bots-own-reactions)),
   so the next turn remembers it. A reaction the bot sets cannot feed itself:
   the transport forwards only humans' 👍/👎 as `transport.reaction`
   ([Self-improvement](self-improvement.md)). See
-  [LLM and MCP](../architecture/llm-and-mcp.md#telegram--the-transports-own-server-mcp-tools-connections)
+  [LLM and MCP](../architecture/llm-and-mcp.md#a-transports-own-server-mcp-tools-connections)
   for the tools and
   [Adding a transport](../development/adding-a-transport.md#step-6--the-mcp-server)
   for the contract.
@@ -334,8 +334,7 @@ instead of sending something untrue or nothing at all.
 | File | Covers |
 | --- | --- |
 | `server/addressing.test.ts` | The name half and the undecided cases |
-| `ash-transport-telegram/src/addressing.test.ts` | Every structural verdict, with its reason |
-| `ash-transport-telegram/src/inbound.test.ts` | One event per update, dedupe and DM streams, reply-author recognition, what is dropped |
+| the transport's own suite | Every structural verdict with its reason; one event per update, dedupe and DM streams, reply-author recognition, what is dropped |
 | `server/address-analyzer.test.ts` | Prompt building, enum parsing, citation verification |
 | `exclusions.test.ts` | Normalization and matching |
 | `server/policy.test.ts` | Maintenance decisions |
@@ -345,7 +344,6 @@ instead of sending something untrue or nothing at all.
 | `server/action-claim.test.ts` | The honesty gate's prompt and verdict parsing |
 | `server/service.test.ts` | The whole policy with injected collaborators |
 | `addressing-trace.test.ts` | The shared event shape |
-| `ash-transport-telegram/src/telegram-html.test.ts` | Conversion, including that output cannot contain an unbalanced tag |
 | `server/turn/loop-guard.test.ts`, `server/turn/render.test.ts` | The streak arithmetic; transcript rendering with several assistants' voices |
 | `server/ingest/ingest.integration.test.ts` | The ingest over the whole event contract against a real database: persistence, presence fan-out, dedupe, media, cross-feed, edits, reactions, the self-link short-circuit |
 | `server/turn/turn-consumer.integration.test.ts` | The turn end to end: composed context in, delivery + lifecycle out; web threads; conversation naming; cross-fed turns and the loop guard; retry and settle semantics; media and voice turns |

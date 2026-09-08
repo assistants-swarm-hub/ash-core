@@ -42,7 +42,7 @@ export function webChatToolOffered(toolName: string, scope: ToolOfferScope): boo
   return false;
 }
 
-/** Generous next to Telegram's 4000: a browser renders whatever it is given. */
+/** Generous next to a messaging platform's few thousand: a browser renders whatever it is given. */
 const MAX_MESSAGE_LENGTH = 8000;
 
 const REPLY_TO_MESSAGE_DESCRIPTION =

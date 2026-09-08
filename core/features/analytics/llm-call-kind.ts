@@ -3,7 +3,7 @@
  *
  * Why this exists as its own dimension rather than reusing the trace's
  * `feature`/`action`: those describe the *action being traced*, not the call. One
- * handled Telegram message is a single `bot-messaging`/`reply` trace, and it can
+ * handled chat message is a single `bot-messaging`/`reply` trace, and it can
  * contain an addressing check, several tool rounds, and a final answer — three kinds
  * of work with completely different cost profiles, previously averaged into one
  * number that moved with the mix rather than with any actual request.

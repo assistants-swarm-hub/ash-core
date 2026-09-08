@@ -26,8 +26,8 @@ import type { ImportHistoryInput } from "./schema";
  * canonical header, so it round-trips straight back through import. Import is a
  * mutation and therefore traced end to end: the raw text is re-parsed here with
  * the same pure module the browser previewed with, every row is validated, and
- * writes skip rows that already exist — the mirror's `(chat_id,
- * telegram_message_id)` unique key makes a re-import idempotent rather than
+ * writes skip rows that already exist — the mirror's `(source, chat_id,
+ * source_message_id)` unique key makes a re-import idempotent rather than
  * destructive, so an operator can safely re-run a partially-applied file.
  */
 

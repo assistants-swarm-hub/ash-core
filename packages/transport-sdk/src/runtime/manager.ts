@@ -73,7 +73,7 @@ export class ConnectionManager<TRaw> {
    * A connection's identity, or null while it has none.
    *
    * `connect()` resolves as soon as the platform is *started*, not ready —
-   * that is what the adapter contract promises, and Discord's `login()` is
+   * that is what the adapter contract promises, and one platform's `login()` is
    * exactly that: the token is accepted, `ClientReady` has not fired. So an
    * identity read anywhere in this class must tolerate "not yet", including
    * an adapter that signals it by throwing rather than returning null. It

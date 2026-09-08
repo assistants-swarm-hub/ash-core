@@ -5,7 +5,7 @@ import sharp from "sharp";
  * Normalize any image (WebP stickers, PNGs, oversized photos, a browser
  * upload) to a bounded JPEG so OpenAI-compatible vision endpoints accept it
  * reliably and the base64 stays small enough to store and send. Ported from
- * the MVP, and shared: the core, tg and chat all need exactly this.
+ * the MVP, and shared: the core, every transport and the web chat all need exactly this.
  */
 
 /** A normalized image ready to store/serve: base64 JPEG + mime hint. */

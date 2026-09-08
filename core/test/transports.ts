@@ -12,8 +12,8 @@ import type { StoreDb } from "@/server/store/db";
  */
 export async function registerTestTransport(
   db: StoreDb,
-  id: SourceId = "tg",
-  name = "Telegram",
+  id: SourceId = "acme",
+  name = "Acme Chat",
 ): Promise<void> {
   await registerTransport(
     {

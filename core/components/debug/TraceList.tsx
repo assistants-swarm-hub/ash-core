@@ -119,7 +119,7 @@ export function TraceList({
               </TableCell>
               <TableCell className="text-muted">
                 {/* Two independent facets, two links: the kind filters every
-                    cron/telegram/... trace, the actor (a chat id, user id, or
+                    cron/transport/... trace, the actor (a chat id, user id, or
                     job name) filters everything that actor did — across kinds. */}
                 <Link
                   href={debugFilterHref({ triggerKind: trace.trigger.kind })}

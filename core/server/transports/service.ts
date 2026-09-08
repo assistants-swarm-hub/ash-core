@@ -32,7 +32,7 @@ import {
  * PLAN.md "The transport contract"): a transport self-registers at boot with
  * its id, name, base URL, MCP path and config schemas; the row is what every
  * core→transport call resolves against, and the opaque config blobs — the
- * transport-level one (telegram's owner identity) and the per-assistant
+ * transport-level one (an owner identity, say) and the per-assistant
  * connection sections (bot tokens) — are the transport's to interpret, never
  * the core's. Desired-state changes are announced on the bus
  * (`transport.config.changed`); the transport refetches and reconciles.
@@ -180,7 +180,7 @@ export async function announceTransportChange(transport: SourceId): Promise<void
 }
 
 /**
- * Merge a transport-side config writeback (telegram persisting the resolved
+ * Merge a transport-side config writeback (a transport persisting a resolved
  * owner id) into the transport-level blob. Shallow merge — the transport
  * owns the keys.
  */

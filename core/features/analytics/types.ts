@@ -104,7 +104,7 @@ export interface ModelStat {
 
 /** One user's activity within the period. */
 export interface UserStat {
-  /** Scoped ref of the person (`tg:user:123`). */
+  /** Scoped ref of the person (`acme:user:123`). */
   userRef: string;
   label: string;
   messages: number;

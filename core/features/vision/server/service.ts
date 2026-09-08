@@ -449,7 +449,7 @@ export async function getMediaSuffixesForMessages(
  * Where a source's stored bytes can be fetched, for the sources that keep
  * them after describing. A lookup, so a new source app adds a line rather
  * than a branch — and an absent entry simply means "gone once described",
- * which is Telegram's lifecycle.
+ * which is a transport row's lifecycle.
  */
 const BYTES_URL: Partial<Record<SourceId, (id: string) => string>> = {
   chat: (id) => `/api/chat/media/${encodeURIComponent(id)}`,

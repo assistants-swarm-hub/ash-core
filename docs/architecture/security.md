@@ -1,6 +1,6 @@
 # Security
 
-This system holds Telegram bot tokens, LLM API keys, and a complete archive of
+This system holds bot tokens, LLM API keys, and a complete archive of
 private conversations. This document states what protects what, and what does
 not.
 
@@ -138,7 +138,7 @@ username = '<other>'`) and let it issue a reset. No restart is needed.
 | Secret | Stored | Exposure |
 | --- | --- | --- |
 | Backend endpoint API keys | `backends.api_key` | **Write-only.** Accepted on input, never returned. The client-facing schema exposes only `apiKeyConfigured: boolean` |
-| Telegram bot tokens | `assistant_transports.config` — the opaque connection blob the transport's field schema marks `secret` | Write-only. The dashboard receives a `…last4` preview and hands the whole blob only to the transport, over the internal API |
+| Bot tokens | `assistant_transports.config` — the opaque connection blob the transport's field schema marks `secret` | Write-only. The dashboard receives a `…last4` preview and hands the whole blob only to the transport, over the internal API |
 | Tool-connection auth headers | `tool_connections.auth_headers` | Header **names** are listed; values never leave the server |
 | Tavily API key | `settings.tavily_api_key` | Write-only, `…Configured: boolean` |
 | Account passwords | `accounts.password_hash` | Hash only |
@@ -264,7 +264,7 @@ per page load to shrink both the window and the cost.
 Additional hardening on the browsing paths: each read gets its own short-lived
 browser context (isolated cookies, fixed user-agent), ad/tracker subresources are
 dropped by the shared filter engine, and downloads have two size caps —
-Telegram's own 50 MB upload ceiling (`TELEGRAM_MAX_UPLOAD_MB`, fixed) for what is
+the platform's own upload ceiling, enforced by its transport, for what is
 attached to the chat, and `browserDownloadLimitGb` for what may be written to
 disk at all. A run a standing task drove in a group chat, or whose download
 rights the task lent to a non-owner (`restricted`), is additionally fenced: its
@@ -307,7 +307,7 @@ one.
 | Owner rights | The assistant's owning account (through identity links) and every admin. Keeps a working bot under maintenance mode; enables the browser agent's download tools; exempts from the task author rule |
 | Identity links | A platform identity joins an account only by redeeming a one-time code the account minted in its own profile (15-minute TTL, one live code per account), or by an admin's manual link. A code cannot merge two different people — that stays an admin's call |
 | Maintenance mode | Everyone without owner rights gets a static notice and no LLM reply; the LLM analyzer is off for everyone; no task fires |
-| Feedback menus | Answerable only by the person who reacted — anyone else gets a toast. A Telegram group message cannot be shown to a single member, so this is enforced where the press is processed |
+| Feedback menus | Answerable only by the person who reacted — anyone else gets a toast. A group message cannot be shown to a single member, so this is enforced where the press is processed |
 | Task authorship | A participant may only edit or cancel tasks they created. Owner-rights holders are exempt from the author rule (not from chat scoping); an unreadable policy fails closed |
 | Deactivation | A deactivated account cannot sign in, its assistants are silenced (their turns dropped at the ingest) and their pollers stopped through the desired state; data stays intact |
 

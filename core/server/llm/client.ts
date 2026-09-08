@@ -64,7 +64,7 @@ const LIST_MODELS_TIMEOUT_MS = 15_000;
 export const CHAT_COMPLETION_TIMEOUT_MS = 90_000;
 
 /**
- * Wire timeout for one **reply** round, passed explicitly by the Telegram
+ * Wire timeout for one **reply** round, passed explicitly by the reply
  * pipeline in place of {@link CHAT_COMPLETION_TIMEOUT_MS}.
  *
  * A reply and a classification are not the same call, and one deadline over both

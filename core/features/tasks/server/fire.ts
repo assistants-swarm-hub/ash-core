@@ -32,7 +32,7 @@ import type { Task } from "../types";
  * X, message only if Y"), recorded as such, never an error.
  *
  * Collaborators (LLM completion, delivery, history mirror) are injected so the
- * fire is unit-testable without a live LLM or Telegram, and so the scheduler
+ * fire is unit-testable without a live LLM or transport, and so the scheduler
  * can bind them once per run. Advancing the schedule (`next_run_at`) and the
  * capped `recent_deliveries` is the caller's job — {@link fireTask} only
  * returns what was sent.
@@ -49,7 +49,7 @@ export interface FireDeps {
    * group the known-participant roster (names, @usernames, user ids), in a
    * private chat who the bot is talking to. Injected as a system message so a
    * fire can address people properly — most importantly by their exact
-   * @username, without which Telegram notifies nobody (operator report,
+   * @username, without which a platform notifies nobody (operator report,
    * 2026-08-18: a fire greeted someone by a bare alias and the reminder was
    * never seen). Null/absent → no block.
    */
@@ -228,7 +228,7 @@ export async function fireTask(
     // fire's ground truth, independent of anything the model writes. The
     // sending itself belongs to the source's own `send_message` tool (Phase
     // 5); what stays here is the accounting, because "did this fire reach
-    // anyone" is a question about the task, not about Telegram.
+    // anyone" is a question about the task, not about the platform.
     const sent: string[] = [];
     const sentIds: string[] = [];
     let deliveryFailures = 0;

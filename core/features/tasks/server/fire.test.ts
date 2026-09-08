@@ -17,8 +17,8 @@ function task(over: Partial<Task> = {}): Task {
   return {
     id: "task-1",
     chatId: "-1001",
-    chatRef: "tg:chat:-1001",
-    chatSource: "tg",
+    chatRef: "acme:chat:-1001",
+    chatSource: "acme",
     threadId: null,
     createdByUserId: "77",
     createdByOwner: false,
@@ -68,7 +68,7 @@ describe("buildTaskDirectiveMessage", () => {
   });
 
   it("requires @username mentions for person-directed messages", () => {
-    // A bare name notifies nobody on Telegram (operator report, 2026-08-18) —
+    // A bare name notifies nobody on a platform (operator report, 2026-08-18) —
     // the directive must say so and point at the participants context.
     const text = buildTaskDirectiveMessage("remind R. about the thing", null, []);
     expect(text).toMatch(/@username/);
@@ -94,7 +94,7 @@ describe("fireTask", () => {
     const complete = vi.fn().mockImplementation(async () => {
       const ctx = tryGetToolContext();
       expect(ctx?.chatId).toBe("-1001");
-      expect(ctx?.source).toBe("tg");
+      expect(ctx?.source).toBe("acme");
       await ctx!.onDelivered!({
         ok: true,
         sourceMessageId: "7",

@@ -215,7 +215,7 @@ function deletedEvent(assistantId: string): AssistantDeletedEvent {
 
 /**
  * Delete an assistant, recorded as a trace. Its tasks cascade in the store;
- * everything a SOURCE app keys on the id (the tg connection and its poller)
+ * everything a transport keys on the id (its connection and the client behind it)
  * is dropped by the app reacting to the `assistant.deleted` bus event — so
  * with no bus configured the skipped notification is a loud trace warning,
  * never a silent divergence.

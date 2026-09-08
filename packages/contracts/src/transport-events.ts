@@ -104,7 +104,7 @@ export const transportMessageEventSchema = eventEnvelopeSchema.extend({
     sourceMessageId: z.string().min(1),
     content: z.string(),
     sentAt: z.string().min(1),
-    /** Source-local sub-thread (telegram forum topic), or null. */
+    /** Source-local sub-thread (a forum topic, say), or null. */
     threadId: z.string().nullable().optional(),
     replyTo: transportReplyContextSchema.nullable().optional(),
   }),
@@ -337,7 +337,7 @@ export const transportDesiredConnectionSchema = z.object({
 export const transportDesiredStateSchema = z.object({
   transport: z.object({
     enabled: z.boolean(),
-    /** The transport-level opaque config blob (telegram: the owner identity). */
+    /** The transport-level opaque config blob (an owner identity, say). */
     config: z.record(z.string(), z.unknown()),
   }),
   connections: z.array(transportDesiredConnectionSchema),

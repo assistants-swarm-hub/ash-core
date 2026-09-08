@@ -10,9 +10,10 @@
 # The version default is rewritten by `npm run release:*` from the root
 # package.json, and the release workflow refuses to ship if the two drift.
 #
-# Adding a transport is one service — see the recipe in
-# docs/operations/deployment.md. Nothing else in this file changes: a transport
-# registers itself with the core, and the core needs no dependency on it.
+# No transport is here, on purpose: the core knows none. Each transport is its
+# own repository, image and release, and running one is one service the
+# operator adds — see the recipe in docs/operations/deployment.md. It registers
+# itself with the core, and the core needs no dependency on it.
 services:
   app:
     image: ghcr.io/assistants-swarm-hub/ash-core:${ASH_VERSION:-1.49.0}
@@ -54,42 +55,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
-    restart: unless-stopped
-
-  tg:
-    # The Telegram transport: stateless pollers that register with the core,
-    # forward every update as transport events, and perform the sends. One
-    # service among however many transports this deployment runs; the core
-    # learns about each one when it registers, never from this file.
-    #
-    # Its own repository, its own release schedule, its own version — which is
-    # why it does NOT follow ASH_VERSION. The number the two sides must agree
-    # on is the wire's CONTRACT_MAJOR, and a mismatch is refused by name on the
-    # dashboard rather than failing quietly.
-    # https://github.com/assistants-swarm-hub/ash-transport-telegram
-    image: ghcr.io/assistants-swarm-hub/ash-transport-telegram:${ASH_TELEGRAM_VERSION:-1.2.0}
-    depends_on:
-      redis:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      PORT: 3210
-      # Stateless (Phase 7): no database. The service registers itself with
-      # the core under this URL.
-      SELF_URL: http://tg:3210
-      REDIS_URL: redis://redis:6379
-      # The core's internal transport API (menu presses, mirror lookups).
-      CORE_API_URL: http://app:3200
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-change-me}
-      TZ: ${TZ:-UTC}
-    # No published port: the internal API is for the core service only.
-    healthcheck:
-      test:
-        ["CMD-SHELL", "wget -qO- http://127.0.0.1:3210/health >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
     restart: unless-stopped
 
   redis:

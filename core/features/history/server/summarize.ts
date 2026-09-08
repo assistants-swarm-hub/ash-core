@@ -33,7 +33,7 @@ import { listSummaryDayMarkers, upsertSummaryDayMarker } from "./summaries-repos
  * History summarization — the long-term half of conversation recall.
  *
  * Each finished chat-day is compressed by the LLM into a few self-contained
- * topics, each embedded and carrying the Telegram message ids it came from. The
+ * topics, each embedded and carrying the source message ids it came from. The
  * bot then searches *these* for anything older than the 24-hour window it already
  * gets verbatim, and follows the ids back to the exact original messages.
  *
@@ -79,7 +79,7 @@ export interface SummarizeDeps {
    * is traceable start to end from the Debug filter. Absent → generated.
    */
   runCorrelationId?: string;
-  /** The owning source's content (real: the tg internal API). */
+  /** The owning source's content (real: the conversation store). */
   content?: SourceContentClient;
 }
 

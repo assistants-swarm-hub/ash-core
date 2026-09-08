@@ -1,6 +1,6 @@
 # Using the bot in chat
 
-What people in a Telegram chat can actually do, and how the bot decides whether to
+What people in a chat can actually do, and how the bot decides whether to
 answer. This is the page to share with the people using the bot — not the operator.
 
 ## When the bot answers
@@ -42,22 +42,22 @@ If the bot answers when nobody was talking to it, that is fixable: see
 | Images, GIFs, videos, stickers | Described once by a model; the description then stands in for the picture in later turns |
 | Voice messages | Transcribed, then treated exactly as if the words had been typed |
 
-Reply chains matter to it: every history line is anchored by its Telegram message id
+Reply chains matter to it: every history line is anchored by its message id
 and a reply is marked as such, so "what did we decide about that" resolves to the
 right thread rather than to whatever was said nearby.
 
 ## Who it thinks you are
 
-The bot knows you by your Telegram identity. If you also have an account on the
+The bot knows you by your platform identity. If you also have an account on the
 operator's dashboard, you can tell it that the two are the same person: open your
 **Profile** there, press **Link another identity**, and send the code it shows
 (`link-` followed by eight characters, valid for 15 minutes) to the bot as a whole
-message, from the Telegram account you want linked. The bot answers in the chat:
+message, from the chat account you want linked. The bot answers in the chat:
 
 > Done — this chat identity is now linked to *your name*. Memory and permissions
 > follow you here from now on.
 
-From then on what it remembers about you is shared between the web chat and Telegram,
+From then on what it remembers about you is shared between the web chat and the platform,
 and if your account owns the assistant behind this bot, the bot treats you as its
 owner here too. An expired code gets "That link code is invalid or has expired";
 an identity that already belongs to a different linked person is refused and needs the

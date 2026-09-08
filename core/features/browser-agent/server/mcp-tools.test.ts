@@ -55,7 +55,7 @@ async function enqueuedFrom(ctx: {
   chatId?: string;
 }) {
   const run = handler();
-  await runWithToolContext({ source: "tg", chatId: GROUP, ...ctx }, () =>
+  await runWithToolContext({ source: "acme", chatId: GROUP, ...ctx }, () =>
     run({ goal: "Download the video at https://example.com/clip" }),
   );
   return vi.mocked(service.enqueueBrowserRun).mock.calls[0][0];
@@ -66,14 +66,14 @@ describe(`${BROWSE_WEB_TOOL} download rights`, () => {
     expect(await enqueuedFrom({ userId: OWNER, senderIsOwner: true })).toMatchObject({
       isOwner: true,
       restricted: false,
-      createdByUserRef: `tg:user:${OWNER}`,
+      createdByUserRef: `acme:user:${OWNER}`,
     });
   });
 
   it("withholds them from anyone else's own request", async () => {
     expect(await enqueuedFrom({ userId: OTHER })).toMatchObject({
       isOwner: false,
-      createdByUserRef: `tg:user:${OTHER}`,
+      createdByUserRef: `acme:user:${OTHER}`,
     });
   });
 
@@ -85,13 +85,13 @@ describe(`${BROWSE_WEB_TOOL} download rights`, () => {
     expect(enqueued).toMatchObject({ isOwner: true, restricted: true });
     // Authority is permission, never identity: the run is still recorded as
     // started by the person whose message triggered it.
-    expect(enqueued).toMatchObject({ createdByUserRef: `tg:user:${OTHER}` });
+    expect(enqueued).toMatchObject({ createdByUserRef: `acme:user:${OTHER}` });
   });
 
   it("restricts the owner's own rule-driven run in a group", async () => {
     // "It has to be the same for the owner in a group chat" (user decision,
     // 2026-08-01): a rule-driven download in a group is limited to what
-    // Telegram can send, whoever posted the link — the group's audience cannot
+    // the chat can take, whoever posted the link — the group's audience cannot
     // reach the server's disk either way.
     expect(
       await enqueuedFrom({ userId: OWNER, senderIsOwner: true, authorityIsOwner: true }),
@@ -135,7 +135,7 @@ describe(`${BROWSE_WEB_TOOL} acknowledgement wiring`, () => {
     const run = handler();
 
     await runWithToolContext(
-      { source: "tg", chatId: GROUP, userId: OWNER, onBrowserRunEnqueued: (id) => runIds.push(id) },
+      { source: "acme", chatId: GROUP, userId: OWNER, onBrowserRunEnqueued: (id) => runIds.push(id) },
       () => run({ goal: "Download the video at https://example.com/clip" }),
     );
 

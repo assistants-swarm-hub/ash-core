@@ -15,23 +15,22 @@ running one more is one more service and no change to the rest.
 docker compose up -d
 ```
 
-Four services, every one of them a **released image** — nothing is built on the
-host:
+Three services, every one of them a **released image** — nothing is built on
+the host. Transports are not here: the core knows none, and each is one
+service you add (below).
 
 | Service | Image | Notes |
 | --- | --- | --- |
 | `app` | `ghcr.io/assistants-swarm-hub/ash-core:${ASH_VERSION}` | The dashboard, the web chat and the whole pipeline. Publishes `${PORT:-3200}:3200` |
-| `tg` | `ghcr.io/assistants-swarm-hub/ash-transport-telegram:${ASH_TELEGRAM_VERSION}` | The Telegram transport: stateless pollers that register with the core, forward every update as transport events, perform the sends, and host the platform's MCP tools. Its own repository and its own version, so it does **not** follow `ASH_VERSION`. **No published port** — its internal API is for the core only |
 | `redis` | `redis:7-alpine`, started with `--appendonly yes` | The cross-app bus and the two queues (`transport-updates`, `inbound-messages`). Publishes `${REDIS_PORT:-6379}:6379` |
 | `db` | `pgvector/pgvector:pg17` | The one database. Publishes `${POSTGRES_PORT:-5432}:5432` |
 
 `ASH_VERSION` defaults to the version this checkout releases, so a clone runs a
 known-good core rather than a moving `latest`. Set it in `.env` to run another
 one; `npm run release:*` rewrites the default when the version is bumped, and
-the release workflow refuses to ship if the two ever drift. Each transport
-carries its own variable (`ASH_TELEGRAM_VERSION`) because each releases on its
-own schedule; the only thing the two sides must agree on is the wire's
-`CONTRACT_MAJOR`.
+the release workflow refuses to ship if the two ever drift. A transport's
+version is its own repository's and pinned in the service you add; the only
+thing the two sides must agree on is the wire's `CONTRACT_MAJOR`.
 
 To build the working tree instead of pulling, add the dev override — it adds a
 `build:` to the core and changes nothing else. A transport is never built here:
@@ -44,30 +43,30 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 `app` waits for `db` (healthcheck `pg_isready`) and `redis` (`redis-cli ping`) to be
 **healthy**. It waits for **no transport at all**: the core boots without any, and a
 transport registers itself whenever it comes up — which is what lets an operator add
-one without touching the core's service. `tg` waits for `redis` to be healthy. All
-four restart `unless-stopped`.
+one without touching the core's service. All three restart `unless-stopped`.
 
 ### Adding a transport
 
-A transport (Discord, Signal, Matrix, …) is its own repository and its own image.
-Running one is **one service**, and no change to anything else in the file:
+A transport is its own repository and its own image. Running one is **one
+service**, and no change to anything else in the file — the placeholders below
+are yours to fill from the transport's own README:
 
 ```yaml
-  discord:
-    image: ghcr.io/someone/ash-transport-discord:1.0.0
+  <transport>:
+    image: <registry>/<transport-image>:<version>
     depends_on:
       redis: { condition: service_healthy }
     environment:
       NODE_ENV: production
-      PORT: 3220
+      PORT: <port>
       # What the transport ANNOUNCES at registration — the core calls it here.
-      SELF_URL: http://discord:3220
+      SELF_URL: http://<transport>:<port>
       REDIS_URL: redis://redis:6379
       CORE_API_URL: http://app:3200
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-change-me}
       TZ: ${TZ:-UTC}
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3220/health >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:<port>/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -84,7 +83,7 @@ Three things that are easy to get wrong:
   transport by design, and adding one only makes the stack's startup order your
   problem.
 
-Then `docker compose up -d discord`. It registers itself, the dashboard grows a
+Then `docker compose up -d <transport>`. It registers itself, the dashboard grows a
 connection section built from the config fields it announced, and its platform
 actions appear as tools. Nothing in the core is edited — if something has to be,
 that is a core bug (see
@@ -106,7 +105,7 @@ All four are mounted, and all four hold the only copy of what they contain. Two 
 them matter for non-obvious reasons:
 
 - The **Redis** mount is where the no-message-loss guarantee lives while a message is
-  between the two apps. An inbound Telegram update that the transport has forwarded
+  between the two apps. An inbound update that a transport has forwarded
   but the core has not yet consumed exists only in that AOF; drop the directory and
   those messages are gone.
 - The **downloads** mount: a file the browser agent fetched that was **too large to
@@ -152,16 +151,16 @@ Every core variable also accepts a `<NAME>_FILE` variant pointing at a file whos
 contents are used instead (Docker secrets). Transport base URLs are **not** env on the
 core side: a transport announces its own at registration.
 
-The Telegram transport ([its own repository](https://github.com/assistants-swarm-hub/ash-transport-telegram)) reads — as any transport
-does, these are the contract's variables:
+A transport reads — these are the contract's variables, whatever the
+platform:
 
 | Variable | Compose sets it to | Notes |
 | --- | --- | --- |
 | `REDIS_URL` | `redis://redis:6379` | Required; the service does not start without it |
 | `INTERNAL_API_TOKEN` | `${INTERNAL_API_TOKEN:-change-me}` | Required; must match the core's |
-| `PORT` | `3210` | Its HTTP surface: `/health`, `/internal/*`, `/mcp` |
+| `PORT` | its own | Its HTTP surface: `/health`, `/internal/*`, `/mcp` |
 | `CORE_API_URL` | `http://app:3200` | Where it registers and fetches desired state; defaults to `http://localhost:3200` outside Compose |
-| `SELF_URL` | `http://tg:3210` | The base URL it **announces** at registration — what the core uses to reach it for status and sends. Defaults to `http://localhost:<PORT>`; set it whenever the core cannot reach the service on localhost |
+| `SELF_URL` | `http://<transport>:<port>` | The base URL it **announces** at registration — what the core uses to reach it for status and sends. Defaults to `http://localhost:<PORT>`; set it whenever the core cannot reach the service on localhost |
 | `TZ` | `${TZ:-UTC}` | |
 
 The transport has no database and no files: bot tokens and everything else it needs
@@ -173,7 +172,7 @@ Full variable reference: [Configuration](../configuration.md#environment-variabl
 
 ```
 GET /api/health   (core, :3200)  → 200 when ready, 503 when the database is unreachable
-GET /health       (tg, :3210)    → { ok: true, connections: [...] } — every poller's live state
+GET /health       (a transport)  → { ok: true, connections: [...] } — every connection's live state
 ```
 
 The transport's `/health` is unauthenticated (it carries no secrets) and is what the
@@ -230,12 +229,11 @@ unset it warns and exits 0 rather than failing the container.
 ### A transport's image
 
 Not built here — each transport builds its own, in its own repository, and this
-repo's release workflow has one entry: the core. The Telegram one
-([Dockerfile](https://github.com/assistants-swarm-hub/ash-transport-telegram/blob/main/Dockerfile)) is the shape to copy: `node:24-alpine`,
-`npm install` (its own manifest, no workspace context), the SDK pulled from
-GitHub Packages, `ffmpeg` from apk for video frame sampling, a non-root user,
-`EXPOSE 3210`, and `npx tsx src/index.ts`. No migrations and no volumes:
-stateless is the contract.
+repo's release workflow has one entry: the core. The shape every transport
+follows: `node:24-alpine`, `npm install` (its own manifest, no workspace
+context), the SDK pulled from GitHub Packages, whatever system packages its
+platform needs, a non-root user, one exposed port, and its entrypoint. No
+migrations and no volumes: stateless is the contract.
 
 ## Upgrading
 
@@ -273,10 +271,10 @@ During the overlap window two core processes may briefly co-exist. That is handl
 - The trace store flushes buffered traces on graceful shutdown, so at most one flush
   interval (60s) of settled traces is at risk on a hard kill.
 
-On the transport side, each poller releases its `getUpdates` lock on `SIGTERM` (the
-stop drain is capped at 3 s), so a replacement `tg` container does not collide with the
-old one. Anything the transport had forwarded but the core had not consumed waits in
-the Redis queue across the restart.
+On the transport side, each connection releases its platform session on `SIGTERM`
+(the stop drain is capped at 3 s), so a replacement container does not collide with
+the old one. Anything the transport had forwarded but the core had not consumed
+waits in the Redis queue across the restart.
 
 ## Releases
 
@@ -313,20 +311,18 @@ all; a forced SDK run re-verifies and re-tags it instead of failing red.)
 A release is all-or-nothing: nothing reaches the registry and no tag is created
 unless every image built and started. This repository's image is
 `ghcr.io/assistants-swarm-hub/ash-core`; each transport publishes its own from
-its own repository (`ash-transport-telegram`, …). The workflow:
+its own repository. The workflow:
 
 1. **plan** — asks the registries what exists: each image tag, the SDK version,
    and both git tags. It emits the build matrix (exactly the images that are
    missing) and stops the whole run when there is nothing to do.
 2. **verify** — `npm install`, `npm run lint`, `npm run typecheck`, `npm run test`
    (fanned out across the workspaces via turbo. Unit tests only; the integration
-   suite needs Docker and is not part of the gate.) Then two release-shaped
-   checks on `docker-compose.yml`, the artifact an operator actually clones:
-   its own pins must name the version being released (`npm run release:*` keeps
-   them in step; this catches a version bumped any other way), and **every other
-   image it names must exist in a registry** — a transport's pin is released
-   from another repository entirely, so nothing here can keep it honest, and an
-   operator would otherwise meet a stale one as a pull failure on their server.
+   suite needs Docker and is not part of the gate.) Then one release-shaped
+   check on `docker-compose.yml`, the artifact an operator actually clones:
+   its pin must name the version being released (`npm run release:*` keeps
+   it in step; this catches a version bumped any other way). Nothing about
+   any transport is checked: the core's release never waits on one.
 3. **build** — one entry per missing image (`ash-core` from
    `core/Dockerfile`), built with layer caching and handed to the next job
    as an artifact — nothing is pushed. One failing image fails the release.
@@ -369,7 +365,7 @@ reason as the Dockerfiles.
 
 ## Running behind a reverse proxy
 
-Only the core is exposed; the transport talks to Telegram outbound and to the core
+Only the core is exposed; a transport talks to its platform outbound and to the core
 over the Compose network. Two things need care on the core:
 
 - **SSE.** `/api/events` sets `X-Accel-Buffering: no` and
@@ -382,7 +378,7 @@ over the Compose network. Two things need care on the core:
 
 ## Production checklist
 
-- [ ] `INTERNAL_API_TOKEN` is a real secret, identical on `app` and `tg`.
+- [ ] `INTERNAL_API_TOKEN` is a real secret, identical on `app` and every transport.
 - [ ] Claim `/setup` and create the first admin account before exposing the port.
       `/setup` self-seals the moment any account exists; further accounts come from
       the Accounts page.
@@ -398,7 +394,7 @@ over the Compose network. Two things need care on the core:
 - [ ] Set the operator timezone and the daily-jobs run time (Settings → General).
 - [ ] Create an assistant on `/assistants` and connect a bot token in its editor.
       Owner rights need no setting: the assistant's owning account holds them, and so
-      does every admin; a person links their Telegram identity to their account by
+      does every admin; a person links their chat identity to their account by
       sending the code from `/profile` to the bot.
 - [ ] `GET /api/health` returns 200.
 - [ ] Overview's **Bots** card reads Running, and each assistant's
@@ -412,7 +408,7 @@ This is a single-instance design, and several parts assume it:
 
 | Component | Assumption |
 | --- | --- |
-| Telegram pollers | Live in the `tg` service, one poller per connected bot token. Telegram permits exactly one `getUpdates` consumer per token, so still exactly one `tg` instance |
+| Platform connections | Live in each transport, one per connected bot. A platform that permits one consumer per token needs exactly one instance of that transport |
 | Redis | One instance; the queues and the bus assume it, and its AOF is the only copy of in-flight events |
 | Ingest and turn consumer | Per-chat ordering is an in-process promise chain per `(source, chat)`; a second core replica would interleave one chat's turns |
 | Realtime hub | In-process pub/sub. Multiple replicas would need an external fan-out (e.g. Postgres `LISTEN`/`NOTIFY`) behind the same API |
@@ -424,7 +420,7 @@ Running multiple replicas is not, without the API-level replacements above.
 
 ## Adding a transport
 
-A new transport (Signal, …) is one more container next to `tg`: it registers with the
+A new transport is one more container next to `app`: it registers with the
 core at boot, announces the config fields its connections need, and the dashboard
 renders them — no core change and no new Compose wiring beyond the service itself, the
 `REDIS_URL`, the `INTERNAL_API_TOKEN` and its own `SELF_URL`. The contract, step by

@@ -8,7 +8,7 @@ import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { sourceFeedbacks, type SourceFeedbackRow } from "../../store/schema";
 
 /**
- * Feedback rows in the conversation store — the former tg feedback store,
+ * Feedback rows in the conversation store — the former transport-side feedback store,
  * source-parameterized. Collection happens through the platform's reactions
  * and menus; the learning jobs (preference/correction folds) read the
  * completed rows and stamp what they incorporated.

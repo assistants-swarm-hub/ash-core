@@ -12,7 +12,7 @@ import { searchHistoryMessages } from "./search";
  * The indexing JOB's logic — what to index, what text to build, when a row
  * is due again — driven over the in-memory source-content fake. The search
  * SQL itself (hybrid pools, filters, deleted exclusion) lives with the data
- * in the tg app and is pinned by its content suite; what this side owns is
+ * in the conversation store and is pinned by its content suite; what this side owns is
  * the composed text and the job's accounting.
  *
  * No embedding model is configured in the test database, so runs are
@@ -20,7 +20,7 @@ import { searchHistoryMessages } from "./search";
  * endpoint actually runs in.
  */
 
-const CHAT = "tg:chat:-1001";
+const CHAT = "acme:chat:-1001";
 const BEA = "200";
 
 let ctx: TestStoreDb;
@@ -134,7 +134,7 @@ describe("runMessageIndexing", () => {
 
 describe("searchHistoryMessages", () => {
   it("resolves a hit for a human reader — every chat, named sender", async () => {
-    await upsertKnownUser(ctx.db, "tg", {
+    await upsertKnownUser(ctx.db, "acme", {
       userId: BEA,
       username: "bea",
       firstName: "Bea",
@@ -142,7 +142,7 @@ describe("searchHistoryMessages", () => {
     });
     const content = fakeSourceContent();
     content.addMessage({
-      chatRef: "tg:chat:-1002",
+      chatRef: "acme:chat:-1002",
       sourceMessageId: "151",
       userId: BEA,
       content: "the door is stuck",
@@ -150,7 +150,7 @@ describe("searchHistoryMessages", () => {
 
     const hits = await searchHistoryMessages({ query: "door" }, ctx.db, content);
     expect(hits).toHaveLength(1);
-    expect(hits[0].chatRef).toBe("tg:chat:-1002");
+    expect(hits[0].chatRef).toBe("acme:chat:-1002");
     expect(hits[0].senderLabel).toContain("Bea");
   });
 

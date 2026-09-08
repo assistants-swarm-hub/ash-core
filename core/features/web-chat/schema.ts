@@ -131,7 +131,7 @@ export const chatPostMessageRequestSchema = z
     /**
      * A recorded voice note, in whatever container the browser produced
      * (webm/opus, usually). It is stored as-is and transcribed by the core,
-     * which converts before asking the model — the same path a Telegram
+     * which converts before asking the model — the same path a transport's
      * voice message takes.
      */
     audio: z

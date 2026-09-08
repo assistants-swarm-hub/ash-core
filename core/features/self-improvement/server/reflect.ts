@@ -30,9 +30,9 @@ import { resolveFeedbackPorts, type FeedbackPorts } from "./feedback-store";
  * read (see `analyze.ts`) when they distill per-user preferences and global
  * self-corrections.
  *
- * Runs detached from the Telegram flows ({@link scheduleReflection}): the answer
- * is already stored and acknowledged, and grammy handles updates one at a time,
- * so waiting on an inference here would stall the bot for every other chat.
+ * Runs detached from the collection flows ({@link scheduleReflection}): the answer
+ * is already stored and acknowledged, and a transport handles updates one at a
+ * time, so waiting on an inference here would stall the bot for every other chat.
  * Best-effort by consequence — a reflection that never lands leaves the column
  * null, and the daily job writes it before folding that feedback.
  */
@@ -47,12 +47,12 @@ export interface ReflectionDeps {
   personalityPrompt?: string | null;
   /** Configured model id — fallback for stamping when the provider reports none. */
   model?: string | null;
-  /** The source-owned feedback rows + mirror (real: the tg internal API). */
+  /** The source-owned feedback rows + mirror (real: the conversation store). */
   ports: FeedbackPorts;
 }
 
 const REFLECTION_PROMPT =
-  "You are reviewing one of your own replies as a Telegram chat bot. You are given how the reply " +
+  "You are reviewing one of your own replies as a chat assistant. You are given how the reply " +
   "was produced — the prompt you were working from, any tools you called with their results, and " +
   "the reply you sent — followed by the reaction and feedback the user gave it. Write a short, " +
   "honest self-reflection: what specifically went right or wrong in that reply, and why it " +

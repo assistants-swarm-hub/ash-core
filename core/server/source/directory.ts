@@ -24,9 +24,9 @@ import type { SourceDirectoryClient } from "./operator-client";
  * shared listing/CRUD contract each source app's operator API implements").
  *
  * Every source serves the same operator listing contract, so aggregating is a
- * fan-out plus a scoped ref per row: nothing here knows what Telegram is. The
- * web chat's entry answers in-process since the Phase 6 dissolve; tg's is
- * still the HTTP client — the contract doesn't care.
+ * fan-out plus a scoped ref per row: nothing here knows any platform. The
+ * web chat's entry answers in-process since the Phase 6 dissolve; a
+ * transport's is the HTTP client — the contract doesn't care.
  *
  * A source that is unconfigured or unreachable does NOT fail the read: it
  * comes back under `unavailable` with its reason, so the page renders the
@@ -79,9 +79,9 @@ export async function sourceLabel(source: SourceId): Promise<string> {
 /** Where a directory row came from, carried on every entry. */
 export interface DirectoryOrigin {
   source: SourceId;
-  /** Human name of the source app ("Telegram"), for the listing's column. */
+  /** Human name of the source, as it announced itself, for the listing's column. */
   sourceLabel: string;
-  /** Scoped ref of this entity (`tg:user:123`) — how everything else names it. */
+  /** Scoped ref of this entity (`acme:user:123`) — how everything else names it. */
   ref: string;
 }
 

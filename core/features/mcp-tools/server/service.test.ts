@@ -66,7 +66,7 @@ const COMMON_TOOLS = [
 ].sort();
 
 /**
- * Since Phase 5 Telegram's delivery tools are the tg app's — hosted on its
+ * Since Phase 5 a transport's delivery tools are its own — hosted on its
  * own MCP server and offered as connection tools — and `getToolset`'s
  * carve-out for them is exercised against real connections in
  * `features/tool-connections/server/tool-connections.integration.test.ts`.
@@ -120,10 +120,10 @@ describe("getToolset", () => {
   });
 
   it("keeps the web-chat delivery tools off other sources' turns", async () => {
-    // Telegram's delivery tools arrive as its connection's; the web chat's
+    // A transport's delivery tools arrive as its connection's; the web chat's
     // in-process pair must not ride along.
     for (const delivery of ["reply", "send"] as const) {
-      expect(await namesOf({ source: "tg", delivery })).toEqual(COMMON_TOOLS);
+      expect(await namesOf({ source: "acme", delivery })).toEqual(COMMON_TOOLS);
     }
   });
 });

@@ -1558,7 +1558,7 @@
     },
     "ScopedRef": {
       "title": "ScopedRef",
-      "description": "`source:kind:id` — how one app points at another's entity (`tg:user:12345`). The id is the owning app's own key, verbatim.",
+      "description": "`source:kind:id` — how one app points at another's entity (`acme:user:12345`). The id is the owning app's own key, verbatim.",
       "type": "string"
     },
     "SourceId": {

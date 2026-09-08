@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
 /**
  * Assistants dashboard page. Server Component: lists the assistants and
  * delegates create/edit/delete to a Client Component. Each assistant's
- * transport connection is edited in its editor too, through the source apps'
- * extension sections (tg's bot connection first).
+ * transport connection is edited in its editor too, through the registered
+ * transports' connection sections.
  */
 export default async function AssistantsPage() {
   // Role-scoped since Phase 9: users see and manage their own assistants.

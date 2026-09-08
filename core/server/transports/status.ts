@@ -29,7 +29,7 @@ export interface BotStatus {
 /** One registered transport with its connections, as the Overview lists them. */
 export interface TransportRoster {
   id: string;
-  /** The name the transport announced ("Telegram"). */
+  /** The name the transport announced. */
   name: string;
   /** Why this core refused the transport, or null when it is compatible. */
   refusedReason: string | null;

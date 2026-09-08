@@ -13,9 +13,8 @@ import { z } from "zod";
  *
  * Integration keys are secrets: accepted on input but never returned. The
  * client-facing {@link settingsSchema} exposes only `…Configured` booleans
- * for them. The Telegram bot token is NOT here — connections are per
- * assistant since Phase 3 and managed from the assistant editor's tg
- * section, stored by the tg source app.
+ * for them. Bot tokens are NOT here — connections are per assistant since
+ * Phase 3 and managed from the assistant editor's transport sections.
  */
 
 const model = z.string().trim().min(1).max(200);

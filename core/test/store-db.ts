@@ -54,7 +54,7 @@ export async function startTestStoreDb(): Promise<TestStoreDb> {
 }
 
 /**
- * Seed a minimal `source_messages` mirror row (`source = 'tg'`). Media rows
+ * Seed a minimal `source_messages` mirror row (`source = 'acme'`). Media rows
  * reference the mirror by (chat, message), so any test inserting media
  * directly should seed its message first - exactly what the live pipeline
  * does (mirror first, ingest second).
@@ -66,7 +66,7 @@ export async function seedSourceMessage(
   await ctx.pool.query(
     `INSERT INTO source_messages
        (source, chat_id, source_message_id, dedupe_key, role, content, sent_at, processed)
-     VALUES ('tg', $1, $2, $3, 'user', $4, now(), $5)
+     VALUES ('acme', $1, $2, $3, 'user', $4, now(), $5)
      ON CONFLICT DO NOTHING`,
     [
       input.chatId,

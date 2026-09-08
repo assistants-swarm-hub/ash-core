@@ -9,8 +9,8 @@
  * holds all of it.
  *
  * Only the cap differs between platforms, which is why this is one function
- * with an argument rather than one per transport: Telegram allows 4096 and
- * Discord 2000, and a copied algorithm would drift on the third.
+ * with an argument rather than one per transport: one platform allows 4096
+ * characters and another 2000, and a copied algorithm would drift on the third.
  */
 
 /**

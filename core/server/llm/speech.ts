@@ -37,7 +37,7 @@ export interface SpeechRuntime extends LlmConnection {
 /**
  * Synthesize speech for a reply, returning MP3 bytes (the one response format
  * every OpenAI-compatible implementation serves; the caller transcodes to
- * OGG/Opus for Telegram). Throws a clean {@link ApiError} on provider/network
+ * OGG/Opus for a voice bubble). Throws a clean {@link ApiError} on provider/network
  * failure or an empty payload.
  */
 export async function synthesizeSpeech(

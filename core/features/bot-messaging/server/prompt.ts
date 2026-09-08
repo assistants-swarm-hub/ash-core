@@ -58,7 +58,7 @@
  *
  * The prompt names no platform: which one this turn is happening on is said
  * once, per turn, in the chat-context block (`surfaceLine` in
- * `server/turn/render.ts`) — a base prompt that claimed "a Telegram chat"
+ * `server/turn/render.ts`) — a base prompt that claimed "a <platform> chat"
  * made every web-thread reply place itself in the wrong app.
  */
 export const BASE_SYSTEM_PROMPT = `You are a conversational assistant replying to messages in a chat.

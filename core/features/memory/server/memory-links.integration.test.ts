@@ -15,7 +15,7 @@ import { getMemoryContext, readMemory } from "./service";
  *
  * ONE database since the Phase 10 cutover: memory documents and person links
  * live side by side in the core store, and the memory keyspace is scoped refs
- * (`tg:user:123`, `chat:user:<accountId>`). Consolidated documents are written
+ * (`acme:user:123`, `chat:user:<accountId>`). Consolidated documents are written
  * directly — consolidation itself is covered by the main memory suite; what is
  * under test here is whose documents a read collects.
  */
@@ -58,19 +58,19 @@ beforeEach(async () => {
 async function seedUser(userId: string, firstName: string): Promise<void> {
   await ctx.db
     .insert(sourceUsers)
-    .values({ source: "tg", userId, username: firstName.toLowerCase(), firstName })
+    .values({ source: "acme", userId, username: firstName.toLowerCase(), firstName })
     .onConflictDoNothing();
 }
 
 async function seedGroup(userIds: string[]): Promise<void> {
   await ctx.db
     .insert(sourceChats)
-    .values({ source: "tg", chatId: GROUP_ID, title: "Fixture Group", type: "supergroup" })
+    .values({ source: "acme", chatId: GROUP_ID, title: "Fixture Group", type: "supergroup" })
     .onConflictDoNothing();
   for (const userId of userIds) {
     await ctx.db
       .insert(sourceChatMembers)
-      .values({ source: "tg", chatId: GROUP_ID, userId })
+      .values({ source: "acme", chatId: GROUP_ID, userId })
       .onConflictDoNothing();
   }
 }
@@ -86,7 +86,7 @@ async function remember(userRef: string, content: string): Promise<void> {
 /** Declare the two accounts one person. */
 async function link(): Promise<void> {
   await createLink(
-    { members: [`tg:user:${WORK}`, `tg:user:${PERSONAL}`], note: "same person" },
+    { members: [`acme:user:${WORK}`, `acme:user:${PERSONAL}`], note: "same person" },
     { kind: "dashboard" },
   );
 }
@@ -95,11 +95,11 @@ describe("memory through person links", () => {
   it("surfaces a fact stored under the other identity of the same person", async () => {
     await seedUser(WORK, "Ada");
     await seedUser(PERSONAL, "Adele");
-    await remember(`tg:user:${WORK}`, "Lives in Lisbon.");
+    await remember(`acme:user:${WORK}`, "Lives in Lisbon.");
     await link();
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: PERSONAL, isGroup: false },
+      { source: "acme", chatId: CHAT_ID, senderId: PERSONAL, isGroup: false },
       ctx.db,
     );
 
@@ -112,10 +112,10 @@ describe("memory through person links", () => {
   it("keeps unlinked identities separate", async () => {
     await seedUser(WORK, "Ada");
     await seedUser(STRANGER, "Grace");
-    await remember(`tg:user:${WORK}`, "Lives in Lisbon.");
+    await remember(`acme:user:${WORK}`, "Lives in Lisbon.");
 
     expect(
-      await getMemoryContext({ source: "tg", chatId: CHAT_ID, senderId: STRANGER, isGroup: false }, ctx.db),
+      await getMemoryContext({ source: "acme", chatId: CHAT_ID, senderId: STRANGER, isGroup: false }, ctx.db),
     ).toBeNull();
   });
 
@@ -123,12 +123,12 @@ describe("memory through person links", () => {
     await seedUser(WORK, "Ada");
     await seedUser(PERSONAL, "Adele");
     await seedGroup([WORK, PERSONAL]);
-    await remember(`tg:user:${WORK}`, "Lives in Lisbon.");
-    await remember(`tg:user:${PERSONAL}`, "Works nights.");
+    await remember(`acme:user:${WORK}`, "Lives in Lisbon.");
+    await remember(`acme:user:${PERSONAL}`, "Works nights.");
     await link();
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: GROUP_ID, senderId: WORK, isGroup: true },
+      { source: "acme", chatId: GROUP_ID, senderId: WORK, isGroup: true },
       ctx.db,
     );
 
@@ -142,11 +142,11 @@ describe("memory through person links", () => {
   it("answers the memory tool with the whole person's facts, under the id it was asked about", async () => {
     await seedUser(WORK, "Ada");
     await seedUser(PERSONAL, "Adele");
-    await remember(`tg:user:${WORK}`, "Lives in Lisbon.");
-    await remember(`tg:user:${PERSONAL}`, "Works nights.");
+    await remember(`acme:user:${WORK}`, "Lives in Lisbon.");
+    await remember(`acme:user:${PERSONAL}`, "Works nights.");
     await link();
 
-    const facts = await readMemory({ userId: PERSONAL, source: "tg" }, ctx.db);
+    const facts = await readMemory({ userId: PERSONAL, source: "acme" }, ctx.db);
     expect(facts.map((fact) => fact.content).sort()).toEqual([
       "Lives in Lisbon.",
       "Works nights.",
@@ -154,19 +154,19 @@ describe("memory through person links", () => {
     expect(new Set(facts.map((fact) => fact.userId))).toEqual(new Set([PERSONAL]));
   });
 
-  it("carries what telegram taught it into a web thread, and back", async () => {
+  it("carries what the platform taught it into a web thread, and back", async () => {
     // The pair the whole person-link design exists for: one human reaching
     // the assistant through two different apps.
     await seedUser(WORK, "Ada");
-    await remember(`tg:user:${WORK}`, "Lives in Lisbon.");
+    await remember(`acme:user:${WORK}`, "Lives in Lisbon.");
     await remember(`chat:user:${WEB}`, "Prefers short answers.");
     await createLink(
-      { members: [`tg:user:${WORK}`, `chat:user:${WEB}`], note: "same person" },
+      { members: [`acme:user:${WORK}`, `chat:user:${WEB}`], note: "same person" },
       { kind: "dashboard" },
     );
 
-    // In the web thread: the telegram fact is there, and the person is named
-    // by the label the chat app supplied — there is no tg directory row for
+    // In the web thread: the platform fact is there, and the person is named
+    // by the label the chat app supplied — there is no transport directory row for
     // a web user, and "User 0b1c…" is not a name.
     const inThread = await getMemoryContext(
       {
@@ -183,13 +183,13 @@ describe("memory through person links", () => {
     expect(inThread?.content).toContain("Operator");
     expect(inThread?.content).not.toContain(WEB);
 
-    // And in Telegram: what was learned in the web thread is known there too.
-    const inTelegram = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: WORK, isGroup: false },
+    // And on the platform: what was learned in the web thread is known there too.
+    const onPlatform = await getMemoryContext(
+      { source: "acme", chatId: CHAT_ID, senderId: WORK, isGroup: false },
       ctx.db,
     );
-    expect(inTelegram?.content).toContain("Prefers short answers.");
-    expect(inTelegram?.content).toContain("Ada");
+    expect(onPlatform?.content).toContain("Prefers short answers.");
+    expect(onPlatform?.content).toContain("Ada");
 
     // The tool answers the same way, asked from either side.
     const fromWeb = await readMemory({ userId: WEB, source: "chat" }, ctx.db);

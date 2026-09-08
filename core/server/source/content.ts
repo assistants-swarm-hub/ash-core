@@ -45,9 +45,9 @@ import type { SourceMessageRow } from "../../store/schema";
  * since the Phase 7 de-storing, over every registered transport since the
  * open registration.
  *
- * Chats are named by their scoped ref (`tg:chat:-100…`) — the one identity
+ * Chats are named by their scoped ref (`acme:chat:42`) — the one identity
  * every other surface of the core speaks — and messages by their source-local
- * id as TEXT (a Telegram id is numeric; a Discord snowflake would not survive
+ * id as TEXT (one platform's ids are small integers; another's 64-bit snowflakes would not survive
  * a `Number()`). A read across chats sees the transports registered on this
  * core's contract major and tags every row with the chat it belongs to; the
  * web chat keeps its own thread store and is not part of this plane.

@@ -11,7 +11,7 @@ import type { SourceOutboundPort } from "./source-outbound";
 /**
  * Naming a conversation from what was said in it.
  *
- * Some sources have real names for their conversations — a Telegram group has
+ * Some sources have real names for their conversations — a platform group has
  * a title, a DM has a person — and never ask for this. A web thread has
  * neither: it starts as "New chat", which is a placeholder, not a name. Rather
  * than make someone title a conversation before having it, the source marks

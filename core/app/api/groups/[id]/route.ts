@@ -7,7 +7,7 @@ import { defineRoute, ok, readJsonBody } from "@/server/http";
 
 /**
  * Update a directory chat's operator-curated fields. `id` is the chat's
- * scoped ref (`tg:chat:-100…`), which names the source that owns the edit.
+ * scoped ref (`acme:chat:42`), which names the source that owns the edit.
  * Thin handler: shared wrappers own validation and error mapping; the service
  * owns persistence and trace recording. The dashboard saves each field on its
  * own, so the body carries one of `language` or `notes` and is dispatched to

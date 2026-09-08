@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
  * Shared system-`ffmpeg` runner (user decision — system ffmpeg over a
  * bundled/WASM build; see Decision Notes). Extracted from the vision frame
  * sampler when voice messages became the second and third consumers (OGG→WAV
- * for transcription, MP3→OGG/Opus for Telegram voice replies).
+ * for transcription, MP3→OGG/Opus for voice replies).
  */
 
 /** Kill a stuck ffmpeg/ffprobe run rather than hang the reply. */

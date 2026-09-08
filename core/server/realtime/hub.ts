@@ -9,7 +9,7 @@ import type { RealtimeEvent, RealtimeTopic } from "@/lib/realtime";
  * new/settled trace); the SSE Route Handler (`GET /api/events`) subscribes and
  * forwards them to connected dashboard clients. One-way, server→client.
  *
- * Held on a `globalThis` singleton (like the Telegram bot manager) so a single
+ * Held on a `globalThis` singleton (like the MCP registry) so a single
  * bus instance survives module re-evaluation across Next bundles (Route
  * Handlers, instrumentation) and dev hot-reload. In-process only: this matches
  * the single self-hosted container model. Moving to multiple replicas would

@@ -63,7 +63,7 @@ export interface UserFeedback {
 /** One versioned per-user preferences snapshot (client-safe). */
 export interface CommunicationPreference {
   id: string;
-  /** Scoped ref of the person (`tg:user:123`) — the store's key. */
+  /** Scoped ref of the person (`acme:user:123`) — the store's key. */
   userRef: string;
   model: string;
   likes: string;

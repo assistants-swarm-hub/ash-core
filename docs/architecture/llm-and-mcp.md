@@ -73,10 +73,10 @@ Notable constraints, each learned the hard way:
   than an opaque Postgres rejection deep inside a nightly job.
 - **Images are always requested as `b64_json`.** Ollama's image endpoint and the
   GPT image models return no URLs, so there is nothing else to ask for.
-- **Audio must be transcoded both ways.** Telegram delivers voice as OGG/Opus,
+- **Audio must be transcoded both ways.** Messaging platforms deliver voice as OGG/Opus,
   which OpenAI-compatible `input_audio` parts do not accept (the spec allows only
   `wav`/`mp3`), so transcription converts to 16 kHz mono WAV. Speech endpoints
-  answer with MP3, while Telegram's `sendVoice` needs OGG/Opus, so synthesis
+  answer with MP3, while a platform's voice send needs OGG/Opus, so synthesis
   converts the other way. Both go through the shared system-ffmpeg runner
   (`server/media/ffmpeg.ts`).
 - **The OpenAI SDK discards error bodies** that are not its own
@@ -262,7 +262,7 @@ stronger guarantee than telling a model not to repeat itself.
 recorded on the trace event as `usage.callKind` and rendered as a label by the UI.
 
 It exists as its own dimension because the trace's `feature`/`action` describe the
-*action being traced*, not the call. One handled Telegram message is a single
+*action being traced*, not the call. One handled chat message is a single
 `bot-messaging`/`reply` trace that can contain an addressing check, several tool
 rounds and a final answer — three kinds of work with completely different cost
 profiles, previously averaged into one number that moved with the mix rather than
@@ -296,8 +296,8 @@ Tools are exposed through the Model Context Protocol in two ways. The feature
 tools are **in-process** — no sockets, no HTTP. Everything else is a remote MCP
 server over Streamable HTTP: the tool connections an operator adds on the Tools
 page, and the managed connection the core provisions for every registered
-transport's own server (the Telegram one serves its reply, send and reaction tools at
-`/mcp`).
+transport's own server (a transport serves its reply, send and reaction tools at
+its `mcpPath`).
 
 ```
 BotMcpRegistry ── in-memory transport pair ── McpServer
@@ -410,9 +410,8 @@ the task was cancelled.) The result itself still reaches the model unchanged.
 
 ## The tool catalog
 
-18 in-process tools across 8 owning features, plus the transports' own tools
-(Telegram's three, on Telegram turns) and whatever tool connections the
-operator has applied.
+18 in-process tools across 8 owning features, plus each transport's own tools
+(on its own turns) and whatever tool connections the operator has applied.
 
 ### History — `mcp-tools-history`
 
@@ -436,38 +435,38 @@ holds `''`, and only the projection carries what the picture shows. Hits name
 their author, so the `author` filter has something to be checked against; the
 bot-vs-participant distinction and the self-authored-only warning are unchanged.
 
-### Telegram — the transport's own server, `mcp-tools-connections`
+### A transport's own server, `mcp-tools-connections`
 
 Platform actions are not core tools: they are the transport's, served by its
 own MCP server and reached as a managed connection scoped to that transport's
-turns (the transport's own `src/mcp.ts`, offered to the model as `tg__<tool>`). Their calls
-trace under `mcp-tools-connections` with the connection slug on the trace.
+turns (offered to the model as `<source>__<tool>`). Their calls trace under
+`mcp-tools-connections` with the connection slug on the trace. The SDK hosts
+the two delivery tools; a transport adds its platform's own, reacting being
+the usual one:
 
 | Tool | Input | Purpose |
 | --- | --- | --- |
 | `reply_to_message` | `text` | **`message`-triggered task turns only** — reply to the message that triggered the task. The target is the turn's, carried in the binding, so there is no id for the model to get wrong |
 | `send_message` | `text` | **Timed fires only** — send a standalone message to the task's chat |
-| `set_message_reaction` | `message_id`, `emoji`, `big` | Put one of Telegram's reaction emoji on a message of this chat (empty `emoji` takes it back off) |
+| `set_message_reaction` | `message_id`, `emoji`, `big` | Put one of the platform's reaction emoji on a message of this chat (empty `emoji` takes it back off) |
 
 All three act on **the bound chat** only. `set_message_reaction` asks the
-core's mirror before touching Telegram (`GET /api/internal/transports/messages`),
+core's mirror before touching the platform (`GET /api/internal/transports/messages`),
 so the model can aim neither at another conversation nor at an id it invented,
-and it refuses one target Telegram would happily accept — **the bot's own
+and it refuses one target the platform would happily accept — **the bot's own
 messages** (an `assistant` row in the mirror), because a badge the bot puts on
 its own message tells nobody anything. Another bot's message arrives as an
-ordinary `user` row and stays fair game. The allowed emoji are Telegram's fixed
-set, single-sourced in the transport's `src/reactions.ts` from the Bot API type and
-carried in the tool's own description. Validity is checked in the **handler**,
-not by a `z.enum`: the local backends this bot usually runs on template tool
-JSON without enforcing schemas, so an off-list emoji has to come back as a
-refusal written for the model rather than a raw schema error — and the
-normalizer accepts the variation-selector spellings (`U+2764 U+FE0F`) that
-Telegram itself rejects. A refusal from Telegram (a chat that allows only some
-emoji, a message too old, the poller down) is relayed verbatim with "do not
-claim you reacted", and the badge is recorded on the mirror row through a
-`transport.bot-reaction` event so the next turn remembers reacting.
+ordinary `user` row and stays fair game. The allowed emoji are the platform's
+and carried in the tool's own description. Validity is checked in the
+**handler**, not by a `z.enum`: the local backends this bot usually runs on
+template tool JSON without enforcing schemas, so an off-list emoji has to come
+back as a refusal written for the model rather than a raw schema error. A
+refusal from the platform (a chat that allows only some emoji, a message too
+old, the connection down) is relayed verbatim with "do not claim you reacted",
+and the badge is recorded on the mirror row through a `transport.bot-reaction`
+event so the next turn remembers reacting.
 
-`set_message_reaction` is offered in **every** Telegram turn, unlike the two
+`set_message_reaction` is offered in **every** transport turn, unlike the two
 delivery tools: a reaction is not a message, so there is nothing to
 double-deliver, and the bot can react to the very message it is answering.
 
@@ -519,7 +518,7 @@ task deletes it (user decision, 2026-08-14).
 
 A task-driven turn's completion text is never sent; a **delivery tool** is the
 only path to the chat, and the delivery tools belong to the source the turn runs
-on: Telegram's `reply_to_message` / `send_message` on its own server (above),
+on: a transport's `reply_to_message` / `send_message` on its own server (above),
 the web chat's `chat_reply_to_message` / `chat_send_message` in-process (below).
 A turn is offered **at most one** of the pair: the reply tool for a
 `message`-triggered turn (it is acting on a message, so the answer belongs under
@@ -570,7 +569,7 @@ offered only on `chat` turns and only by the turn's `deliveryKind`
 | `chat_send_message` | `text` (≤8000) | **Timed fires only** — post a standalone message into the thread |
 
 Both store the message in the thread and ping the live view; they report the
-delivery in `structuredContent` exactly like the Telegram pair, so the core's
+delivery in `structuredContent` exactly like a transport's pair, so the core's
 bookkeeping is the same whichever source a task fires on.
 
 ### Browser agent — `mcp-tools-browser-agent`
@@ -598,7 +597,7 @@ definitions for the *agent's own* loop. They are **not** MCP tools and are never
 ## Adding a tool
 
 A tool that performs a **platform action** (send, react, pin, anything that
-touches Telegram or another transport's API) belongs in that transport's own
+touches a platform's API) belongs in that transport's own
 MCP server, not here — see
 [Adding a transport](../development/adding-a-transport.md#step-6--the-mcp-server).
 A tool over the core's own data is an in-process feature tool:

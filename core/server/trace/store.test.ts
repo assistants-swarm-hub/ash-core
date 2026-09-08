@@ -590,7 +590,7 @@ describe("getLatestTraceIdsByCorrelation", () => {
 
 describe("getLatestTraceIdForMessage", () => {
   it("finds a turn on the message even though the assistant is part of its id", async () => {
-    const message = "tg:chat:-1001:42";
+    const message = "acme:chat:-1001:42";
     const turn = await startTrace({
       ...baseInput,
       feature: "bot-messaging",
@@ -616,11 +616,11 @@ describe("getLatestTraceIdForMessage", () => {
     const other = await startTrace({
       ...baseInput,
       feature: "bot-messaging",
-      trigger: { kind: "transport", correlationId: "tg:chat:-10011:42:assistant-1" },
+      trigger: { kind: "transport", correlationId: "acme:chat:-10011:42:assistant-1" },
     });
     await other.succeed();
 
-    expect(await getLatestTraceIdForMessage("tg:chat:-1001:42")).toBeNull();
+    expect(await getLatestTraceIdForMessage("acme:chat:-1001:42")).toBeNull();
   });
 });
 

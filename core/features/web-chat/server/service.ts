@@ -39,7 +39,7 @@ import { threadTurns } from "./turns";
  * chat app's Hono endpoints behind the proxy is now ordinary core server
  * code: store the message, compose the context, enqueue the turn. The turn
  * itself still travels the one pipeline entrance (the inbound queue), so a
- * web turn keeps tg's ordering, retry and settle semantics.
+ * web turn keeps a transport's ordering, retry and settle semantics.
  */
 
 /** Every thread change is something a dashboard page is showing — ping it. */
@@ -181,7 +181,7 @@ export interface PostMessageResult {
  * The human speaks: store it, then start the turn — the inbound half of what
  * the chat app used to do behind the source contract.
  *
- * Everything transport-shaped that Telegram needs is absent here by
+ * Everything transport-shaped that a platform needs is absent here by
  * construction, and that absence is the point:
  *
  * - **Addressing is settled**: a message typed into a thread is addressed to
@@ -193,7 +193,7 @@ export interface PostMessageResult {
  *   so unlike a group there is never a fan-out.
  *
  * An uploaded image is normalized and stored `pending`, then referenced on
- * the event exactly as a Telegram photo is: the vision pass describes it and
+ * the event exactly as a transport's photo is: the vision pass describes it and
  * writes the text back. A voice note is stored raw and referenced the same
  * way; the pipeline transcribes it and answers the words. Media that cannot
  * be stored does NOT lose the message — the turn runs on the text.
@@ -231,7 +231,7 @@ export async function postChatMessage(
 
   // One attachment per message (the store's index): a picture or a voice
   // note. A voice note's bytes are stored raw — the pipeline converts before
-  // transcribing, exactly as it does for Telegram audio.
+  // transcribing, exactly as it does for a transport's audio.
   const stored = input.image
     ? await insertNormalizedImage(message.id, input.image, db).catch(() => null)
     : input.audio

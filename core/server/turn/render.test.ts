@@ -33,7 +33,7 @@ function line(input: {
     sourceMessageId: input.id,
     role: input.role,
     assistantId: input.assistantId ?? null,
-    senderRef: input.role === "user" ? "tg:user:5001" : null,
+    senderRef: input.role === "user" ? "acme:user:5001" : null,
     senderLabel: input.role === "user" ? "Alice (@alice_example)" : null,
     content: input.content,
     sentAt: new Date().toISOString(),
@@ -47,11 +47,11 @@ function crossFedEvent(authoredByAssistantId?: string): InboundMessageEvent {
     occurredAt: new Date().toISOString(),
     correlationId: "-300:42:assistant-2",
     type: "message.inbound",
-    source: "tg",
+    source: "acme",
     assistantId: "assistant-2",
     connection: { botUsername: "second_bot", botDisplayName: "Second Bot" },
-    chat: { ref: "tg:chat:-300", kind: "group", title: "Fixture Group" },
-    sender: { ref: "tg:user:9001", isOwner: false, label: "First Bot" },
+    chat: { ref: "acme:chat:-300", kind: "group", title: "Fixture Group" },
+    sender: { ref: "acme:user:9001", isOwner: false, label: "First Bot" },
     ...(authoredByAssistantId ? { authoredByAssistantId } : {}),
     addressing: { addressed: true, source: "mention", needsAnalyzer: false },
     message: {
@@ -133,11 +133,11 @@ describe("renderCurrentTurn attribution", () => {
 
 /**
  * Where the turn is happening. The base system prompt used to assert
- * "a Telegram chat", so a web thread confidently told the operator it was in
- * Telegram; the truth is now said per turn, from the event's own source.
+ * "a <platform> chat", so a web thread confidently told the operator it was on
+ * that platform; the truth is now said per turn, from the event's own source.
  */
 describe("renderChatContext", () => {
-  const eventIn = (source: "tg" | "chat", kind: "direct" | "group"): InboundMessageEvent =>
+  const eventIn = (source: "acme" | "chat", kind: "direct" | "group"): InboundMessageEvent =>
     inboundMessageEventSchema.parse({
       v: 1,
       eventId: "evt-surface",
@@ -146,16 +146,16 @@ describe("renderChatContext", () => {
       type: "message.inbound",
       source,
       assistantId: "assistant-1",
-      ...(source === "tg"
+      ...(source === "acme"
         ? { connection: { botUsername: "a_bot", botDisplayName: "Aria" } }
         : {}),
       chat: {
-        ref: source === "tg" ? "tg:chat:-300" : "chat:thread:t1",
+        ref: source === "acme" ? "acme:chat:-300" : "chat:thread:t1",
         kind,
         title: "Somewhere",
       },
       sender: {
-        ref: source === "tg" ? "tg:user:5001" : "chat:user:u1",
+        ref: source === "acme" ? "acme:user:5001" : "chat:user:u1",
         isOwner: true,
         label: "Alice",
       },
@@ -164,16 +164,16 @@ describe("renderChatContext", () => {
       context: { history: [], participants: [] },
     });
 
-  it("names the telegram surface", () => {
-    expect(renderChatContext(eventIn("tg", "group"), "Telegram")?.content).toContain(
-      "This conversation is a Telegram group chat.",
+  it("names the transport surface", () => {
+    expect(renderChatContext(eventIn("acme", "group"), "Acme Chat")?.content).toContain(
+      "This conversation is a Acme Chat group chat.",
     );
   });
 
-  it("names the web-chat surface instead of inheriting telegram's", () => {
+  it("names the web-chat surface instead of inheriting the transport's", () => {
     const context = renderChatContext(eventIn("chat", "direct"), "Web chat");
     expect(context?.content).toContain("web chat");
-    expect(context?.content).not.toContain("Telegram");
+    expect(context?.content).not.toContain("Acme Chat");
     expect(context?.data).toMatchObject({ source: "chat" });
   });
 });

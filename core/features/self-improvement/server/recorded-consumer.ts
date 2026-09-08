@@ -48,7 +48,7 @@ export async function handleFeedbackRecorded(
   const ports = deps?.ports ?? resolveFeedbackPorts();
   if (!ports) {
     console.error(
-      "feedback.recorded received but the telegram service is not configured — learning skipped",
+      "feedback.recorded received but the feedback store is not available — learning skipped",
     );
     return;
   }

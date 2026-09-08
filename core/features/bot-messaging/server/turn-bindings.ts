@@ -32,7 +32,7 @@ import type { BotMessagingDeps } from "./service";
 
 /**
  * The `generateReply` and `applyStandingTasks` collaborators, extracted from
- * the telegram runtime's dep-builder (`server/telegram/process-update.ts`)
+ * the first transport's in-process dep-builder
  * so the queue-consumer path (redesign Phase 2) runs the exact same
  * implementation — the tool loop, the tool-context binding, the standing-task
  * match, and the authority/opened-turn state the two share. Callers differ

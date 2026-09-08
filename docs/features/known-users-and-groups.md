@@ -21,14 +21,14 @@ forwards, addressed or not:
 | `source_chat_members` | The `(source, chat, user)` pair, with `first_seen_at` / `last_seen_at` |
 | `source_chat_assistants` | Which assistant the platform delivered the chat's traffic to — the presence the group fan-out and the cross-feed read |
 
-Every table is keyed by a `source` discriminator (`tg`, `chat`) plus
-source-local text ids, so a second transport's people land beside Telegram's
+Every table is keyed by a `source` discriminator (a transport's id, `chat`) plus
+source-local text ids, so a second transport's people land beside the first's
 without a schema change. The upsert never touches the operator-curated fields.
 Capture is a **high-frequency passive upsert and is not traced**. Editing
 curated fields is an operator action and **is** traced.
 
 The known-users and known-groups features are adapters over these rows with
-`source = 'tg'` (`features/known-users/server/repository.ts`,
+`source = '<transport>'` (`features/known-users/server/repository.ts`,
 `features/known-groups/server/repository.ts`): the record shapes the rest of
 the brain consumes — labels, rosters, aliases — did not move when the tables
 did. Web-chat identities are **accounts**: their aliases and language live on
@@ -68,7 +68,7 @@ schemas, the Route Handlers, the dashboard, and the reply runtime).
 | Chat | Language used |
 | --- | --- |
 | Group / supergroup | The group's `source_chats.language` |
-| Private (Telegram) | The person's `source_users.language` (a private chat's id equals the user id) |
+| Private (a transport) | The person's `source_users.language` (a private chat is one person's) |
 | Web thread | The thread's own `web_threads.language` |
 | Neither set | `DEFAULT_CHAT_LANGUAGE` — **English** |
 
@@ -111,12 +111,12 @@ after it: the roster says *who* is here, memory says what is known *about* them.
 
 The dashboard pages do not read one table: they **aggregate** every registered
 source's operator listing (`server/source/directory.ts`, `DIRECTORY_SOURCES`)
-and tag each row with its origin and its scoped ref (`tg:user:123`,
+and tag each row with its origin and its scoped ref (`acme:user:123`,
 `chat:user:<accountId>`). Both entries answer from the core's own tables — the
 transports' rows through `server/source-store/directory-client.ts`, the web
 chat's through `features/web-chat/server/directory.ts` — over the same
 listing/CRUD contract (`packages/contracts`, `operator-api`), so nothing on the
-pages knows what Telegram is. A new transport adds one entry to
+pages knows any platform. A new transport adds one entry to
 `DIRECTORY_SOURCES`
 ([Adding a transport](../development/adding-a-transport.md#before-you-start-the-core-touchpoints)).
 
@@ -138,7 +138,7 @@ Each editor saves **one field at a time** and replaces local state with the retu
 record, so the input always reflects what was actually stored (the server trims,
 normalizes, and clears empties to null). Aliases are edited as a comma-separated list.
 The ref names the source that owns the edit, so a web user's alias lands on the
-account row and a Telegram user's on `source_users`.
+account row and a platform user's on `source_users`.
 
 Member aliases are shown on the group page but edited on `/users` — one place per
 concern.
@@ -147,7 +147,7 @@ concern.
 
 `person-links` (`relatedIdsKey`: `person_links`, tables `person_links` /
 `person_link_members`) is the declaration that several identities are the
-**same human**: two accounts on one source, or a telegram user and a dashboard
+**same human**: two accounts on one source, or a platform user and a dashboard
 account. An account's own identity is its web-chat ref
 (`chat:user:<accountId>`), so a link joining a platform identity to that ref is
 what makes a person's messages carry their account's rights. Memory reads

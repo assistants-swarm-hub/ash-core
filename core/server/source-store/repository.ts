@@ -22,9 +22,9 @@ export type { SourceChatRow, SourceMessageRow, SourceUserRow };
 
 /**
  * The generalized conversation store's repositories (redesign Phase 7) —
- * the former tg-app store layer, source-parameterized and living beside the
+ * the former transport-side store layer, source-parameterized and living beside the
  * data's new home in the core store. Every function scopes by `source`;
- * nothing in this module knows what Telegram is.
+ * nothing in this module knows any platform.
  *
  * Best-effort semantics (what may fail without dropping a turn) live in the
  * callers, as before.

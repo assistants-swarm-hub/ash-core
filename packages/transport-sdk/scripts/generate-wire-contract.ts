@@ -102,7 +102,7 @@ const SHAPES: Record<string, Named> = {
   ScopedRef: {
     schema: scopedRefSchema,
     io: "output",
-    note: "`source:kind:id` — how one app points at another's entity (`tg:user:12345`). The id is the owning app's own key, verbatim.",
+    note: "`source:kind:id` — how one app points at another's entity (`acme:user:12345`). The id is the owning app's own key, verbatim.",
   },
 
   // Registration and desired state
@@ -514,8 +514,8 @@ function openapiDocument(): Record<string, unknown> {
           tags: ["transport"],
           summary: "Delete one of the assistant's own messages",
           description:
-            "Removing a stale acknowledgement or menu. A platform that refuses (Telegram will " +
-            "not delete messages older than 48 h) answers `deleted: false` — never an error, " +
+            "Removing a stale acknowledgement or menu. A platform that refuses (some will " +
+            "not delete messages past an age) answers `deleted: false` — never an error, " +
             "because the message simply staying is cosmetic for every caller.",
           responses: { ...ok("Whether the platform performed it.", "InternalDeleteMessageResponse"), ...ERRORS },
         },

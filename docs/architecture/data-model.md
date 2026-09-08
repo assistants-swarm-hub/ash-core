@@ -24,10 +24,10 @@ and `0007`); the Compose `db` service uses the `pgvector/pgvector:pg17` image.
   rows) use `bigint generated always as identity`, whose value is the
   insertion order. No id-generating extension is needed.
 - **Scoped refs, never foreign keys into another app's data.** A `*_ref`
-  column holds a string `<source>:<kind>:<id>` — `tg:user:123`,
-  `tg:chat:-100…`, `chat:user:<accountId>`, `chat:thread:<id>` — where the id
+  column holds a string `<source>:<kind>:<id>` — `acme:user:123`,
+  `acme:chat:42`, `chat:user:<accountId>`, `chat:thread:<id>` — where the id
   is the owning source's own key verbatim (`packages/contracts/src/scoped-ref.ts`;
-  sources `tg` and `chat`, kinds `user`, `chat`, `thread`, `message`). Memory,
+  a transport's id or `chat` as the source, kinds `user`, `chat`, `thread`, `message`). Memory,
   tasks, person links, job markers and every provenance column speak refs;
   only the owning source resolves one. Since Phase 8 the account *is* its
   web-chat identity, so `chat:user:<accountId>` names an account.
@@ -38,16 +38,16 @@ and `0007`); the Compose `db` service uses the `pgvector/pgvector:pg17` image.
   only to one source (a forum-topic `thread_id`) keep their own columns.
 - **Dedupe keys.** A transport computes each stored message's stream identity
   with `messageDedupeKey` (`packages/contracts/src/source-events.ts`):
-  `<chatId>:<sourceMessageId>` for a shared stream (a Telegram group, which
+  `<chatId>:<sourceMessageId>` for a shared stream (a group, which
   every poller mirrors idempotently) and `<chatId>:<assistantId>:<sourceMessageId>`
-  for a per-assistant stream (a Telegram DM, where message ids are numbered
+  for a per-assistant stream (a DM on a platform where message ids are numbered
   per bot). The core enforces uniqueness on `(source, dedupe_key)` and never
   inspects a chat id's sign.
 - **Timestamps are `timestamp with time zone`** (`*_at` columns). Calendar
   keys the jobs bucket by are text in the operator timezone: `YYYY-MM-DD`
   days, `YYYY-MM-DD HH` hours.
 - **Opaque jsonb the core never interprets.** `transports.config`,
-  `assistant_transports.config` (where a Telegram bot token lives) and
+  `assistant_transports.config` (where a bot token lives) and
   `tool_connections.auth_headers` are validated only against the schema their
   owner announced; the core stores and forwards them.
 - **Enums are text plus a `check` constraint**, listed per table. Secrets
@@ -139,7 +139,7 @@ Index: `account_link_codes_account_idx (account_id)`.
 
 ### `person_links`
 
-The declaration that identities across sources are one human ("tg user X =
+The declaration that identities across sources are one human ("platform user X =
 web user Y"). One row is one person; memory reads resolve a ref through its
 link group and read every member's document, so knowledge follows the person
 across sources. Unlinked users stay separate.
@@ -157,7 +157,7 @@ One member identity of a link.
 | Column | Type | Notes |
 | --- | --- | --- |
 | `link_id` | text NOT NULL → `person_links.id` CASCADE | Membership dies with the link |
-| `user_ref` | text NOT NULL | Scoped user ref (`tg:user:123`, `chat:user:<accountId>`) |
+| `user_ref` | text NOT NULL | Scoped user ref (`acme:user:123`, `chat:user:<accountId>`) |
 | `created_at` | timestamptz NOT NULL | |
 
 PK `(link_id, user_ref)`; unique `person_link_members_ref_idx (user_ref)` — a
@@ -196,8 +196,8 @@ transport call resolves against (no per-transport env vars). See
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | text PK | The source id (`tg`) |
-| `name` | text NOT NULL | Human name (`Telegram`) |
+| `id` | text PK | The source id, as the transport announced it |
+| `name` | text NOT NULL | Human name, as the transport announced it |
 | `base_url` | text NOT NULL | The transport's announced internal API base URL |
 | `mcp_path` | text | Path of the transport's MCP server on that base, or null when none |
 | `connection_config_schema` | jsonb `TransportConfigField[]` NOT NULL, default `[]` | Field descriptors for the per-assistant connection section the dashboard renders |
@@ -211,7 +211,7 @@ transport call resolves against (no per-transport env vars). See
 ### `assistant_transports`
 
 Per-assistant transport connections: one opaque config section per transport
-(a Telegram section holds the bot token). This is **desired** state — the
+(a section holds the bot token, say). This is **desired** state — the
 transport fetches it at boot and on change events and reconciles; actual
 state is published on the bus, not stored.
 
@@ -276,7 +276,7 @@ repository always reads and writes the one row. See
 | `browser_download_limit_gb` | integer NOT NULL, default `10` | Hard ceiling on a single browser-agent download |
 | `updated_at` | timestamptz NOT NULL | |
 
-Gone from this table, deliberately: `telegram_bot_token` (now
+Gone from this table, deliberately: the bot token (now
 `assistant_transports.config`), `active_personality_id` (assistants are bound
 to chats by transport connections), `owner_username` / `owner_user_id`
 (per-assistant owner rights through accounts and identity links),
@@ -288,8 +288,8 @@ to chats by transport connections), `owner_username` / `owner_user_id`
 
 The generalized conversation store (redesign Phase 7): every transport's
 users, chats, messages and media in one set of tables, keyed by a `source`
-discriminator plus source-local text ids. The former tg store, table for
-table, with the Telegram-shaped columns generalized. The core writes here:
+discriminator plus source-local text ids. The former transport-side store,
+table for table, with the platform-shaped columns generalized. The core writes here:
 its ingest consumer (`server/ingest/consumer.ts`) persists the events
 transports forward over the queue, and transports report their sends through
 the internal transports API. The web chat's `web_*` tables stay separate (it
@@ -303,8 +303,8 @@ Every person a transport has seen. Upserted passively on every message. See
 | Column | Type | Notes |
 | --- | --- | --- |
 | `source` | text NOT NULL | Which transport knows them |
-| `user_id` | text NOT NULL | Source-local user id (numeric for Telegram, never assumed so) |
-| `username` | text | Platform handle (Telegram `@username`, normalized lowercase), or null |
+| `user_id` | text NOT NULL | Source-local user id (numeric on some platforms, never assumed so) |
+| `username` | text | Platform handle (`@username`, normalized lowercase), or null |
 | `first_name`, `last_name` | text | From the platform |
 | `aliases` | text[] NOT NULL, default `{}` | Operator-curated alternate names/nicknames |
 | `language` | text | Operator-configured reply language for this user's direct chat |
@@ -394,7 +394,7 @@ are dropped once described: the platform is its own archive. See
 | `id` | text PK | |
 | `source`, `chat_id`, `source_message_id` | text NOT NULL | The message it belongs to (no FK to `source_messages`) |
 | `kind` | text NOT NULL | `photo` \| `sticker` \| `image_document` \| `animation` \| `video` \| `voice` (no `check`) |
-| `file_id` | text NOT NULL | Source-local file handle (Telegram `file_id`), for re-downloads |
+| `file_id` | text NOT NULL | Source-local file handle, for re-downloads |
 | `file_unique_id` | text | Source-local stable file identity, or null |
 | `mime_type` | text | Mime hint of the stored payload |
 | `vision_hint` | text | Extra hint for the describer (a sticker's emoji), or null |
@@ -528,7 +528,7 @@ One consolidated document per person.
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `user_ref` | text PK | Scoped ref of the person (`tg:user:123`, `chat:user:<accountId>`) |
+| `user_ref` | text PK | Scoped ref of the person (`acme:user:123`, `chat:user:<accountId>`) |
 | `content` | text NOT NULL | The merged memory document — durable facts, one per line |
 | `embedding` | vector(1024) | Embedding of `content` for the semantic half of memory search |
 | `updated_at` | timestamptz NOT NULL | |
@@ -770,7 +770,7 @@ Regenerate).
 | Column | Type | Notes |
 | --- | --- | --- |
 | `id` | bigint PK, identity | |
-| `chat_ref` | text NOT NULL | Scoped ref of the chat (`tg:chat:-100…`) — the transport is in the ref |
+| `chat_ref` | text NOT NULL | Scoped ref of the chat (`acme:chat:42`) — the transport is in the ref |
 | `insight_hour` | text NOT NULL | `YYYY-MM-DD HH` wall-clock in the operator timezone |
 | `mood_score` | integer NOT NULL | 0 (very negative) – 100 (very positive) |
 | `mood_label` | text NOT NULL | Short label (`positive`, `tense`, …) |

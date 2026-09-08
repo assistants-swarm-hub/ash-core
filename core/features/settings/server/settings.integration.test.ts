@@ -49,7 +49,7 @@ vi.mock("@/server/llm/client", async (importOriginal) => {
   return { ...actual, listModels: vi.fn(), chatCompletion: vi.fn() };
 });
 
-// Owner identity routes to the tg source app since the split; the operator
+// Owner identity routes to the transport since the split; the operator
 // client is mocked so the write is asserted, not performed.
 // The browser probe runs a tool round rather than a plain completion.
 vi.mock("@/server/llm/tool-loop", async (importOriginal) => {
@@ -242,7 +242,7 @@ describe("updateSettings", () => {
   it("takes no bot token — connections are per assistant since Phase 3", async () => {
     // The schema strips the retired key, leaving an empty (rejected) update;
     // the store's settings table has no token-shaped column at all.
-    expect(updateSettingsSchema.safeParse({ telegramBotToken: "12345:x" }).success).toBe(false);
+    expect(updateSettingsSchema.safeParse({ botToken: "12345:x" }).success).toBe(false);
   });
 
   it("stores the Tavily key write-only and redacts it from the trace", async () => {

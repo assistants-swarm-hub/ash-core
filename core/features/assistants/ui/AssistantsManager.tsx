@@ -69,7 +69,7 @@ function AssistantDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Source-app sections re-read their data when the sources' state changes
-  // (the tg app publishes `status` on every poller flip).
+  // (a transport publishes `status` on every connection state flip).
   const [refreshSignal, setRefreshSignal] = useState(0);
   useLiveEvent(
     "status",

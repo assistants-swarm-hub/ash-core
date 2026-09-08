@@ -8,7 +8,7 @@ import {
   useLiveLlm,
 } from "@/test/tool-selection";
 
-// Curated directory edits land at the source first (the tg service owns
+// Curated directory edits land at the source first (the transport owns
 // the directory since the split); mocked so these tests assert the local
 // shadow behavior without a live service.
 vi.mock("@/server/source/directory", () => ({

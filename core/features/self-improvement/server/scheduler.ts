@@ -28,7 +28,7 @@ async function runIncorporation(ctx?: IntervalRunContext): Promise<string> {
   // nothing to read or stamp — reported like an unconfigured LLM, never a
   // silent empty run.
   const ports = resolveFeedbackPorts();
-  if (!ports) return "telegram service not configured (TG_API_URL / INTERNAL_API_TOKEN)";
+  if (!ports) return "the feedback store is not available";
   const runtime = await getBackgroundRuntime().catch(() => null);
   if (!runtime) return "LLM not configured";
   const conn = { baseUrl: runtime.baseUrl, apiKey: runtime.apiKey, backend: runtime.backend };

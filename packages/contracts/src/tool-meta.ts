@@ -20,7 +20,7 @@ export const TURN_META_KEY = "assistants-swarm-hub/turn";
 export const turnToolMetaSchema = z.object({
   /** The source app the turn belongs to; the app hosting the tool. */
   source: sourceIdSchema,
-  /** Source-local chat id (a telegram chat id, a web thread uuid). */
+  /** Source-local chat id (a platform chat id, a web thread uuid). */
   chatId: z.string(),
   /** The assistant acting in this turn, when the turn has one. */
   assistantId: z.string().nullable().optional(),

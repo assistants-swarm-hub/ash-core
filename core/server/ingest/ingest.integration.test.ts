@@ -26,7 +26,7 @@ const STORE_MIGRATIONS = fileURLToPath(new URL("../../store/migrations", import.
  * becomes mirror rows + presence + turn events (fanned out by core-owned
  * presence), a delivered report becomes the assistant's mirror row and the
  * cross-fed turns, edits and bot reactions land on the row — the behaviors
- * the tg app's runtime suite proved before the de-storing.
+ * the first transport's runtime suite proved before the de-storing.
  */
 
 const { enqueued, holder } = vi.hoisted(() => ({
@@ -64,7 +64,7 @@ beforeAll(async () => {
   db = drizzle(pool, { schema: storeSchema });
   holder.db = db;
   // The ingest accepts updates only from a registered transport speaking this
-  // core's contract major; the suite speaks as "tg", so register it once
+  // core's contract major; the suite speaks as "acme", so register it once
   // through the shared fixture (the per-test truncate spares it).
   await registerTestTransport(db);
 });
@@ -113,7 +113,7 @@ function messageEvent(overrides: {
     occurredAt: new Date().toISOString(),
     correlationId: `${chatId}:${sourceMessageId}`,
     type: "transport.message",
-    source: "tg",
+    source: "acme",
     receivedBy,
     chat: { id: chatId, kind, title: kind === "group" ? "The group" : null, type: null },
     sender: {
@@ -160,7 +160,7 @@ function deliveredEvent(overrides: {
     occurredAt: new Date().toISOString(),
     correlationId: `${GROUP}:${sourceMessageId}`,
     type: "message.delivered",
-    source: "tg",
+    source: "acme",
     chat: { id: GROUP, kind: "group" },
     assistantId: overrides.assistantId === undefined ? "anna" : overrides.assistantId,
     sourceMessageId,
@@ -182,16 +182,16 @@ describe("transport.message", () => {
   it("persists the message and fans turns out by presence", async () => {
     // Igor is present in the group from earlier activity; anna receives.
     await repository.stampAssistantPresence(
-      { source: "tg", chatId: GROUP, assistantId: "igor" },
+      { source: "acme", chatId: GROUP, assistantId: "igor" },
       db,
     );
     await processTransportUpdate(messageEvent());
 
     // Mirror row + directory + presence of the receiver.
-    const rows = await repository.listSourceChatMessages("tg", GROUP, db);
+    const rows = await repository.listSourceChatMessages("acme", GROUP, db);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ role: "user", userId: "7", processed: false });
-    expect(await repository.listChatAssistants("tg", GROUP, db)).toEqual(
+    expect(await repository.listChatAssistants("acme", GROUP, db)).toEqual(
       expect.arrayContaining(["anna", "igor"]),
     );
 
@@ -203,13 +203,13 @@ describe("transport.message", () => {
     expect(byAssistant.get("anna")?.addressing).toMatchObject({ needsAnalyzer: true });
     // The correlation names the chat by ref, so another transport's chat with
     // the same id can never share a turn with this one.
-    expect(byAssistant.get("anna")?.correlationId).toBe(`tg:chat:${GROUP}:42:anna`);
+    expect(byAssistant.get("anna")?.correlationId).toBe(`acme:chat:${GROUP}:42:anna`);
     expect(byAssistant.get("anna")?.chat).toMatchObject({
-      ref: `tg:chat:${GROUP}`,
+      ref: `acme:chat:${GROUP}`,
       kind: "group",
       title: "The group",
     });
-    expect(byAssistant.get("anna")?.sender).toMatchObject({ ref: "tg:user:7", label: expect.stringContaining("Sam") });
+    expect(byAssistant.get("anna")?.sender).toMatchObject({ ref: "acme:user:7", label: expect.stringContaining("Sam") });
   });
 
   it("consumes a self-link code instead of opening a turn", async () => {
@@ -228,12 +228,12 @@ describe("transport.message", () => {
     // Mirrored (the transcript keeps what was said) but consumed: no turn,
     // hold released, and the identity now shares a link with the account.
     expect(enqueued).toHaveLength(0);
-    const rows = await repository.listSourceChatMessages("tg", GROUP, db);
+    const rows = await repository.listSourceChatMessages("acme", GROUP, db);
     expect(rows).toHaveLength(1);
     expect(rows[0].processed).toBe(true);
     const linked = await pool.query(
       `SELECT count(*)::int AS n FROM person_link_members
-       WHERE user_ref IN ('tg:user:7', 'chat:user:acct-1')`,
+       WHERE user_ref IN ('acme:user:7', 'chat:user:acct-1')`,
     );
     expect(linked.rows[0].n).toBe(2);
   });
@@ -243,7 +243,7 @@ describe("transport.message", () => {
     const turns = enqueued.length;
     await processTransportUpdate(messageEvent());
     expect(enqueued).toHaveLength(turns);
-    expect(await repository.listSourceChatMessages("tg", GROUP, db)).toHaveLength(1);
+    expect(await repository.listSourceChatMessages("acme", GROUP, db)).toHaveLength(1);
   });
 
   it("stores event media and references it on the turn", async () => {
@@ -279,18 +279,18 @@ describe("transport.message", () => {
     await processTransportUpdate(messageEvent({ sourceMessageId: "11", content: "second" }));
     const turn = enqueued[0];
     expect(turn.context.history.map((line) => line.content)).toEqual(["first"]);
-    expect(turn.context.participants.map((p) => p.ref)).toEqual(["tg:user:7"]);
+    expect(turn.context.participants.map((p) => p.ref)).toEqual(["acme:user:7"]);
   });
 });
 
 describe("message.delivered", () => {
   it("mirrors the reply and cross-feeds it to the other present assistants", async () => {
     await repository.stampAssistantPresence(
-      { source: "tg", chatId: GROUP, assistantId: "anna" },
+      { source: "acme", chatId: GROUP, assistantId: "anna" },
       db,
     );
     await repository.stampAssistantPresence(
-      { source: "tg", chatId: GROUP, assistantId: "igor" },
+      { source: "acme", chatId: GROUP, assistantId: "igor" },
       db,
     );
     await processTransportUpdate(deliveredEvent({ content: "igor, what do you think?" }));
@@ -299,29 +299,29 @@ describe("message.delivered", () => {
       expect(enqueued).toHaveLength(1);
     });
 
-    const rows = await repository.listSourceChatMessages("tg", GROUP, db);
+    const rows = await repository.listSourceChatMessages("acme", GROUP, db);
     expect(rows[0]).toMatchObject({ role: "assistant", assistantId: "anna" });
 
     const fed = enqueued[0];
     expect(fed).toMatchObject({
       assistantId: "igor",
       authoredByAssistantId: "anna",
-      source: "tg",
+      source: "acme",
     });
-    expect(fed.sender).toMatchObject({ ref: "tg:user:1001", label: "Anna" });
+    expect(fed.sender).toMatchObject({ ref: "acme:user:1001", label: "Anna" });
     expect(fed.addressing).toMatchObject({ needsAnalyzer: true });
   });
 
   it("never cross-feeds silent sends, and re-reports change nothing", async () => {
     await repository.stampAssistantPresence(
-      { source: "tg", chatId: GROUP, assistantId: "igor" },
+      { source: "acme", chatId: GROUP, assistantId: "igor" },
       db,
     );
     await processTransportUpdate(deliveredEvent({ silent: true }));
     await processTransportUpdate(deliveredEvent({ silent: true }));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(enqueued).toHaveLength(0);
-    expect(await repository.listSourceChatMessages("tg", GROUP, db)).toHaveLength(1);
+    expect(await repository.listSourceChatMessages("acme", GROUP, db)).toHaveLength(1);
   });
 });
 
@@ -334,7 +334,7 @@ describe("edits + bot reactions", () => {
       occurredAt: new Date().toISOString(),
       correlationId: `${GROUP}:80`,
       type: "transport.edited",
-      source: "tg",
+      source: "acme",
       chat: { id: GROUP, kind: "group" },
       assistantId: "anna",
       sourceMessageId: "80",
@@ -347,14 +347,14 @@ describe("edits + bot reactions", () => {
       occurredAt: new Date().toISOString(),
       correlationId: `${GROUP}:80`,
       type: "transport.bot-reaction",
-      source: "tg",
+      source: "acme",
       chat: { id: GROUP, kind: "group" },
       assistantId: "anna",
       sourceMessageId: "80",
       emoji: "👍",
     });
     const row = await repository.getSourceMessage(
-      { source: "tg", chatId: GROUP, assistantId: null, direct: false },
+      { source: "acme", chatId: GROUP, assistantId: null, direct: false },
       "80",
       db,
     );
@@ -371,10 +371,10 @@ describe("transport.presence", () => {
       occurredAt: new Date().toISOString(),
       correlationId: `presence:${GROUP}:igor`,
       type: "transport.presence",
-      source: "tg",
+      source: "acme",
       chatId: GROUP,
       assistantId: "igor",
     });
-    expect(await repository.listChatAssistants("tg", GROUP, db)).toEqual(["igor"]);
+    expect(await repository.listChatAssistants("acme", GROUP, db)).toEqual(["igor"]);
   });
 });

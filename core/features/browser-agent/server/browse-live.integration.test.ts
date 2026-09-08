@@ -15,7 +15,7 @@ import type { AgentToolContext } from "./tools";
 
 /**
  * Opt-in **real** browse: the configured LLM drives a **real** headless Chromium
- * over a live public page, with no Telegram anywhere (this is exactly the
+ * over a live public page, with no transport anywhere (this is exactly the
  * dashboard-run path — a run with no chat). Skipped unless `LLM_LIVE=1`.
  *
  * Unlike the tool-selection suite, the browser tools here really execute. It
@@ -101,7 +101,7 @@ describe.skipIf(!LLM_LIVE)("browser agent — real browse (live)", () => {
       if (!runtime) throw new Error("LLM is not configured in DB settings.");
       const db = getStoreDb();
 
-      // A dashboard run has no chat — nothing is sent to Telegram; the report and
+      // A dashboard run has no chat — nothing is sent to a chat; the report and
       // the activity feed land on the run row, which is exactly what the UI reads.
       const run = await enqueueBrowserRun(
         { goal: "Open https://example.com and tell me its main heading.", chatRef: null, isOwner: true },

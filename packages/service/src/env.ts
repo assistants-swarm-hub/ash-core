@@ -1,5 +1,5 @@
 /**
- * Bootstrap environment access for a source-app service (tg, chat, …).
+ * Bootstrap environment access for a transport service.
  *
  * Env is bootstrap-only in this project — the store URL, Redis, the
  * internal-API secret and the listen port. Everything a human configures at

@@ -30,7 +30,7 @@ relative to `core/` unless they start with `core/` or `packages/`.
 | Settings | `settings` | `/settings` | [settings.md](settings.md) |
 | Backends catalog | `backends` | `/backends` | [backends.md](backends.md) |
 | Tool connections (remote MCP servers, incl. the transports' own) | `tool-connections`, `mcp-tools-connections` | `/tools` | [tool-connections.md](tool-connections.md) |
-| Transports (Telegram) | traces under `tool-connections` (registrations, connections) and `bot-messaging` (deliveries) | The assistant editor's connection sections | [../development/adding-a-transport.md](../development/adding-a-transport.md) |
+| Transports | traces under `tool-connections` (registrations, connections) and `bot-messaging` (deliveries) | The assistant editor's connection sections | [../development/adding-a-transport.md](../development/adding-a-transport.md) |
 | In-process MCP tools runtime | — | `/tools` | [../architecture/llm-and-mcp.md](../architecture/llm-and-mcp.md) |
 | Traces / Debug | `traces` | `/debug` | [../architecture/observability.md](../architecture/observability.md) |
 | Background jobs board | — | `/jobs` | [../architecture/background-jobs.md](../architecture/background-jobs.md) |
@@ -59,7 +59,7 @@ message. In prompt order:
 | Tools | In-process feature tools, plus every tool connection in scope (the transport's own on its turns) | Always; the delivery tools by turn kind |
 
 The full assembly and the reasoning behind the ordering are in
-[the message pipeline](../architecture/telegram-pipeline.md#stage-5--composing-the-reply).
+[the message pipeline](../architecture/message-pipeline.md#stage-5--composing-the-reply).
 
 ## Merged features
 

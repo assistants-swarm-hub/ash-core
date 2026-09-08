@@ -26,7 +26,7 @@ const DELIMITERS = [",", ";", "\t", "|"] as const;
 
 /**
  * Sniff the delimiter from the header line — Excel in a European locale writes
- * `;`-separated files, and Telegram-adjacent tools sometimes emit TSV.
+ * `;`-separated files, and some chat export tools emit TSV.
  */
 export function detectDelimiter(text: string): string {
   const firstLine = text.slice(0, text.indexOf("\n") === -1 ? text.length : text.indexOf("\n"));
@@ -135,7 +135,7 @@ export const HISTORY_CSV_FIELDS = [
     label: "Chat ref",
     required: true,
     constant: true,
-    hint: "Scoped ref of the chat the message belongs to (`<transport>:chat:<id>`, e.g. `tg:chat:-1001`).",
+    hint: "Scoped ref of the chat the message belongs to (`<transport>:chat:<id>`, e.g. `acme:chat:1001`).",
     constantHint: "e.g. a per-chat export with no chat column — apply one chat ref to every row.",
     aliases: ["chat", "chatid", "chatref", "conversation", "conversationid", "peerid", "dialogid"],
   },
@@ -148,7 +148,7 @@ export const HISTORY_CSV_FIELDS = [
     // single message.
     constant: false,
     hint: "The platform's message id — unique within the chat, and the key duplicates are detected on.",
-    aliases: ["messageid", "msgid", "id", "telegramid", "telegrammessageid", "sourcemessageid"],
+    aliases: ["messageid", "msgid", "id", "sourcemessageid"],
   },
   {
     key: "role",
@@ -365,8 +365,8 @@ function parseId(value: string): string | null | undefined {
 }
 
 /**
- * Parse a timestamp cell: ISO 8601, or a Unix timestamp in seconds (Telegram's
- * own `message.date`) or milliseconds. Empty → null.
+ * Parse a timestamp cell: ISO 8601, or a Unix timestamp in seconds (what most
+ * platforms' exports carry) or milliseconds. Empty → null.
  */
 function parseDate(value: string): Date | null | undefined {
   if (value === "") return null;

@@ -8,7 +8,7 @@ Two layers of conversation memory with opposite properties:
 
 | Layer | Contents | How the bot uses it |
 | --- | --- | --- |
-| **The mirror** | Every message, verbatim, 1:1 with Telegram | The last 24 hours are injected into every reply |
+| **The mirror** | Every message, verbatim, 1:1 with the platform | The last 24 hours are injected into every reply |
 | **Daily summaries** | Each finished chat-day compressed into a few self-contained topics, embedded, carrying the message ids they came from | Searched by meaning, then followed back to the exact originals |
 
 ## The mirror
@@ -35,7 +35,7 @@ assistant replies) always land released.
 
 The content plane — the History and Search pages, the summaries, the search
 index and the analytics charts — reads every registered transport's rows; chats are named by scoped ref
-(`server/source/tg-content.ts`, `SOURCE = "tg"`, user decision 2026-08-27);
+(`server/source-store/content.ts`, source-parameterized, user decision 2026-08-27);
 the web chat keeps its transcripts in its own `web_*` tables
 ([Web chat](web-chat.md)).
 
@@ -71,7 +71,7 @@ it as a `transport.bot-reaction` event and the ingest records it **on the
 target message's history record** — `source_messages.bot_reaction` /
 `bot_reacted_at`,
 state of the row like `edited_at` (user decision, 2026-08-15: a reaction is a
-history record, not a separate table). Telegram gives a bot one reaction per
+history record, not a separate table). A platform gives a bot one reaction per
 message, so the columns hold the current badge: a re-react replaces it,
 removal clears it. `botReactionSuffix` in `format.ts` is the one renderer, so
 every consumer of the record — the reply window, the day transcripts, the
@@ -81,7 +81,7 @@ dashboard, search hits — shows it on the line, after any media annotation:
 [#598] alice (@alice_example): hello [you reacted: 👍]
 ```
 
-This exists because a reaction that lived only on Telegram's side was
+This exists because a reaction that lived only on the platform's side was
 invisible to the bot's own memory — it liked a message and then denied having
 done so when asked (2026-08-15). Deliberately only the bot's own reactions;
 awareness of reactions other people set stays out of scope (user decision,
@@ -98,7 +98,7 @@ Every reply already carries the last 24 hours verbatim. Anything older has to be
 **searched** — and searching raw messages is poor, because chat is full of "ok",
 "lol", and pronouns with no referent. So each finished chat-day is compressed by
 the LLM into a handful of self-contained topics, each embedded and each carrying the
-Telegram ids it came from: search finds the topic, the ids lead back to the exact
+message ids it came from: search finds the topic, the ids lead back to the exact
 original messages.
 
 Data: `source_summaries` (one row per topic, with `embedding vector(1024)` and
@@ -139,7 +139,7 @@ not embedded, so semantic recall is unavailable. The job card says so.
 
 Four MCP tools under `mcp-tools-history`. (Replying to a message or reacting
 to one is the transport's own tool — see
-[LLM and MCP](../architecture/llm-and-mcp.md#telegram--the-transports-own-server-mcp-tools-connections).)
+[LLM and MCP](../architecture/llm-and-mcp.md#a-transports-own-server-mcp-tools-connections).)
 The chat is bound per turn, so a tool
 only ever reads the current conversation — the model does not pass (and cannot
 pick) a chat id.

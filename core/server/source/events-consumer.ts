@@ -32,7 +32,7 @@ import { ingestSourceTrace } from "@/server/trace/ingest";
  *
  * Reply-delivery and turn-lifecycle events are each source's to consume, and
  * since the chat dissolve (Phase 6) the core IS the web chat's source side:
- * the pipeline still publishes every turn's events to the bus, tg's app
+ * the pipeline still publishes every turn's events to the bus, each transport
  * consumes its own, and the web chat's are consumed right here — the reply
  * stored in the thread, the lifecycle rendered as live progress. Other
  * sources' stay ignored by type.

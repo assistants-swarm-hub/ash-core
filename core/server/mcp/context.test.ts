@@ -27,7 +27,7 @@ describe("MCP tool context", () => {
     // Guard the guard: without a genuinely separate instance this asserts nothing.
     expect(reloaded.getToolContext).not.toBe(getToolContext);
 
-    const seen = await runWithToolContext({ source: "tg", chatId: "chat-1", userId: "user-1" }, async () =>
+    const seen = await runWithToolContext({ source: "acme", chatId: "chat-1", userId: "user-1" }, async () =>
       reloaded.getToolContext(),
     );
 
@@ -43,7 +43,7 @@ describe("MCP tool context", () => {
   });
 
   it("unbinds again once the turn is over", async () => {
-    await runWithToolContext({ source: "tg", chatId: "chat-1" }, async () => undefined);
+    await runWithToolContext({ source: "acme", chatId: "chat-1" }, async () => undefined);
 
     expect(tryGetToolContext()).toBeNull();
     expect(() => getToolContext()).toThrow(/no chat is bound/);
@@ -54,32 +54,32 @@ describe("toolContextTrigger", () => {
   it("stamps the turn's correlation so tool-driven traces join their turn's flow", () => {
     expect(
       toolContextTrigger({
-        source: "tg",
+        source: "acme",
         chatId: "100",
         userId: "77",
-        correlationId: "tg:chat:100:41",
+        correlationId: "acme:chat:100:41",
       }),
-    ).toEqual({ kind: "transport", actor: "tg:user:77", correlationId: "tg:chat:100:41" });
+    ).toEqual({ kind: "transport", actor: "acme:user:77", correlationId: "acme:chat:100:41" });
   });
 
   it("names the actor and the correlation by ref, so two transports never share one", () => {
-    expect(toolContextTrigger({ source: "tg", chatId: "100", userId: "77" })).toEqual({
+    expect(toolContextTrigger({ source: "acme", chatId: "100", userId: "77" })).toEqual({
       kind: "transport",
-      actor: "tg:user:77",
-      correlationId: "tg:chat:100",
+      actor: "acme:user:77",
+      correlationId: "acme:chat:100",
     });
-    expect(toolContextTrigger({ source: "discord", chatId: "100", userId: "77" })).toEqual({
+    expect(toolContextTrigger({ source: "beta", chatId: "100", userId: "77" })).toEqual({
       kind: "transport",
-      actor: "discord:user:77",
-      correlationId: "discord:chat:100",
+      actor: "beta:user:77",
+      correlationId: "beta:chat:100",
     });
   });
 
   it("falls back to the chat's ref when the context carries neither correlation nor sender", () => {
-    expect(toolContextTrigger({ source: "tg", chatId: "100" })).toEqual({
+    expect(toolContextTrigger({ source: "acme", chatId: "100" })).toEqual({
       kind: "transport",
-      actor: "tg:chat:100",
-      correlationId: "tg:chat:100",
+      actor: "acme:chat:100",
+      correlationId: "acme:chat:100",
     });
   });
 });

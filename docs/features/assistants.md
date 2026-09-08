@@ -69,7 +69,7 @@ answer not-found rather than forbidden, so a scoped API leaks nothing.
 | Table | Notes |
 | --- | --- |
 | `assistants` | `id`, `name`, `persona`, `owner_account_id`, timestamps |
-| `assistant_transports` | One connection per assistant per transport (unique index): the opaque `config` blob the transport's schema describes (Telegram's holds the bot token), and `enabled` |
+| `assistant_transports` | One connection per assistant per transport (unique index): the opaque `config` blob the transport's schema describes (a bot token, typically), and `enabled` |
 | `assistant_tool_connections` | Which assistants may call a tool connection whose `all_assistants` is false |
 | `tasks.assistant_id` | NOT NULL, cascades — a task is one assistant's standing order ([Tasks](tasks.md)) |
 
@@ -92,7 +92,7 @@ transport (`components/transports/TransportSections.tsx`), built from the
 config field schema the transport announced at registration
 (`transports.connection_config_schema`: `text`, `secret` and `boolean` fields)
 — no build-time UI package, so a new transport gets its editor section for
-free. Telegram's schema is one required secret, the bot token.
+free. A typical schema is one required secret, the bot token.
 
 | Action | Effect |
 | --- | --- |
@@ -128,7 +128,7 @@ its own assistants explicitly. See [Tool connections](tool-connections.md).
 and tool selections cascade in the store. Whatever a source app keeps keyed on
 the id — the running poller — is dropped by the app reacting to the
 `assistant.deleted` bus event the service publishes on `assistants-swarm-hub:events`
-(the Telegram transport refetches its desired state and stops the connection).
+(the transport refetches its desired state and stops the connection).
 With no bus configured the trace carries a loud `warn` event saying the sources
 were not told, never a silent divergence. Web-chat threads bound to the
 assistant keep their `assistant_id` (a plain column, not a foreign key); an

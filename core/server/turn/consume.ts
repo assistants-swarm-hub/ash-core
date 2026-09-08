@@ -85,8 +85,8 @@ import { sourceOutbound, type SourceOutboundPort } from "./source-outbound";
 
 /**
  * The queue side of the source split (redesign Phase 2): consume normalized
- * inbound events and run the SAME reply pipeline the in-process telegram
- * runtime drives — `handleIncomingMessage` with collaborators built from the
+ * inbound events and run the one reply pipeline for every source —
+ * `handleIncomingMessage` with collaborators built from the
  * event instead of the database, deliveries published as bus events instead
  * of sent directly, and turn lifecycle published for the owning source to
  * render (typing) and to release its mirror hold on settle.
@@ -372,7 +372,7 @@ async function buildEventDeps(
     threadId,
     correlationId: event.correlationId,
     messageText: turn.effectiveText,
-    chatType: isGroup ? "supergroup" : "private",
+    chatType: isGroup ? "group" : "private",
     senderIsOwner: event.sender.isOwner,
     tasks: taskSets,
     collectImage: (base64) => turn.generatedImages.push(base64),
@@ -383,7 +383,7 @@ async function buildEventDeps(
     replyToSourceMessageId: event.message.sourceMessageId,
     onBeforeToolCall: async (toolName) => {
       await markActed();
-      // Progress, for whoever renders it: the tg app keeps typing, a web
+      // Progress, for whoever renders it: a transport keeps typing, a web
       // thread names the tool under the transcript (PLAN "Turn lifecycle").
       void ctx.publish(lifecycleEvent(event, "progress", toolName)).catch(() => undefined);
     },
@@ -391,15 +391,12 @@ async function buildEventDeps(
   });
 
   return {
-    // The numeric bot id only feeds the deterministic addressing check,
-    // which the source already ran — 0 is deliberately inert here. The
-    // display-name slot carries the ASSISTANT's name: it is what the LLM
+    // The display-name slot carries the ASSISTANT's name: it is what the LLM
     // analyzer matches and what addressing exclusions are filed against
     // (the account's profile name only backstops an unknown assistant).
     // A source with no account identity at all (a web thread) sends no
     // connection: there the assistant's own name is the only name there is.
     bot: {
-      id: 0,
       username: event.connection?.botUsername ?? "",
       displayName:
         turn.assistantIdentity?.name ?? event.connection?.botDisplayName ?? "the assistant",
@@ -762,7 +759,7 @@ export async function processInboundEvent(
       addressing,
       source: event.source,
       chatId,
-      chatType: event.chat.kind === "group" ? "supergroup" : "private",
+      chatType: event.chat.kind === "group" ? "group" : "private",
       sourceMessageId: event.message.sourceMessageId,
       // One message can open a turn per assistant present, so the source's
       // correlation is authoritative — deriving it here would merge them.

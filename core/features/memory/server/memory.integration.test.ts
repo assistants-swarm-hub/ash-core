@@ -64,13 +64,13 @@ const GRACE = "200";
 // The memory keyspace stores SCOPED REFS since the Phase 10 cutover; the
 // service converts local ids at its boundary, so what lands in the store is
 // the ref form of the same person/chat.
-const ADA_REF = `tg:user:${ADA}`;
-const GROUP_REF = `tg:chat:${GROUP_ID}`;
+const ADA_REF = `acme:user:${ADA}`;
+const GROUP_REF = `acme:chat:${GROUP_ID}`;
 
 async function seedUser(userId: string, firstName: string, aliases: string[] = []): Promise<void> {
   await ctx.db
     .insert(sourceUsers)
-    .values({ source: "tg", userId, username: firstName.toLowerCase(), firstName, aliases })
+    .values({ source: "acme", userId, username: firstName.toLowerCase(), firstName, aliases })
     .onConflictDoNothing();
 }
 
@@ -78,13 +78,13 @@ async function seedUser(userId: string, firstName: string, aliases: string[] = [
 async function seedGroup(): Promise<void> {
   await ctx.db
     .insert(sourceChats)
-    .values({ source: "tg", chatId: GROUP_ID, title: "Test group", type: "supergroup" })
+    .values({ source: "acme", chatId: GROUP_ID, title: "Test group", type: "supergroup" })
     .onConflictDoNothing();
   await ctx.db
     .insert(sourceChatMembers)
     .values([
-      { source: "tg", chatId: GROUP_ID, userId: ADA },
-      { source: "tg", chatId: GROUP_ID, userId: GRACE },
+      { source: "acme", chatId: GROUP_ID, userId: ADA },
+      { source: "acme", chatId: GROUP_ID, userId: GRACE },
     ])
     .onConflictDoNothing();
 }
@@ -125,14 +125,14 @@ describe("memory_save (the write path)", () => {
     await seedUser(ADA, "Ada");
 
     const saved = await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
     expect(saved.ok).toBe(true);
 
     // A hallucinated id must not be filed under a stranger where it would never surface.
     const rejected = await saveMemoryNote(
-      { source: "tg", scope: "user", userId: "999999", content: "Lives on Mars.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: "999999", content: "Lives on Mars.", chatId: CHAT_ID },
       ctx.db,
     );
     expect(rejected.ok).toBe(false);
@@ -146,7 +146,7 @@ describe("memory_save (the write path)", () => {
 
   it("queues a general fact with no person attached", async () => {
     const saved = await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
       ctx.db,
     );
     expect(saved.ok).toBe(true);
@@ -178,13 +178,13 @@ describe("subject placement", () => {
     await seedSpeakers();
 
     const speaker = await resolveMemorySubject(
-      { source: "tg", chatId: GROUP_ID, speakerId: ADA },
+      { source: "acme", chatId: GROUP_ID, speakerId: ADA },
       ctx.db,
     );
     expect(speaker).toEqual({ ok: true, userId: ADA });
 
     const named = await resolveMemorySubject(
-      { source: "tg", person: "Grace", chatId: GROUP_ID, speakerId: ADA },
+      { source: "acme", person: "Grace", chatId: GROUP_ID, speakerId: ADA },
       ctx.db,
     );
     expect(named).toEqual({ ok: true, userId: GRACE });
@@ -198,7 +198,7 @@ describe("subject placement", () => {
     await seedSpeakers();
 
     const subject = await resolveMemorySubject(
-      { source: "tg", person: "Muradyan", chatId: GROUP_ID, speakerId: ADA },
+      { source: "acme", person: "Muradyan", chatId: GROUP_ID, speakerId: ADA },
       ctx.db,
     );
     expect(subject.ok).toBe(false);
@@ -211,17 +211,17 @@ describe("subject placement", () => {
   it("lets a general fact be about someone this chat does not know", async () => {
     await seedSpeakers();
 
-    expect(await checkGeneralNoteSubject({ source: "tg", person: "Muradyan", chatId: GROUP_ID }, ctx.db)).toEqual({
+    expect(await checkGeneralNoteSubject({ source: "acme", person: "Muradyan", chatId: GROUP_ID }, ctx.db)).toEqual({
       ok: true,
     });
     // No subject named at all: knowledge about nobody, taken at its word.
-    expect(await checkGeneralNoteSubject({ source: "tg", chatId: GROUP_ID }, ctx.db)).toEqual({ ok: true });
+    expect(await checkGeneralNoteSubject({ source: "acme", chatId: GROUP_ID }, ctx.db)).toEqual({ ok: true });
   });
 
   it("refuses a general fact about someone who has a document of their own", async () => {
     await seedSpeakers();
 
-    const allowed = await checkGeneralNoteSubject({ source: "tg", person: "Ada", chatId: GROUP_ID }, ctx.db);
+    const allowed = await checkGeneralNoteSubject({ source: "acme", person: "Ada", chatId: GROUP_ID }, ctx.db);
     expect(allowed.ok).toBe(false);
     if (!allowed.ok) {
       expect(allowed.error).toContain("'user'");
@@ -239,13 +239,13 @@ describe("reply injection", () => {
   it("injects a person's consolidated memory, marking them as the sender", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
     await consolidate("Lives in Lisbon.");
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false },
+      { source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false },
       ctx.db,
     );
     expect(context?.content).toContain("Ada (@ada) (the person you are replying to)");
@@ -256,7 +256,7 @@ describe("reply injection", () => {
   it("does NOT inject a pending note â€” memory is what survived consolidation", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
 
@@ -264,7 +264,7 @@ describe("reply injection", () => {
     // inject. (The fact is not lost to the model: it was said in this conversation,
     // which the reply already carries verbatim.)
     expect(
-      await getMemoryContext({ source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
+      await getMemoryContext({ source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
     ).toBeNull();
   });
 
@@ -273,11 +273,11 @@ describe("reply injection", () => {
     await seedUser(GRACE, "Grace");
     await seedGroup();
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: GROUP_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: GROUP_ID },
       ctx.db,
     );
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: GRACE, content: "Works nights.", chatId: GROUP_ID },
+      { source: "acme", scope: "user", userId: GRACE, content: "Works nights.", chatId: GROUP_ID },
       ctx.db,
     );
     await runMemoryConsolidation(
@@ -285,7 +285,7 @@ describe("reply injection", () => {
     );
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: GROUP_ID, senderId: ADA, isGroup: true },
+      { source: "acme", chatId: GROUP_ID, senderId: ADA, isGroup: true },
       ctx.db,
     );
     expect(context?.content).toContain("Ada (@ada) (the person you are replying to)");
@@ -298,7 +298,7 @@ describe("reply injection", () => {
   it("injects nothing in a private chat about someone it knows nothing about", async () => {
     await seedUser(ADA, "Ada");
     expect(
-      await getMemoryContext({ source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
+      await getMemoryContext({ source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
     ).toBeNull();
   });
 
@@ -310,7 +310,7 @@ describe("reply injection", () => {
   it("injects general knowledge once consolidated, with no tool call needed", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(
@@ -318,7 +318,7 @@ describe("reply injection", () => {
     );
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false },
+      { source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false },
       ctx.db,
     );
     expect(context?.content).toContain("Standup is at 09:30.");
@@ -328,12 +328,12 @@ describe("reply injection", () => {
   it("still injects nothing from a general note that is only pending", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
       ctx.db,
     );
     // Queued but not consolidated — memory is what survived the merge.
     expect(
-      await getMemoryContext({ source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
+      await getMemoryContext({ source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
     ).toBeNull();
   });
 });
@@ -342,11 +342,11 @@ describe("nightly consolidation â€” user documents", () => {
   it("merges pending notes into one document per person, then consumes the notes", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
       ctx.db,
     );
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Likes rye bread.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Likes rye bread.", chatId: CHAT_ID },
       ctx.db,
     );
 
@@ -374,13 +374,13 @@ describe("nightly consolidation â€” user documents", () => {
   it("resolves a contradiction by rewriting the document, not appending to it", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(scriptedLlm(['{"memory": "Lives in Porto."}']).deps);
 
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Moved to Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Moved to Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
     const { deps, calls } = scriptedLlm(['{"memory": "Lives in Lisbon."}']);
@@ -396,13 +396,13 @@ describe("nightly consolidation â€” user documents", () => {
   it("leaves memory and the notes untouched when the merge returns nothing usable", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(scriptedLlm(['{"memory": "Lives in Porto."}']).deps);
 
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Likes rye.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Likes rye.", chatId: CHAT_ID },
       ctx.db,
     );
     const result = await runMemoryConsolidation(scriptedLlm(["I'm afraid I can't do that."]).deps);
@@ -419,11 +419,11 @@ describe("nightly consolidation â€” user documents", () => {
     await seedUser(ADA, "Ada");
     await seedUser(GRACE, "Grace");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: GRACE, content: "Works nights.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: GRACE, content: "Works nights.", chatId: CHAT_ID },
       ctx.db,
     );
 
@@ -446,7 +446,7 @@ describe("nightly consolidation — general knowledge", () => {
 
   it("merges pending notes into the single document", async () => {
     await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
       ctx.db,
     );
     const result = await runMemoryConsolidation(
@@ -462,7 +462,7 @@ describe("nightly consolidation — general knowledge", () => {
   it("shows the existing document to the merge, so a correction can supersede a line", async () => {
     await seedGeneral("Standup is at 09:30.\nDeploys happen on Thursdays.");
     await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Standup moved to 10:00.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Standup moved to 10:00.", chatId: CHAT_ID },
       ctx.db,
     );
 
@@ -486,7 +486,7 @@ describe("nightly consolidation — general knowledge", () => {
    */
   it("spends one LLM call for the whole general backlog", async () => {
     for (const content of ["Standup is at 09:30.", "Deploys on Thursdays.", "Fridays are quiet."]) {
-      await saveMemoryNote({ source: "tg", scope: "general", userId: null, content, chatId: CHAT_ID }, ctx.db);
+      await saveMemoryNote({ source: "acme", scope: "general", userId: null, content, chatId: CHAT_ID }, ctx.db);
     }
 
     const { deps, calls } = scriptedLlm([
@@ -506,7 +506,7 @@ describe("nightly consolidation — general knowledge", () => {
   it("leaves the document untouched and the notes pending when the merge returns nothing", async () => {
     await seedGeneral("Standup is at 09:30.");
     await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Deploys on Thursdays.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Deploys on Thursdays.", chatId: CHAT_ID },
       ctx.db,
     );
 
@@ -523,7 +523,7 @@ describe("nightly consolidation — general knowledge", () => {
     // Nobody is a known user here, so this could never be a `user` document —
     // general knowledge is what keeps it.
     await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Bob lives in Porto.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Bob lives in Porto.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(
@@ -537,7 +537,7 @@ describe("consolidation without an embedding model", () => {
   it("still stores and injects memory â€” only semantic search is lost", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
 
@@ -551,7 +551,7 @@ describe("consolidation without an embedding model", () => {
 
     // Still injected into replies, embedding or not.
     const context = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false },
+      { source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false },
       ctx.db,
     );
     expect(context?.content).toContain("Lives in Lisbon.");
@@ -566,14 +566,14 @@ describe("general knowledge injection", () => {
   it("injects the general document into a reply, alongside the sender's own memory", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(scriptedLlm(['{"memory": "Lives in Lisbon."}']).deps);
     await seedGeneral("Standup is at 09:30.\nBob lives in Porto.");
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false },
+      { source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false },
       ctx.db,
     );
     expect(context?.content).toContain("Ada (@ada) (the person you are replying to)");
@@ -592,7 +592,7 @@ describe("general knowledge injection", () => {
     await seedGeneral("Standup is at 09:30.");
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: "999999", isGroup: false },
+      { source: "acme", chatId: CHAT_ID, senderId: "999999", isGroup: false },
       ctx.db,
     );
     expect(context?.content).toContain("Standup is at 09:30.");
@@ -603,7 +603,7 @@ describe("general knowledge injection", () => {
     await seedGeneral("Standup is at 09:30.");
 
     const context = await getMemoryContext(
-      { source: "tg", chatId: CHAT_ID, senderId: null, isGroup: false },
+      { source: "acme", chatId: CHAT_ID, senderId: null, isGroup: false },
       ctx.db,
     );
     expect(context?.content).toContain("Standup is at 09:30.");
@@ -611,7 +611,7 @@ describe("general knowledge injection", () => {
 
   it("still injects nothing when the bot knows nothing at all", async () => {
     expect(
-      await getMemoryContext({ source: "tg", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
+      await getMemoryContext({ source: "acme", chatId: CHAT_ID, senderId: ADA, isGroup: false }, ctx.db),
     ).toBeNull();
   });
 });
@@ -620,7 +620,7 @@ describe("search", () => {
   it("finds a consolidated fact about a person by wording", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Ada bakes sourdough every weekend.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Ada bakes sourdough every weekend.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(
@@ -643,7 +643,7 @@ describe("search", () => {
    */
   it("does NOT search general knowledge — it is already in every prompt", async () => {
     await saveMemoryNote(
-      { source: "tg", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
+      { source: "acme", scope: "general", userId: null, content: "Standup is at 09:30.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(scriptedLlm(['{"memory": "Standup is at 09:30."}']).deps);
@@ -658,7 +658,7 @@ describe("search", () => {
   it("does NOT find a pending note â€” the tools read consolidated memory only", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Ada bakes sourdough.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Ada bakes sourdough.", chatId: CHAT_ID },
       ctx.db,
     );
 
@@ -672,17 +672,17 @@ describe("readMemory (memory_get)", () => {
   it("returns a person's consolidated document, and not their pending notes", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(scriptedLlm(['{"memory": "Lives in Lisbon."}']).deps);
     // Saved after consolidation â€” still queued, so still not memory.
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Likes rye.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Likes rye.", chatId: CHAT_ID },
       ctx.db,
     );
 
-    const facts = await readMemory({ userId: ADA, source: "tg" }, ctx.db);
+    const facts = await readMemory({ userId: ADA, source: "acme" }, ctx.db);
     expect(facts).toEqual([{ scope: "user", userId: ADA, content: "Lives in Lisbon." }]);
   });
 });
@@ -691,7 +691,7 @@ describe("operator edits", () => {
   it("rewrites a person's document and re-embeds it, traced", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Porto.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(scriptedLlm(['{"memory": "Lives in Porto."}']).deps);
@@ -727,7 +727,7 @@ describe("tracing", () => {
   it("records one consolidation trace with the merge request, response, and outcome", async () => {
     await seedUser(ADA, "Ada");
     await saveMemoryNote(
-      { source: "tg", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
+      { source: "acme", scope: "user", userId: ADA, content: "Lives in Lisbon.", chatId: CHAT_ID },
       ctx.db,
     );
     await runMemoryConsolidation(scriptedLlm(['{"memory": "Lives in Lisbon."}']).deps);

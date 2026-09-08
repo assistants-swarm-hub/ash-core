@@ -131,7 +131,7 @@ describe("trace correlation", () => {
   it("filters by trigger kind and actor", async () => {
     await seed({ trigger: { kind: "cron", actor: "memory-extraction" } });
     await seed({ trigger: { kind: "cron", actor: "history-summaries" } });
-    await seed(); // telegram
+    await seed(); // transport
 
     const cron = await getTraceList({ triggerKind: "cron" });
     expect(cron.total).toBe(2);

@@ -209,7 +209,7 @@ async function deliverRunOutcome(
  * itself (the ack was sent silent and exists only to bridge the wait). Marks the
  * run settled in the ack store either way, so an acknowledgement that arrives
  * *after* the run finished is deleted at registration instead of surviving
- * forever. Best-effort — a message Telegram refuses to delete (older than 48h)
+ * forever. Best-effort — a message the platform refuses to delete (too old, say)
  * just stays.
  */
 async function removeRunAck(runId: string): Promise<void> {

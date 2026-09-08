@@ -147,7 +147,7 @@ export interface PlatformConnection {
   /**
    * Set (or, with a null emoji, clear) this bot's one reaction badge.
    * `options` carries whatever the platform's own tool offers on top —
-   * Telegram's big animated variant, say — and a platform with none ignores it.
+   * a big animated variant, say — and a platform with none ignores it.
    */
   setReaction?(
     chatId: string,

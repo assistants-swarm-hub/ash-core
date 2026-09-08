@@ -88,7 +88,7 @@ export async function getUserLabels(
 }
 
 /**
- * Human labels for a set of user refs (`tg:user:123`, `chat:user:<uuid>`),
+ * Human labels for a set of user refs (`acme:user:123`, `chat:user:<uuid>`),
  * keyed by ref — a transport's people from its directory, web users from the
  * account roster. A ref nobody knows is absent; the caller picks its fallback.
  */

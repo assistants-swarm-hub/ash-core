@@ -9,7 +9,7 @@ import { mergeTransportConfig } from "@/server/transports/service";
 const patchSchema = z.record(z.string(), z.unknown());
 
 /**
- * A transport writing back into its own config blob (telegram persisting the
+ * A transport writing back into its own config blob (a transport persisting the
  * owner id it just resolved). Shallow merge — the keys are the transport's.
  */
 export async function PATCH(

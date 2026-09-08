@@ -230,8 +230,8 @@ function IdentitiesCard({ identities }: { identities: ProfileIdentity[] }) {
             </div>
           ) : (
             <p className="text-sm text-muted">
-              To link a messenger identity (e.g. your Telegram), mint a one-time code and send
-              it to a bot from there.
+              To link a messenger identity, mint a one-time code and send it to a bot from
+              that account.
             </p>
           )}
           {error ? <p className="text-sm text-danger">{error}</p> : null}

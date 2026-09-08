@@ -31,7 +31,7 @@ function toMediaRecord(media: StoredWebMedia): MediaRecord {
     chatId: media.threadId,
     sourceMessageId: String(media.messageId),
     kind: media.kind as MediaRecord["kind"],
-    // File ids are a Telegram concept; a web upload has none.
+    // File ids are a platform concept; a web upload has none.
     fileId: "",
     fileUniqueId: null,
     mimeType: media.mimeType,

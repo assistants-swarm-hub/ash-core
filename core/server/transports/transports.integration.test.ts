@@ -70,7 +70,7 @@ describe("transport registration", () => {
       ["signal", "Signal", CONTRACT_MAJOR],
     ]);
     expect(await isRegisteredTransport("signal", store.db)).toBe(true);
-    expect(await isRegisteredTransport("discord", store.db)).toBe(false);
+    expect(await isRegisteredTransport("beta", store.db)).toBe(false);
   });
 
   it("refuses another contract major by name, keeps the row so the roster shows why", async () => {

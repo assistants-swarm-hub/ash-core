@@ -5,7 +5,7 @@ info:
   version: 1.48.0
   description: |
     HTTP surface of the assistants-swarm-hub core: the dashboard, the web chat, and
-    the internal API the transport services (Telegram today) call back into.
+    the internal API the transport services call back into.
 
     Conventions:
       * Every JSON success body is wrapped as `{ "data": ... }`. The exceptions are
@@ -24,7 +24,7 @@ info:
         is 404, never 403.
       * Timestamps are ISO-8601 UTC instants. Wall-clock strings are explicitly
         typed where they occur (`HH:MM`, `YYYY-MM-DD`, analytics bucket keys).
-      * Cross-app identifiers are scoped refs (`tg:user:123`, `tg:chat:-100...`,
+      * Cross-app identifiers are scoped refs (`acme:user:123`, `acme:chat:42`,
         `chat:user:<accountId>`), never foreign keys.
 
     Companion documents: `docs/api/README.md` (conventions),
@@ -1461,7 +1461,7 @@ paths:
       - name: id
         in: path
         required: true
-        description: The person's scoped ref, e.g. `tg:user:123`.
+        description: The person's scoped ref, e.g. `acme:user:123`.
         schema: { $ref: "#/components/schemas/ScopedRef" }
     patch:
       tags: [directory]
@@ -1531,7 +1531,7 @@ paths:
       - name: id
         in: path
         required: true
-        description: The chat's scoped ref, e.g. `tg:chat:-100123`.
+        description: The chat's scoped ref, e.g. `acme:chat:42`.
         schema: { $ref: "#/components/schemas/ScopedRef" }
     patch:
       tags: [directory]
@@ -2090,7 +2090,7 @@ paths:
       - name: userId
         in: path
         required: true
-        description: The person's scoped ref (`tg:user:123`, `chat:user:<accountId>`) - the memory keyspace speaks refs.
+        description: The person's scoped ref (`acme:user:123`, `chat:user:<accountId>`) - the memory keyspace speaks refs.
         schema: { $ref: "#/components/schemas/ScopedRef" }
     patch:
       tags: [memory]
@@ -3086,7 +3086,7 @@ paths:
         - internalToken: []
       summary: Write back into the transport-level config
       description: |
-        A transport persisting something it resolved (telegram: the owner id
+        A transport persisting something it resolved (an owner id, say,
         it just looked up). Shallow merge - the keys are the transport's own.
       requestBody:
         required: true
@@ -3218,18 +3218,18 @@ components:
     FilterChatRef:
       name: chatRef
       in: query
-      description: Restrict to one chat (scoped ref, `tg:chat:-100…`).
+      description: Restrict to one chat (scoped ref, `acme:chat:42`).
       schema: { $ref: "#/components/schemas/ScopedRef" }
     FilterUserRef:
       name: userRef
       in: query
-      description: Restrict to one user's own messages (scoped ref, `tg:user:123`).
+      description: Restrict to one user's own messages (scoped ref, `acme:user:123`).
       schema: { $ref: "#/components/schemas/ScopedRef" }
     TransportId:
       name: id
       in: path
       required: true
-      description: A source id (`tg`, `chat`). Anything else is 400.
+      description: A source id (a transport's, or `chat`). Anything else is 400.
       schema: { $ref: "#/components/schemas/SourceId" }
     TraceFeature:
       name: feature
@@ -3408,11 +3408,11 @@ components:
     SourceId:
       type: string
       pattern: '^[a-z][a-z0-9-]{0,31}$'
-      description: A source id - the slug a transport registered under (`tg`, `signal`, ...) or the built-in web chat (`chat`). Open by design - the core keeps no list; registration is checked at runtime.
+      description: A source id - the slug a transport registered under (`acme`, `signal`, ...) or the built-in web chat (`chat`). Open by design - the core keeps no list; registration is checked at runtime.
     ScopedRef:
       type: string
       pattern: '^[a-z][a-z0-9-]{0,31}:(user|chat|thread|message):.+$'
-      description: A cross-app pointer `source:kind:id` - `tg:user:123`, `tg:chat:-100123`, `chat:user:<accountId>`.
+      description: A cross-app pointer `source:kind:id` - `acme:user:123`, `acme:chat:42`, `chat:user:<accountId>`.
     ConfigBlob:
       type: object
       description: An opaque config blob keyed by a transport's config-field schema. The core stores it and never interprets it.
@@ -3440,8 +3440,8 @@ components:
       enum: [pending, running, success, error, skipped]
     TraceTriggerKind:
       type: string
-      enum: [telegram, chat, dashboard, cron, system, api, test]
-      description: What triggered a traced action - a message from a source (`telegram`, `chat`), an operator, a job, the system, an API call, a test.
+      enum: [transport, chat, dashboard, cron, system, api, test]
+      description: What triggered a traced action - a message from a source (`transport`, `chat`), an operator, a job, the system, an API call, a test.
     RealtimeTopic:
       type: string
       enum:
@@ -4221,7 +4221,7 @@ components:
       required: [source, sourceLabel, ref]
       properties:
         source: { $ref: "#/components/schemas/SourceId" }
-        sourceLabel: { type: string, description: "Human name of the source (\"Telegram\", \"Web chat\")." }
+        sourceLabel: { type: string, description: "Human name of the source, as it announced itself (\"Web chat\", a transport's name)." }
         ref: { $ref: "#/components/schemas/ScopedRef" }
     OperatorUser:
       type: object
@@ -4749,7 +4749,7 @@ components:
           description: Source-local id of the chat. Null for a global task (message/on-reply kinds only).
         chatRef:
           type: [string, "null"]
-          description: The chat's scoped ref (`tg:chat:-100…`); null for a global task.
+          description: The chat's scoped ref (`acme:chat:42`); null for a global task.
         chatSource:
           type: [string, "null"]
           description: The transport the chat lives on - the namespace of every id on the task; null for a global task.
@@ -4926,14 +4926,14 @@ components:
     AddressingExclusion:
       type: object
       required:
-        [id, term, normalized, botDisplayName, chatId, telegramMessageId, userId, feedbackId, createdAt]
+        [id, term, normalized, botDisplayName, chatId, sourceMessageId, userId, feedbackId, createdAt]
       properties:
         id: { type: string }
         term: { type: string, description: "The word verbatim, as it appeared in the message that mis-triggered." }
         normalized: { type: string, description: "Case-folded, whitespace-collapsed - what the mechanical check matches." }
         botDisplayName: { type: string }
         chatId: { type: [string, "null"] }
-        telegramMessageId: { type: [integer, "null"] }
+        sourceMessageId: { type: [string, "null"] }
         userId: { type: [string, "null"] }
         feedbackId: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }

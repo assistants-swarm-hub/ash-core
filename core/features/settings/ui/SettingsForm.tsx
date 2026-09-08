@@ -37,7 +37,7 @@ import { RoleSection, type RoleSectionLabels } from "./RoleSection";
 
 /**
  * Bot settings editor. Client Component with one tab per concern: **Models**,
- * Telegram, General, Integrations, Security.
+ * Bots, General, Integrations, Security.
  *
  * The LLM configuration is per **role** — Chat (the main model every reply runs
  * on, which must support thinking and tool calls), Embeddings, Images, Speech,
@@ -719,7 +719,7 @@ export function SettingsForm({
     },
   });
 
-  const telegramTab = (
+  const botsTab = (
     <div className="space-y-5">
       <p className="text-sm text-muted">
         Who operates the bots. Bot tokens are per assistant since the redesign — connect and
@@ -791,7 +791,7 @@ export function SettingsForm({
       <Field
         id="assistantLoopGuardTurns"
         label="Assistant replies in a row"
-        hint="How many assistant messages a chat may hold in a row before every assistant there goes quiet until a person speaks again. Assistants cannot see each other on Telegram, so the bot hands each reply to the others sharing a chat — this bounds how long they keep talking to each other. 0 stops them from answering each other at all. 0–10."
+        hint="How many assistant messages a chat may hold in a row before every assistant there goes quiet until a person speaks again. A platform does not deliver one bot's messages to another, so the core hands each reply to the other assistants sharing a chat — this bounds how long they keep talking to each other. 0 stops them from answering each other at all. 0–10."
       >
         {({ id, describedBy }) => (
           <Input
@@ -950,7 +950,7 @@ export function SettingsForm({
 
   const tabs: TabItem[] = [
     { id: "models", label: "Models", content: modelsTab },
-    { id: "bots", label: "Bots", content: telegramTab },
+    { id: "bots", label: "Bots", content: botsTab },
     { id: "general", label: "General", content: generalTab },
     { id: "integrations", label: "Integrations", content: integrationsTab },
     { id: "security", label: "Security", content: <ChangePasswordSection /> },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BOT } from "@/test/__mocks__/telegram";
+import { BOT } from "@/test/__mocks__/bot";
 import {
   buildAnalyzerMessages,
   buildVerifierMessages,

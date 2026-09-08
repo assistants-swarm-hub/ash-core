@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Single-chat history mirror, addressed by the chat's scoped ref
- * (`tg:chat:-100…`). Server Component: renders the full stored conversation
+ * (`acme:chat:42`). Server Component: renders the full stored conversation
  * for one chat, including edit/delete flags.
  */
 export default async function ChatHistoryPage({

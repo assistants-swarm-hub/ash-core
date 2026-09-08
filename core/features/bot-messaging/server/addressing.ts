@@ -1,15 +1,11 @@
-import type { Message } from "@grammyjs/types";
-
 /**
- * Whether a message is addressed to the bot. Pure and deterministic — no network
- * calls — so it is fully unit-testable and cheap to run on every update.
+ * The core's half of the addressing decision: does free text speak the
+ * assistant's name? Pure and deterministic — no network calls — so it is fully
+ * unit-testable and cheap to run on every message.
  *
- * Rules (recreated from the MVP's deterministic checks):
- * - Private chats: always addressed.
- * - Groups/supergroups: addressed when the message @mentions the bot (by
- *   username or a `text_mention` entity), replies to one of the bot's messages,
- *   is a `/command@botusername` targeting the bot, or speaks the bot's display
- *   name literally.
+ * The structural half (a direct chat, a reply to the bot, an @mention, a
+ * command) is the transport's: it reads its platform's wire shape and sends
+ * the verdict on the event. Nothing here knows any platform.
  *
  * People do not only address a bot by its handle — they call it by name, and in
  * a multilingual chat they write that name in their own alphabet or decline it
@@ -65,18 +61,16 @@ export interface AddressResult {
   matchedText?: string;
 }
 
-/** Minimal identity the addressing check needs. */
+/** Minimal identity the name check and the analyzer need. */
 export interface BotIdentity {
-  id: number;
+  /** The bot's platform handle, as the transport announced it. */
   username: string;
   /**
-   * The bot's Telegram display name (getMe `first_name`) — the name people
-   * actually speak, as opposed to the `@username` they type.
+   * The name people actually speak — the assistant's name, as opposed to the
+   * `@username` they type.
    */
   displayName: string;
 }
-
-const NOT_ADDRESSED: AddressResult = { addressed: false };
 
 /**
  * What each deterministic verdict says for itself. A turn the cheap checks
@@ -143,96 +137,3 @@ export function matchBotName(text: string, displayName: string): string | null {
   return re.exec(text)?.[0] ?? null;
 }
 
-/** Telegram entity offsets are UTF-16 code units, matching JS string indexing. */
-function sliceEntity(text: string, offset: number, length: number): string {
-  return text.slice(offset, offset + length);
-}
-
-/** A message's user text — its body, or the caption when it carries media. */
-function messageText(message: Message): string {
-  return message.text ?? message.caption ?? "";
-}
-
-function isReplyToBot(message: Message, botId: number): boolean {
-  return message.reply_to_message?.from?.id === botId;
-}
-
-function hasUsernameMention(message: Message, botId: number, username: string): boolean {
-  const text = messageText(message);
-  if (!text) return false;
-
-  const user = username.toLowerCase();
-  const entities = [...(message.entities ?? []), ...(message.caption_entities ?? [])];
-  for (const entity of entities) {
-    if (entity.type === "text_mention" && entity.user.id === botId) return true;
-    if (entity.type === "mention") {
-      const mention = sliceEntity(text, entity.offset, entity.length).replace(/^@/, "").toLowerCase();
-      if (mention === user) return true;
-    }
-  }
-  // Fallback for clients that omit entities: literal "@username" substring.
-  return user.length > 0 && text.toLowerCase().includes(`@${user}`);
-}
-
-function hasCommandForBot(message: Message, username: string): boolean {
-  const text = messageText(message);
-  if (!text.trimStart().startsWith("/")) return false;
-
-  const user = username.toLowerCase();
-  const entities = [...(message.entities ?? []), ...(message.caption_entities ?? [])];
-  for (const entity of entities) {
-    if (entity.type !== "bot_command") continue;
-    const cmd = sliceEntity(text, entity.offset, entity.length);
-    const at = cmd.indexOf("@");
-    if (at !== -1 && cmd.slice(at + 1).toLowerCase() === user) return true;
-  }
-  return false;
-}
-
-/**
- * Decide whether the bot should treat this message as addressed to it, as far as
- * a pure check can. A group message that names nothing recognizable but still
- * carries text comes back undecided (`needsAnalyzer`) rather than not-addressed.
- *
- * `transcript` is the spoken text of a voice message (produced before this check
- * runs): a voice message has no `text`/`caption`/entities, so the name check and
- * the analyzer gate read the transcript instead — "hey <botname>, …" spoken
- * aloud is as much a summons as typed.
- */
-export function checkAddressed(
-  message: Message,
-  chatType: string,
-  bot: BotIdentity,
-  transcript?: string,
-): AddressResult {
-  if (chatType === "private") {
-    return { addressed: true, source: "private", reason: DETERMINISTIC_REASONS.private };
-  }
-  if (chatType !== "group" && chatType !== "supergroup") return NOT_ADDRESSED;
-  if (!bot.id || !bot.username) return NOT_ADDRESSED;
-
-  if (isReplyToBot(message, bot.id)) {
-    return { addressed: true, source: "reply", reason: DETERMINISTIC_REASONS.reply };
-  }
-  // Command before the mention fallback: `/start@botname` carries a bot_command
-  // entity, and its `@botname` suffix would otherwise match the loose mention check.
-  if (hasCommandForBot(message, bot.username)) {
-    return { addressed: true, source: "command", reason: DETERMINISTIC_REASONS.command };
-  }
-  if (hasUsernameMention(message, bot.id, bot.username)) {
-    return { addressed: true, source: "mention", reason: DETERMINISTIC_REASONS.mention };
-  }
-
-  const text = messageText(message) || transcript?.trim() || "";
-  const named = matchBotName(text, bot.displayName);
-  if (named) {
-    return { addressed: true, source: "name", reason: spokenNameReason(named), matchedText: named };
-  }
-  // Undecided rather than silent: the name may still be here transliterated or
-  // declined, which only the analyzer can see. Media with no caption gives it
-  // nothing to read, and an unmatchable display name gives it nothing to find.
-  if (text.trim() && displayNameMatchable(bot.displayName)) {
-    return { addressed: false, needsAnalyzer: true };
-  }
-  return NOT_ADDRESSED;
-}

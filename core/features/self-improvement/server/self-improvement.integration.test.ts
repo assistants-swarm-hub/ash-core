@@ -34,7 +34,7 @@ import { removeAddressingExclusion } from "./service";
  * real Postgres (the distilled outputs — preferences, corrections,
  * exclusions — plus real traces), with the source-owned feedback rows and
  * mirror behind in-memory ports. The collection flows themselves live in
- * the tg app since the split and are covered by its feedback suite; the
+ * the transport since the split and are covered by its feedback suite; the
  * `feedback.recorded` consumer here is where the core's learning starts.
  */
 
@@ -61,21 +61,21 @@ beforeEach(async () => {
 const CHAT_ID = "555";
 const USER_ID = "100";
 /** How every trace here names the chat and the reactor — refs, like the app. */
-const CHAT_REF = `tg:chat:${CHAT_ID}`;
-const USER_REF = `tg:user:${USER_ID}`;
+const CHAT_REF = `acme:chat:${CHAT_ID}`;
+const USER_REF = `acme:user:${USER_ID}`;
 /** The menu option that files an addressing report (rendered by the transport). */
 const NOT_ADDRESSED_OPTION = "Wasn't talking to you";
 
 /**
  * User labels resolve through the source-store adapter (`source_users`,
- * `source = 'tg'`); the flows under test expect the rows even though the
+ * `source = 'acme'`); the flows under test expect the rows even though the
  * feedback data itself now lives behind the ports.
  */
 async function seedKnownUsers(...userIds: string[]): Promise<void> {
   for (const userId of userIds) {
     await ctx.db
       .insert(sourceUsers)
-      .values({ source: "tg", userId, username: `user${userId}`, firstName: `U${userId}` })
+      .values({ source: "acme", userId, username: `user${userId}`, firstName: `U${userId}` })
       .onConflictDoNothing();
   }
 }
@@ -146,7 +146,7 @@ function fakePorts(): FeedbackPorts & {
     seedCompleted(input) {
       const row: UserFeedback = {
         id: `fb-${++seq}`,
-        source: "tg",
+        source: "acme",
         chatId: CHAT_ID,
         sourceMessageId: String(input.messageId ?? BOT_MSG_ID),
         userId: input.userId ?? USER_ID,
@@ -449,7 +449,7 @@ describe("daily incorporation (runSelfImprovement)", () => {
     }
 
     for (const userId of ["100", "200"]) {
-      expect(await getLatestPreference(ctx.db, `tg:user:${userId}`)).toMatchObject({
+      expect(await getLatestPreference(ctx.db, `acme:user:${userId}`)).toMatchObject({
         version: 1,
         likes: "short answers",
         dislikes: "rambling",
@@ -515,7 +515,7 @@ describe("daily incorporation (runSelfImprovement)", () => {
     // The preference fold started from version 1's profile.
     const prefsCall = llm.calls.find((c) => String(c[0].content).includes("factual profile"))!;
     expect(String(prefsCall.at(-1)!.content)).toContain("short answers");
-    expect(await getLatestPreference(ctx.db, `tg:user:${USER_ID}`)).toMatchObject({ version: 2, likes: "brevity" });
+    expect(await getLatestPreference(ctx.db, `acme:user:${USER_ID}`)).toMatchObject({ version: 2, likes: "brevity" });
     expect(await getLatestCorrection(ctx.db)).toMatchObject({ version: 2, correction: "Keep it short." });
   });
 
@@ -549,7 +549,7 @@ describe("daily incorporation (runSelfImprovement)", () => {
     // outputs land in the same tables that read serves from.
     await insertPreference(ctx.db, {
       id: crypto.randomUUID(),
-      userRef: `tg:user:${USER_ID}`,
+      userRef: `acme:user:${USER_ID}`,
       model: "gemma3:12b",
       likes: "short answers",
       dislikes: "emoji walls",
@@ -561,7 +561,7 @@ describe("daily incorporation (runSelfImprovement)", () => {
       correction: "Answer in fewer words.",
       version: 1,
     });
-    expect(await getLatestPreference(ctx.db, `tg:user:${USER_ID}`)).toMatchObject({ likes: "short answers" });
+    expect(await getLatestPreference(ctx.db, `acme:user:${USER_ID}`)).toMatchObject({ likes: "short answers" });
     expect(await getLatestCorrection(ctx.db)).toMatchObject({
       correction: "Answer in fewer words.",
     });
@@ -574,14 +574,14 @@ describe("feedback.recorded consumer", () => {
       v: 1,
       eventId: `evt-${feedback.id}`,
       occurredAt: new Date().toISOString(),
-      correlationId: `tg:chat:${feedback.chatId}:${feedback.sourceMessageId}`,
+      correlationId: `acme:chat:${feedback.chatId}:${feedback.sourceMessageId}`,
       type: "feedback.recorded",
-      source: "tg",
+      source: "acme",
       feedback: {
         id: feedback.id,
-        chatRef: `tg:chat:${feedback.chatId}`,
+        chatRef: `acme:chat:${feedback.chatId}`,
         sourceMessageId: String(feedback.sourceMessageId),
-        userRef: `tg:user:${feedback.userId}`,
+        userRef: `acme:user:${feedback.userId}`,
         reaction: feedback.reaction,
         text: feedback.feedback ?? "",
         topic: feedback.topic,
@@ -685,12 +685,12 @@ describe("addressing report (👎 → \"Wasn't talking to you\")", () => {
         occurredAt: new Date().toISOString(),
         correlationId: `${CHAT_REF}:${BOT_MSG_ID}`,
         type: "feedback.recorded",
-        source: "tg",
+        source: "acme",
         feedback: {
           id: feedback.id,
-          chatRef: `tg:chat:${CHAT_ID}`,
+          chatRef: `acme:chat:${CHAT_ID}`,
           sourceMessageId: String(BOT_MSG_ID),
-          userRef: `tg:user:${USER_ID}`,
+          userRef: `acme:user:${USER_ID}`,
           reaction: "down",
           text: NOT_ADDRESSED_OPTION,
           topic: "addressing",
@@ -716,9 +716,9 @@ describe("addressing report (👎 → \"Wasn't talking to you\")", () => {
       term: "Георгій",
       normalized: "георгій",
       botDisplayName: "Aria",
-      chatRef: `tg:chat:${CHAT_ID}`,
+      chatRef: `acme:chat:${CHAT_ID}`,
       sourceMessageId: String(BOT_MSG_ID),
-      userRef: `tg:user:${USER_ID}`,
+      userRef: `acme:user:${USER_ID}`,
     });
     // The analyzer reads it back as a plain term list.
     expect(await listAddressingExclusionTerms(ctx.db)).toEqual(["Георгій"]);

@@ -18,9 +18,9 @@ import { GRANULARITIES, METRIC_SOURCES, PERIOD_UNITS, SERIES_SECTIONS } from "..
 export const metricsQuerySchema = z.object({
   unit: z.enum(PERIOD_UNITS).default("day"),
   anchor: z.string().trim().min(1).optional(),
-  /** Restrict to one chat (scoped chat ref, `tg:chat:-100…`). */
+  /** Restrict to one chat (scoped chat ref, `acme:chat:42`). */
   chatRef: z.string().trim().min(1).optional(),
-  /** Restrict to one user's own messages (scoped user ref, `tg:user:123`). */
+  /** Restrict to one user's own messages (scoped user ref, `acme:user:123`). */
   userRef: z.string().trim().min(1).optional(),
 });
 

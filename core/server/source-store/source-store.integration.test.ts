@@ -58,7 +58,7 @@ const STORE_MIGRATIONS = fileURLToPath(new URL("../../store/migrations", import.
  * semantics (transport-computed dedupe keys, per-assistant DM scoping), the
  * media describe-then-drop lifecycle with the live-processing hold, the
  * hybrid search and index due-scan, summaries, analytics buckets, and the
- * feedback reopen rule — the behaviors the tg app's store suites proved,
+ * feedback reopen rule — the behaviors the transport-side store suites proved,
  * re-homed with the data (redesign Phase 7).
  */
 
@@ -91,11 +91,11 @@ const GROUP = "-100200";
 const DM = "777";
 
 function groupScope(assistantId: string | null = null): ConversationScope {
-  return { source: "tg", chatId: GROUP, assistantId, direct: false };
+  return { source: "acme", chatId: GROUP, assistantId, direct: false };
 }
 
 function dmScope(assistantId: string | null): ConversationScope {
-  return { source: "tg", chatId: DM, assistantId, direct: true };
+  return { source: "acme", chatId: DM, assistantId, direct: true };
 }
 
 async function seedMessage(input: {
@@ -109,7 +109,7 @@ async function seedMessage(input: {
 }) {
   return appendSourceMessage(
     {
-      source: "tg",
+      source: "acme",
       chatId: input.chatId,
       assistantId: input.assistantId ?? null,
       sourceMessageId: input.sourceMessageId,
@@ -174,7 +174,7 @@ describe("mirror + streams", () => {
   it("bulk-imports into the shared stream, skipping rows that already exist", async () => {
     await seedMessage({ chatId: GROUP, sourceMessageId: "50", content: "already here" });
     const inserted = await appendSourceMessagesBulk(
-      "tg",
+      "acme",
       [
         {
           chatId: GROUP,
@@ -208,12 +208,12 @@ describe("mirror + streams", () => {
 describe("directory + presence", () => {
   it("tracks users, chats, members and assistant presence from activity", async () => {
     await upsertSourceUser(
-      { source: "tg", userId: "42", username: "someone", firstName: "Some", lastName: null },
+      { source: "acme", userId: "42", username: "someone", firstName: "Some", lastName: null },
       db,
     );
     await upsertSourceChatActivity(
       {
-        source: "tg",
+        source: "acme",
         chatId: GROUP,
         title: "The group",
         type: "supergroup",
@@ -222,10 +222,10 @@ describe("directory + presence", () => {
       },
       db,
     );
-    expect(await listChatAssistants("tg", GROUP, db)).toEqual(["anna"]);
+    expect(await listChatAssistants("acme", GROUP, db)).toEqual(["anna"]);
 
     await seedMessage({ chatId: GROUP, sourceMessageId: "1" });
-    const listings = await listSourceChatListings("tg", db);
+    const listings = await listSourceChatListings("acme", db);
     expect(listings).toHaveLength(1);
     expect(listings[0]).toMatchObject({ chatId: GROUP, messageCount: 1, memberCount: 1 });
     expect(listings[0].chat?.title).toBe("The group");
@@ -238,7 +238,7 @@ describe("media lifecycle", () => {
     const stored = await insertSourceMedia(
       {
         id: "media-1",
-        source: "tg",
+        source: "acme",
         chatId: GROUP,
         sourceMessageId: "70",
         kind: "photo",
@@ -254,7 +254,7 @@ describe("media lifecycle", () => {
     expect(stored?.frames).toHaveLength(1);
 
     // The message is settled (processed), so the backfill may claim it.
-    const refs = await listPendingSourceMediaRefs("tg", 10, db);
+    const refs = await listPendingSourceMediaRefs("acme", 10, db);
     expect(refs.map((ref) => ref.id)).toEqual(["media-1"]);
 
     const described = await markSourceMediaDescribed("media-1", "a cat on a chair", db);
@@ -264,14 +264,14 @@ describe("media lifecycle", () => {
     // A concurrent second pass loses.
     expect(await markSourceMediaDescribed("media-1", "something else", db)).toBeNull();
 
-    const reread = await getSourceMediaByMessage("tg", GROUP, "70", db);
+    const reread = await getSourceMediaByMessage("acme", GROUP, "70", db);
     expect(reread?.description).toBe("a cat on a chair");
   });
 
   it("keeps media of a live-held message out of the backfill's reach", async () => {
     await appendSourceMessage(
       {
-        source: "tg",
+        source: "acme",
         chatId: GROUP,
         assistantId: null,
         sourceMessageId: "71",
@@ -288,7 +288,7 @@ describe("media lifecycle", () => {
     await insertSourceMedia(
       {
         id: "media-held",
-        source: "tg",
+        source: "acme",
         chatId: GROUP,
         sourceMessageId: "71",
         kind: "photo",
@@ -300,21 +300,21 @@ describe("media lifecycle", () => {
       },
       db,
     );
-    expect(await listPendingSourceMediaRefs("tg", 10, db)).toEqual([]);
+    expect(await listPendingSourceMediaRefs("acme", 10, db)).toEqual([]);
   });
 });
 
 describe("search index + hybrid search", () => {
   it("scans due messages, indexes them, and finds them three ways", async () => {
     await seedMessage({ chatId: GROUP, sourceMessageId: "80", content: "the quick brown fox" });
-    const due = await listSourceMessagesNeedingIndex(["tg"], 10, db);
+    const due = await listSourceMessagesNeedingIndex(["acme"], 10, db);
     expect(due.map((row) => row.sourceMessageId)).toEqual(["80"]);
-    expect(await countSourceMessagesNeedingIndex(["tg"], db)).toBe(1);
+    expect(await countSourceMessagesNeedingIndex(["acme"], db)).toBe(1);
 
     await upsertSourceMessageIndex(
       [
         {
-          source: "tg",
+          source: "acme",
           chatId: GROUP,
           sourceMessageId: "80",
           content: "the quick brown fox",
@@ -323,13 +323,13 @@ describe("search index + hybrid search", () => {
       ],
       db,
     );
-    expect(await countSourceMessagesNeedingIndex(["tg"], db)).toBe(0);
-    expect(await countEmbeddedSourceMessages({ source: "tg", chatId: GROUP }, db)).toBe(0);
+    expect(await countSourceMessagesNeedingIndex(["acme"], db)).toBe(0);
+    expect(await countEmbeddedSourceMessages({ source: "acme", chatId: GROUP }, db)).toBe(0);
 
     const matches = await searchSourceMessagesHybrid(
       {
-        sources: ["tg"],
-        chat: { source: "tg", chatId: GROUP },
+        sources: ["acme"],
+        chat: { source: "acme", chatId: GROUP },
         queryText: "brown fox",
         queryVector: null,
         limit: 5,
@@ -345,8 +345,8 @@ describe("search index + hybrid search", () => {
     await seedMessage({ chatId: GROUP, sourceMessageId: "91", userId: "77", content: "theirs" });
     const matches = await searchSourceMessagesHybrid(
       {
-        sources: ["tg"],
-        chat: { source: "tg", chatId: GROUP },
+        sources: ["acme"],
+        chat: { source: "acme", chatId: GROUP },
         queryText: "",
         queryVector: null,
         limit: 5,
@@ -361,7 +361,7 @@ describe("search index + hybrid search", () => {
 describe("summaries", () => {
   it("replaces a day's topics idempotently and searches them lexically", async () => {
     const first = await replaceSourceSummariesForDay(
-      { source: "tg", chatId: GROUP },
+      { source: "acme", chatId: GROUP },
       {
         summaryDate: "2026-08-29",
         topics: [{ content: "planning the autumn trip", messageIds: ["1", "2"], embedding: null }],
@@ -370,7 +370,7 @@ describe("summaries", () => {
     );
     expect(first).toHaveLength(1);
     const replaced = await replaceSourceSummariesForDay(
-      { source: "tg", chatId: GROUP },
+      { source: "acme", chatId: GROUP },
       {
         summaryDate: "2026-08-29",
         topics: [
@@ -383,7 +383,7 @@ describe("summaries", () => {
     expect(replaced).toHaveLength(2);
 
     const matches = await searchSourceSummariesHybrid(
-      { source: "tg", chatId: GROUP },
+      { source: "acme", chatId: GROUP },
       { queryText: "autumn trip", queryVector: null, limit: 5 },
       db,
     );
@@ -406,7 +406,7 @@ describe("analytics", () => {
     });
 
     const series = await getSourceMessageSeries(
-      ["tg"],
+      ["acme"],
       {
         fromUtc: new Date("2026-08-29T00:00:00Z"),
         toUtc: new Date("2026-08-30T00:00:00Z"),
@@ -418,7 +418,7 @@ describe("analytics", () => {
     expect(series).toEqual([{ bucket: "2026-08-29", human: 2, bot: 1, activeUsers: 1 }]);
 
     const top = await getSourceTopUsers(
-      ["tg"],
+      ["acme"],
       {
         fromUtc: new Date("2026-08-29T00:00:00Z"),
         toUtc: new Date("2026-08-30T00:00:00Z"),
@@ -426,28 +426,28 @@ describe("analytics", () => {
       },
       db,
     );
-    expect(top).toEqual([{ source: "tg", userId: "42", messages: 2 }]);
+    expect(top).toEqual([{ source: "acme", userId: "42", messages: 2 }]);
 
-    const days = await listSourceChatDayCounts(["tg"], { timeZone: "UTC", before: "2026-09-01" }, db);
-    expect(days).toEqual([{ source: "tg", chatId: GROUP, date: "2026-08-29", messageCount: 3 }]);
+    const days = await listSourceChatDayCounts(["acme"], { timeZone: "UTC", before: "2026-09-01" }, db);
+    expect(days).toEqual([{ source: "acme", chatId: GROUP, date: "2026-08-29", messageCount: 3 }]);
   });
 });
 
 describe("feedbacks", () => {
   it("runs the collect lifecycle and reopens on a repeat reaction", async () => {
     await upsertSourceUser(
-      { source: "tg", userId: "42", username: null, firstName: null, lastName: null },
+      { source: "acme", userId: "42", username: null, firstName: null, lastName: null },
       db,
     );
     const created = await upsertSourceFeedback(
-      { id: "fb-1", source: "tg", chatId: GROUP, sourceMessageId: "200", userId: "42", reaction: "up" },
+      { id: "fb-1", source: "acme", chatId: GROUP, sourceMessageId: "200", userId: "42", reaction: "up" },
       db,
     );
     expect(created).toMatchObject({ status: "pending", reaction: "up" });
 
     await setSourceFeedbackMenuMessage("fb-1", "300", db);
     await markSourceFeedbackAwaitingText("fb-1", db);
-    const awaiting = await findAwaitingSourceFeedbackByMenu("tg", GROUP, "300", "42", db);
+    const awaiting = await findAwaitingSourceFeedbackByMenu("acme", GROUP, "300", "42", db);
     expect(awaiting?.id).toBe("fb-1");
 
     const completed = await completeSourceFeedback("fb-1", "great memory recall", "quality", db);
@@ -458,7 +458,7 @@ describe("feedbacks", () => {
     const reopened = await upsertSourceFeedback(
       {
         id: "fb-ignored",
-        source: "tg",
+        source: "acme",
         chatId: GROUP,
         sourceMessageId: "200",
         userId: "42",

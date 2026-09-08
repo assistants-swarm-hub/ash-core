@@ -86,7 +86,7 @@ describe("ingestSourceTrace", () => {
 
 describe("ingestSourceTrace — assistant scoping", () => {
   it("carries the source's assistant onto the stored trace, so Debug can filter it", async () => {
-    // tg stamps the connection's assistant on inbound / delivery / feedback
+    // a transport stamps the connection's assistant on inbound / delivery / feedback
     // traces; the cross-app flow must stay filterable by whose bot it was.
     ingestSourceTrace(sourceTrace({ assistantId: "assistant-a" }));
     ingestSourceTrace(sourceTrace({ assistantId: "assistant-b", trigger: { kind: "transport" } }));

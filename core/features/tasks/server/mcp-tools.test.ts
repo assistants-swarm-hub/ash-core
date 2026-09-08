@@ -40,8 +40,8 @@ function task(over: Partial<Task> = {}): Task {
   return {
     id: "11111111-2222-3333-4444-555555555555",
     chatId: "100",
-    chatRef: "tg:chat:100",
-    chatSource: "tg",
+    chatRef: "acme:chat:100",
+    chatSource: "acme",
     threadId: null,
     createdByUserId: "100",
     createdByOwner: false,
@@ -101,7 +101,7 @@ describe("trace correlation", () => {
       task: task({ triggerKind: "schedule", runDate: "2026-08-18", timeOfDay: "09:00" }),
     });
 
-    await runWithToolContext({ source: "tg", chatId: "100", assistantId: "assistant-1", userId: "77", correlationId: "tg:chat:100:41" }, () =>
+    await runWithToolContext({ source: "acme", chatId: "100", assistantId: "assistant-1", userId: "77", correlationId: "acme:chat:100:41" }, () =>
       tools()[TASKS_CREATE_TOOL].handler({
         instruction: "Remind about the contract.",
         trigger: "schedule",
@@ -119,8 +119,8 @@ describe("trace correlation", () => {
       expect.anything(),
       expect.objectContaining({
         kind: "transport",
-        actor: "tg:user:77",
-        correlationId: "tg:chat:100:41",
+        actor: "acme:user:77",
+        correlationId: "acme:chat:100:41",
       }),
     );
   });
@@ -130,11 +130,11 @@ describe("reads go through the chat-visible service", () => {
   it("lists what the chat may see, and says so plainly when that is nothing", async () => {
     service.getChatVisibleTasks.mockResolvedValue([]);
 
-    const result = await runWithToolContext({ source: "tg", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
+    const result = await runWithToolContext({ source: "acme", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
       tools()[TASKS_LIST_TOOL].handler({}),
     );
 
-    expect(service.getChatVisibleTasks).toHaveBeenCalledWith("assistant-1", "tg", "100");
+    expect(service.getChatVisibleTasks).toHaveBeenCalledWith("assistant-1", "acme", "100");
     expect(result.content[0].text).toMatch(/no tasks are set for this chat/i);
     expect(result.structuredContent).toMatchObject({ ok: true, count: 0 });
   });
@@ -142,7 +142,7 @@ describe("reads go through the chat-visible service", () => {
   it("never reports a task as disabled — a listed task is one it can act on", async () => {
     service.getChatVisibleTasks.mockResolvedValue([task()]);
 
-    const result = await runWithToolContext({ source: "tg", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
+    const result = await runWithToolContext({ source: "acme", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
       tools()[TASKS_LIST_TOOL].handler({}),
     );
 
@@ -157,14 +157,14 @@ describe("reads go through the chat-visible service", () => {
     service.getChatVisibleTask.mockResolvedValue(null);
     service.getChatVisibleTasks.mockResolvedValue([visible]);
 
-    const result = await runWithToolContext({ source: "tg", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
+    const result = await runWithToolContext({ source: "acme", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
       tools()[TASKS_GET_TOOL].handler({ id: "99999999-2222-3333-4444-555555555555" }),
     );
 
     expect(service.getChatVisibleTask).toHaveBeenCalledWith(
       "99999999-2222-3333-4444-555555555555",
       "assistant-1",
-      "tg",
+      "acme",
       "100",
     );
     expect(result.isError).toBe(true);
@@ -184,7 +184,7 @@ describe("no pausing from a chat", () => {
   it("sends no enabled flag to the service, whatever else it was handed", async () => {
     service.updateTaskFromChat.mockResolvedValue({ status: "updated", task: task() });
 
-    await runWithToolContext({ source: "tg", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
+    await runWithToolContext({ source: "acme", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
       tools()[TASKS_UPDATE_TOOL].handler({
         id: task().id,
         instruction: "Answer very briefly.",
@@ -207,7 +207,7 @@ describe("no pausing from a chat", () => {
   });
 
   it("points at deletion when a change would have been a pause and nothing else", async () => {
-    const result = await runWithToolContext({ source: "tg", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
+    const result = await runWithToolContext({ source: "acme", chatId: "100", assistantId: "assistant-1", userId: "100" }, () =>
       tools()[TASKS_UPDATE_TOOL].handler({
         id: task().id,
         instruction: "",

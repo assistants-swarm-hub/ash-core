@@ -9,7 +9,7 @@
  * (Settings → Test embeddings) rather than trusted.
  *
  * Lives in contracts because it is a cross-app data commitment: the core
- * store's memory vectors and the tg store's message-search vectors must agree
+ * store's memory vectors and the conversation store's message-search vectors must agree
  * with the embeddings client that fills them.
  */
 export const EMBEDDING_DIMENSIONS = 1024;

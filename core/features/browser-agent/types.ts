@@ -91,7 +91,7 @@ export interface EngineStat {
 export interface BrowserAgentRun {
   id: string;
   /** Chat the run reports to, or null for a dashboard-started run. */
-  /** Scoped ref of the chat the run reports to (`tg:chat:-100…`), or null (dashboard). */
+  /** Scoped ref of the chat the run reports to (`acme:chat:42`), or null (dashboard). */
   chatRef: string | null;
   /** Source-local forum-topic thread, or null (chat root) — the platform's own id. */
   threadId: string | null;

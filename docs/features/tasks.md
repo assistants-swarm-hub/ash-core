@@ -277,7 +277,7 @@ toggle and its `PATCH /api/tasks/[id]`. Two consequences follow:
 `TASKS_TOOL_NAMES` holds exactly these five. The delivery tools a task-driven
 turn speaks through — `reply_to_message` on a `message`-triggered turn,
 `send_message` on a timed fire — and the reaction tool are the owning
-source's own (`tg__…` on Telegram turns, `chat_…` in the web chat); see
+source's own (`<source>__…` on a transport's turns, `chat_…` in the web chat); see
 [Bot messaging](bot-messaging.md#delivery).
 
 `tasks_create`'s description is long by design and pinned in tests: it carries
@@ -311,7 +311,7 @@ standing-tasks block (null sender), and the chat identity context — the group
 roster (names, @usernames, user ids) or the DM partner — and runs with the
 task's chat bound as the tool context. The identity context is what lets a fire
 address its target by their exact `@username`: a bare name or alias notifies
-nobody on Telegram (operator report, 2026-08-18 — a reminder greeted its target
+nobody on the platform (operator report, 2026-08-18 — a reminder greeted its target
 by a nickname and was never seen), so the fire directive requires an @username
 mention for person-directed messages, falling back to the name only when none
 is listed. Job card on `/tasks` and `/jobs`; "Run due now" via
@@ -347,7 +347,7 @@ One table, `tasks`, created with the v2 store's first migration (`0000`); the
 v1 `chat_rules` + `scheduled_tasks` split was cut cleanly when the two merged
 (user decision 2026-08-13) and never entered this store. Chats and people are
 scoped refs (`chat_ref`, `created_by_user_ref`, `target_user_refs`);
-`thread_id` stays a source-local delivery detail (a forum topic on Telegram). A
+`thread_id` stays a source-local delivery detail (a forum topic, say). A
 task's chat ref names its transport (`chatSource` on the record), and a timed
 fire binds its tool context to that transport, so the fire's `send_message` is
 the chat's own. See

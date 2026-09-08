@@ -120,7 +120,7 @@ describe("mapCsvRows", () => {
   it("coerces a mapped row into a persistable record", () => {
     const table = parseCsv(
       "chat,mid,who,body,when,uid,replyto\n" +
-        "tg:chat:-100,7,human,hello,2026-07-14T10:00:00.000Z,42,3\n",
+        "acme:chat:-100,7,human,hello,2026-07-14T10:00:00.000Z,42,3\n",
     );
     const { rows, errors } = mapCsvRows(
       table,
@@ -137,7 +137,7 @@ describe("mapCsvRows", () => {
     expect(errors).toEqual([]);
     expect(rows).toEqual([
       {
-        chatRef: "tg:chat:-100",
+        chatRef: "acme:chat:-100",
         sourceMessageId: "7",
         role: "user",
         userId: "42",
@@ -153,8 +153,8 @@ describe("mapCsvRows", () => {
   it("accepts Unix timestamps (seconds and milliseconds)", () => {
     const table = parseCsv(
       "chat_ref,source_message_id,role,content,sent_at\n" +
-        "tg:chat:5,1,user,a,1768392000\n" +
-        "tg:chat:5,2,user,b,1768392000000\n",
+        "acme:chat:5,1,user,a,1768392000\n" +
+        "acme:chat:5,2,user,b,1768392000000\n",
     );
     const { rows, errors } = mapCsvRows(table, IDENTITY_MAPPING);
     expect(errors).toEqual([]);
@@ -164,7 +164,7 @@ describe("mapCsvRows", () => {
   it("nulls the sender on assistant rows", () => {
     const table = parseCsv(
       "chat_ref,source_message_id,role,content,sent_at,user_id\n" +
-        "tg:chat:5,1,bot,hi,2026-07-14T10:00:00Z,99\n",
+        "acme:chat:5,1,bot,hi,2026-07-14T10:00:00Z,99\n",
     );
     const { rows } = mapCsvRows(table, IDENTITY_MAPPING);
     expect(rows[0]).toMatchObject({ role: "assistant", userId: null });
@@ -173,11 +173,11 @@ describe("mapCsvRows", () => {
   it("reports bad rows per line without dropping the good ones", () => {
     const table = parseCsv(
       "chat_ref,source_message_id,role,content,sent_at\n" +
-        "tg:chat:5,1,user,ok,2026-07-14T10:00:00Z\n" +
+        "acme:chat:5,1,user,ok,2026-07-14T10:00:00Z\n" +
         ",2,user,no chat,2026-07-14T10:00:00Z\n" +
-        "tg:chat:5,abc,user,bad id,2026-07-14T10:00:00Z\n" +
-        "tg:chat:5,4,ghost,bad role,2026-07-14T10:00:00Z\n" +
-        "tg:chat:5,5,user,bad date,not-a-date\n",
+        "acme:chat:5,abc,user,bad id,2026-07-14T10:00:00Z\n" +
+        "acme:chat:5,4,ghost,bad role,2026-07-14T10:00:00Z\n" +
+        "acme:chat:5,5,user,bad date,not-a-date\n",
     );
     const { rows, errors } = mapCsvRows(table, IDENTITY_MAPPING);
     expect(rows).toHaveLength(1);
@@ -210,7 +210,7 @@ describe("mapCsvRows with fixed values", () => {
   const table = parseCsv("mid,body,when\n1,first,2026-07-14T10:00:00Z\n2,second,2026-07-14T10:01:00Z\n");
   const mapping: ColumnMapping = {
     ...columns({ source_message_id: "mid", content: "body", sent_at: "when" }),
-    chat_ref: fromConstant("tg:chat:-1001234567890"),
+    chat_ref: fromConstant("acme:chat:-1001234567890"),
     role: fromConstant("human"),
     user_id: fromConstant("900"),
   };
@@ -224,7 +224,7 @@ describe("mapCsvRows with fixed values", () => {
     });
     expect(rows).toEqual([
       {
-        chatRef: "tg:chat:-1001234567890",
+        chatRef: "acme:chat:-1001234567890",
         sourceMessageId: "1",
         role: "user",
         userId: "900",
@@ -235,7 +235,7 @@ describe("mapCsvRows with fixed values", () => {
         deletedAt: null,
       },
       {
-        chatRef: "tg:chat:-1001234567890",
+        chatRef: "acme:chat:-1001234567890",
         sourceMessageId: "2",
         role: "user",
         userId: "900",
@@ -291,7 +291,7 @@ describe("rowsToCsv", () => {
   it("emits the canonical header and round-trips back through mapCsvRows", () => {
     const csv = rowsToCsv([
       {
-        chatRef: "tg:chat:-1001",
+        chatRef: "acme:chat:-1001",
         sourceMessageId: "12",
         role: "assistant",
         userId: null,
@@ -308,7 +308,7 @@ describe("rowsToCsv", () => {
     const { rows, errors } = mapCsvRows(table, guessMapping(table.headers));
     expect(errors).toEqual([]);
     expect(rows[0]).toEqual({
-      chatRef: "tg:chat:-1001",
+      chatRef: "acme:chat:-1001",
       sourceMessageId: "12",
       role: "assistant",
       userId: null,

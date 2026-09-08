@@ -39,7 +39,7 @@ import {
 /**
  * ONE database since the Phase 10 cutover: tasks, settings (timezone), and
  * the roster the audience checks read (`source_chats` / `source_chat_members`,
- * `source = 'tg'`) all live in the core store. The env-bound readers reach it
+ * `source = 'acme'`) all live in the core store. The env-bound readers reach it
  * through the process-global store pool, so the suite points
  * DATABASE_URL at the container.
  */
@@ -73,7 +73,7 @@ const trigger = { kind: "dashboard" } as const;
 const chatTrigger = { kind: "transport", actor: "100", correlationId: "100" } as const;
 
 /** The fixture transport every id below is scoped to. */
-const SOURCE = "tg" as const;
+const SOURCE = "acme" as const;
 /** A group chat (its directory row is seeded in `beforeEach`) and DM ids (equal to the user id). */
 const GROUP = "-1001";
 const DM_USER = "100";

@@ -60,7 +60,7 @@ beforeEach(async () => {
 
 const trigger = { kind: "dashboard" } as const;
 const CHAT = "-1001";
-const CHAT_REF = `tg:chat:${CHAT}`;
+const CHAT_REF = `acme:chat:${CHAT}`;
 const ASSISTANT = "assistant-1";
 
 /**

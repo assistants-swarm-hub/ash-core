@@ -4,9 +4,9 @@ import { z } from "zod";
  * Scoped entity refs — how one app points at another app's entity without a
  * foreign key into its database (PLAN.md, "Data ownership").
  *
- * A ref is `source:kind:id`, e.g. `tg:user:12345`, `tg:chat:-100987`,
+ * A ref is `source:kind:id`, e.g. `acme:user:12345`, `acme:chat:987`,
  * `chat:thread:e1f2...`. The `id` is the owning app's own key, verbatim —
- * whatever that app uses (numeric Telegram ids as strings, app-generated
+ * whatever that app uses (a platform's numeric ids as strings, app-generated
  * UUIDs). Memory, tasks, traces and person links store these strings; only
  * the owning app ever resolves one against its database.
  */

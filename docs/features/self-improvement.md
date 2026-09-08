@@ -30,7 +30,7 @@ platform-shaped, the core owns the rows and the state machine
 
 | Step | Where | What |
 | --- | --- | --- |
-| Someone adds 👍/👎 to a message | The transport (`ash-transport-telegram`) | Maps its platform's reactions to `up` / `down` — a freshly **added** 👍/👎; removals and other emoji are ignored — and forwards `transport.reaction` once per group |
+| Someone adds 👍/👎 to a message | The transport | Maps its platform's reactions to `up` / `down` — a freshly **added** 👍/👎; removals and other emoji are ignored — and forwards `transport.reaction` once per group |
 | Open the row, post the menu | Core: the ingest (`server/ingest/consumer.ts`) → `processReactionUpdate` | Checks the mirror for a bot reply, upserts `source_feedbacks`, builds the keyboard and posts it through `POST /internal/chats/:chatId/menu?assistantId=` on the receiving connection's bot; the menu's id lands in `menu_message_id`. Traced as `self-improvement` / `collect-feedback`, on the reacted reply's correlation |
 | A button press | The transport → `POST /api/internal/transports/callback` → `processCallbackPress` | The one transport update that is a synchronous request/response (internal token): the platform's spinner wants a toast only the flow's outcome can word. The core records the option, rewrites or removes the menu through the transport's `PATCH` / `DELETE …/menu/:messageId`, and answers `{ toast }` |
 | "Other" | Core | The row goes `awaiting_text`; the next message from the reactor that **replies to the menu** is captured by the ingest (`captureFeedbackReply`) as the free-text answer — mirrored, but it never opens a turn |
@@ -39,14 +39,14 @@ platform-shaped, the core owns the rows and the state machine
 The transport's menu operations sit behind the `CollectTransport` interface,
 so the flows run unchanged against a fake — no platform needed.
 
-**Telegram constraint:** `message_reaction` updates arrive out of the box in private
+**Platform constraint (typical):** reaction updates arrive out of the box in private
 chats, but in groups **only when the bot is an administrator**. Listing them in the
 poller's `allowed_updates` is the transport's job. The web chat has no reactions:
 `collectTransport("chat")` is null and nothing here runs for it — a platform
 without the affordance simply never publishes `transport.reaction`.
 
 The menu is group-visible but answerable by **one** user only: the person who
-reacted. Anyone else gets a toast (user decision — a Telegram group message cannot be
+reacted. Anyone else gets a toast (user decision — a group message cannot be
 shown to a single member). Every outcome is answered with a toast rather than a
 message, because an answered menu deletes itself, so the popup is all the
 acknowledgement the chat gets.

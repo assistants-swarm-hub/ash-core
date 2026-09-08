@@ -18,7 +18,7 @@ export { sourceIdSchema };
  *   in its store and performs the send.
  * - **Turn lifecycle**: the core publishes {@link turnLifecycleEventSchema}
  *   (accepted / progress / settled); the owning source renders it natively
- *   (Telegram typing indicator, web thread progress).
+ *   (a transport's typing indicator, web thread progress).
  *
  * Versioned via `v` so shapes can evolve during the split without silent
  * drift; every event carries the `correlationId` that ties a turn's
@@ -110,7 +110,7 @@ export const chatInfoSchema = z.object({
    * starts as "New chat") and it would like the conversation named from what
    * is actually said in it. The core names it once, after the first exchange,
    * through the source's own `setChatTitle` — a source that has real names
-   * for its conversations, as Telegram does, never sets this.
+   * for its conversations, as most platforms do, never sets this.
    */
   titleProvisional: z.boolean().optional(),
 });
@@ -178,7 +178,7 @@ export const connectionIdentitySchema = z.object({
 
 /**
  * The DETERMINISTIC addressing verdict, computed by the source — it reads
- * the source's wire format (Telegram entities, mentions, commands, reply
+ * the source's wire format (entities, mentions, commands, reply
  * targets), which never crosses the contract. `needsAnalyzer` hands the
  * genuinely ambiguous case (the name in another alphabet or an inflected
  * form) to the core's LLM analyzer; the core never re-runs the
@@ -209,7 +209,7 @@ export const inboundMessageEventSchema = eventEnvelopeSchema.extend({
   sender: senderInfoSchema,
   /**
    * Set when the message was authored by ANOTHER assistant and cross-fed by
-   * the source: Telegram never delivers a bot's messages to other bots, so
+   * the source: a platform never delivers a bot's messages to other bots, so
    * without this the assistants sharing a group can never hear each other
    * (PLAN "Shared-chat behavior"). `sender` then describes the authoring
    * bot's ACCOUNT — the core resolves the speaking assistant's own name
@@ -221,7 +221,7 @@ export const inboundMessageEventSchema = eventEnvelopeSchema.extend({
     sourceMessageId: z.string().min(1),
     content: z.string(),
     sentAt: z.string().min(1),
-    /** Source-local sub-thread (telegram forum topic), or null. */
+    /** Source-local sub-thread (a forum topic, say), or null. */
     threadId: z.string().nullable().optional(),
     replyTo: replyTargetSchema.nullable().optional(),
     /** Media on this message (and none elsewhere — history carries notes). */
@@ -289,7 +289,7 @@ export const turnLifecycleEventSchema = eventEnvelopeSchema.extend({
 
 /**
  * One piece of user feedback on an assistant reply, completed through the
- * owning source's collection flow (tg: 👍/👎 reaction → options menu →
+ * owning source's collection flow (a transport: 👍/👎 reaction → options menu →
  * answer). The raw rows live in the source's store (user decision,
  * 2026-08-22 — conversation-derived content); this event is how the core's
  * learning jobs (reflection, preference/correction folding, addressing
@@ -345,7 +345,7 @@ export type InboundMessageEvent = z.infer<typeof inboundMessageEventSchema>;
 /**
  * `assistant.deleted` — the core removed an assistant (PLAN "Entity
  * lifecycle across apps"): every source app drops what it keys on that
- * assistant id (tg stops the poller and deletes the connection row).
+ * assistant id (a transport stops the connection and deletes its row).
  * Published by the core, so it carries no source id.
  */
 export const assistantDeletedEventSchema = eventEnvelopeSchema.extend({
@@ -372,8 +372,8 @@ export type TurnLifecycleEvent = z.infer<typeof turnLifecycleEventSchema>;
  * local half alone would file both chats' turns under one correlation (and
  * make the analytics chat filter, which matches on this prefix, count the
  * other platform's traffic). Source-local ids are not unique on their own
- * either way — a Telegram DM's chat id is the peer's user id and its message
- * ids are numbered per bot.
+ * either way — on some platforms a DM's chat id is the peer's user id and its
+ * message ids are numbered per bot.
  *
  * Omit `assistantId` for work that belongs to the MESSAGE rather than to one
  * assistant's turn (a vision describe, a feedback reflection): the shorter id
@@ -395,8 +395,8 @@ export function turnCorrelationId(
  * Phase 7): the owning transport computes it, the core's conversation store
  * enforces uniqueness on `(source, dedupe_key)` and never has to know a
  * platform's stream rules. Pass `assistantId` when the message belongs to
- * ONE assistant's stream (telegram DM rows — message ids are per bot there);
- * omit it for a shared stream (a telegram group, which every poller mirrors
+ * ONE assistant's stream (DM rows on a platform that numbers message ids per bot);
+ * omit it for a shared stream (a group, which every connection mirrors
  * idempotently).
  */
 export function messageDedupeKey(input: {

@@ -17,8 +17,8 @@ import { appendTraceEvent, createTrace, settleTrace } from "./store";
  * open→events→settle lifecycle in one go: it lands in the pending-flush
  * buffer exactly like a locally recorded trace, with the source's own
  * timestamps preserved on every line. Its correlation id is whatever the
- * source stamped, which is how a turn's cross-app flow (tg inbound → core
- * reply → tg delivery) groups under one correlation filter.
+ * source stamped, which is how a turn's cross-app flow (transport inbound → core
+ * reply → transport delivery) groups under one correlation filter.
  */
 export function ingestSourceTrace(trace: SourceTrace): void {
   const id = randomUUID();

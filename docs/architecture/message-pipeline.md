@@ -2,20 +2,20 @@
 
 How one incoming message becomes a reply. This is the runtime's hot path and the
 thing most operator questions are really about. The walk-through follows a
-Telegram message, because that is the transport that exists; the web chat joins
-the same pipeline at Stage 2 with its own in-process source side.
+message arriving through a transport; the web chat joins the same pipeline at
+Stage 2 with its own in-process source side.
 
 Paths are relative to `core/` unless they start with `core/` or `packages/`.
 
 ## The seam
 
-Since the source split the core runs **no** Telegram code. The transport
-(`ash-transport-telegram`) is only an event **source** (it forwards every update as a
-normalized event) and a **sink** (it performs sends and shows typing).
+Since the source split the core runs **no** platform code. A transport is only
+an event **source** (it forwards every update as a normalized event) and a
+**sink** (it performs sends and shows typing).
 Everything between is transport-agnostic and runs in the core:
 
 ```
-Telegram update ─► the transport ─► queue `transport-updates` ─► server/ingest/consumer.ts
+platform update ─► the transport ─► queue `transport-updates` ─► server/ingest/consumer.ts
                                                                     │  one `message.inbound` per assistant
                                                                     ▼
                                                           queue `inbound-messages`
@@ -33,46 +33,38 @@ web thread message ─► features/web-chat (in-process) ───────�
                                                └─► the transport sends, shows typing, reports `message.delivered`
 ```
 
-The exact same core code runs with no Telegram at all: the ingest's integration
+The exact same core code runs with no transport at all: the ingest's integration
 suite feeds transport events straight into `processTransportUpdate`, and the
 turn consumer's suite drives `handleInboundJob` with stubbed LLM collaborators
 (see [Testing](../development/testing.md)). The contract every event follows is
 in `packages/contracts` and documented in
 [Adding a transport](../development/adding-a-transport.md).
 
-## Stage 0 — the Telegram edge (`ash-transport-telegram`)
+## Stage 0 — the transport edge
 
-- Long polling via `@grammyjs/runner`, one poller per enabled assistant
-  connection, started by the transport's own boot from the desired state the
-  core answers at registration (`ash-transport-telegram/src/bot-manager.ts`).
-- Updates are processed **concurrently across chats**, with `sequentialize`
-  keeping each chat strictly in order (user decision, 2026-07-20).
-- `allowed_updates`: `message`, `edited_message`, `message_reaction`,
-  `callback_query`. `message_reaction` is opt-in, and in groups Telegram only
-  delivers it when the bot is an administrator.
-- Telegram permits exactly one `getUpdates` consumer per token, so a token
-  change restarts its poller and nothing else; start is idempotent.
+The transport's side, which the core never sees and this repository does not
+contain. The SDK runtime (`packages/transport-sdk`) owns the shape:
+
+- One platform connection per enabled assistant connection, started by the
+  transport's own boot from the desired state the core answers at registration
+  and reconciled on every `transport.config.changed` event.
+- Updates are processed **concurrently across chats**, in order within each
+  chat (user decision, 2026-07-20).
+- Which platform updates are subscribed to, and what a platform only delivers
+  under some condition (reactions in groups, say), is the transport's concern
+  and documented in its own repository.
+- A token change restarts its connection and nothing else; start is idempotent.
 
 ### Losing the connection
 
-Long polling dies whenever the network does, so the manager supervises it
-(rewritten 2026-08-01 after an outage the bot never came back from):
-
-- The runner's own fetch retrying is capped at a **30-second window** instead of
-  its default 15 hours of uncapped doubling backoff. Left at the default, a
-  multi-hour outage scheduled the next attempt hours out, so the bot stayed dead
-  long after the link came back.
-- Once the runner gives up, the manager reconnects **every 15s on a flat
-  interval** for as long as the failure is a network one (grammy's `HttpError`,
-  plus a handshake that outran its 20s deadline). A `GrammyError` — Telegram
-  answered and refused, e.g. a revoked token or a second poller — settles as a
-  plain error instead, since retrying that only makes noise.
-- Status while down is `error`, with `reconnecting automatically` on the message
-  so the assistant editor says which kind it is. Logging is edge-triggered: one
-  line going down, one coming back, however long the outage runs.
-- **Stop always answers.** `runner.stop()` aborts synchronously but its promise
-  cannot settle while the fetch loop sleeps in a backoff, so the manager detaches
-  after 3s rather than holding the reconcile open.
+A platform session dies whenever the network does, so the runtime supervises
+it: a still-desired connection whose adapter reports an error is restarted on a
+flat 15 s interval for as long as the core keeps asking for it, and stops the
+moment the core does not. What counts as a network failure versus a refusal
+(a revoked token, a second session on the same token) is the adapter's to
+say; a refusal settles as a plain error, since retrying it only makes noise.
+Status while down is `error`, with `reconnecting automatically` on the message
+so the assistant editor says which kind it is.
 
 ### Four update kinds, five events
 
@@ -131,7 +123,7 @@ opened at least one turn, so plain group chatter leaves nothing in Debug.
 a group, **cross-feed** it: every other assistant present gets its own
 `message.inbound` turn for the delivered text, marked `authoredByAssistantId`,
 with a structural verdict (an answer to its own message, or its @username in
-the text) and otherwise undecided. Telegram never delivers a bot's messages to
+the text) and otherwise undecided. A platform never delivers a bot's messages to
 other bots, so without this two assistants sharing a group could never hear each
 other.
 
@@ -172,7 +164,7 @@ cannot:
 Two halves, in two processes, and no trace is opened for a message the cheap
 checks reject.
 
-**Structural** (`ash-transport-telegram/src/addressing.ts` — pure, reads the wire shape):
+**Structural** (the transport's addressing rule — pure, reads the wire shape):
 
 | Chat type | Addressed when |
 | --- | --- |
@@ -354,13 +346,11 @@ verbatim.
    whole answer as the model's **raw** Markdown, the message it answers, and
    the mirror-checked whitelist of `#<id>` citations that may become links.
    It knows no platform's cap: the transport cuts a long answer at natural
-   boundaries under Telegram's hard 4096-character limit
-   (`ash-transport-telegram/src/split.ts`), sends the parts in order, and reports each as
-   its own `message.delivered`. It renders each part at its boundary —
-   Telegram converts to its small HTML tag set by construction
-   (`ash-transport-telegram/src/telegram-html.ts`) and falls back to a plain text send if
-   Telegram still rejects the markup. History, traces and the pipeline all
-   keep the raw text.
+   boundaries under its platform's cap (the SDK's `splitMessage`), sends the
+   parts in order, and reports each as its own `message.delivered`. It renders
+   each part at its boundary — into whatever markup its platform accepts — and
+   falls back to a plain text send if the platform still rejects it. History,
+   traces and the pipeline all keep the raw text.
 2. **Voice reply**, when a speech endpoint is configured and the turn was a
    voice note: the core synthesizes MP3, transcodes to OGG/Opus, and sends the
    bytes through the transport's internal API (`POST /internal/chats/:chatId/voice`),
@@ -404,7 +394,7 @@ id, `<chatId>:<messageId>:<assistantId>`:
    language directive, then the LLM request, each tool call, the LLM response,
    and the output.
 3. `deliver` (the transport, recorded through the bus): the send, with the
-   message id Telegram assigned and whether it attached the requested reply
+   message id the platform assigned and whether it attached the requested reply
    target.
 
 The `addressing check` event carries `matchedText` — the word that summoned the

@@ -150,14 +150,14 @@ the same human (person links — see
 [users and groups](known-users-and-groups.md)). Both the injected context and
 the `memory_get` / `memory_search` tools resolve that way (`resolveLinkedRefs`),
 so a fact learned from someone's
-telegram account is theirs when they reach the bot by any other identity; two
+chat account is theirs when they reach the bot by any other identity; two
 linked identities present in one group are one person in the prompt, named
 once by the identity actually there.
 
 Reads only. A fact is still stored under the identity that was named, and
 consolidation still merges per identity — links do not rewrite what is stored,
 they decide whose documents a read collects. Memory documents and person links
-live side by side in the one core store, keyed by scoped refs (`tg:user:123`,
+live side by side in the one core store, keyed by scoped refs (`acme:user:123`,
 `chat:user:<accountId>` — an account's own web identity). An account reads and
 deletes the documents under its own identities on `/profile`
 ([Accounts](accounts.md)).

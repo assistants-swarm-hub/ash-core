@@ -10,7 +10,7 @@ import { sourceMessageSearch, sourceSummaries, type SourceSummaryRow } from "../
 /**
  * The content plane over the conversation store — hybrid search, the message
  * search index, daily topic summaries, and message-volume analytics. The
- * former tg-app `content/*` modules, source-parameterized: the SQL runs
+ * former first transport's `content/*` modules, source-parameterized: the SQL runs
  * beside the data and its indexes; callers supply query text and embedding
  * vectors — models never run here.
  *

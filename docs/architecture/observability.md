@@ -19,7 +19,7 @@ its own trace shape; add an event type here instead.
 | `feature` | Must be a registered id from `lib/features.ts` |
 | `action` | e.g. `reply`, `summarize`, `test-connection`, or the tool name |
 | `status` | `pending` \| `running` \| `success` \| `error` \| `skipped` |
-| `trigger` | `{ kind, actor?, correlationId? }` — `kind` is `transport` \| `chat` \| `dashboard` \| `cron` \| `system` \| `api` \| `test` (`telegram` is what rows recorded before 2026-09-02 carry). `actor` is a **scoped ref** for anything a person or a chat did (`tg:user:100`), so the Debug facet and the analytics user filter mean one identity and not one number two platforms both hand out |
+| `trigger` | `{ kind, actor?, correlationId? }` — `kind` is `transport` \| `chat` \| `dashboard` \| `cron` \| `system` \| `api` \| `test`. `actor` is a **scoped ref** for anything a person or a chat did (`acme:user:100`), so the Debug facet and the analytics user filter mean one identity and not one number two platforms both hand out |
 | `startedAt`, `finishedAt` | |
 | `inputSummary`, `outputSummary` | Short human summaries |
 | `error` | `{ code?, message }` when `status = 'error'` |
@@ -139,7 +139,7 @@ the cell (`/debug?assistantId=…`). It is stamped where the turn knows it:
 | Trace | Assistant |
 | --- | --- |
 | A reply turn (core) | The inbound event's — the assistant whose bot received the message |
-| Its source-side halves (tg `inbound`, `deliver`, feedback collection) | The receiving connection's, carried across apps on the `trace.recorded` event |
+| Its source-side halves (a transport's `inbound`, `deliver`, feedback collection) | The receiving connection's, carried across apps on the `trace.recorded` event |
 | A timed task fire | The task's own — a fire runs *as* its assistant |
 | Creating, editing or deleting an assistant | The assistant in question |
 
@@ -360,7 +360,7 @@ deliberately tiny, a notification rather than a payload. Topics: `traces`,
 `memory`, `analytics`, `browser`, `assistants`, `threads`, `tools`, `accounts`.
 
 A transport pings the hub through the bus: a `dashboard.refresh` event naming
-topics (the tg app sends `status` on every poller state change). The events
+topics (a transport sends `status` on every connection state change). The events
 consumer re-publishes only names this dashboard actually serves.
 
 ### One connection per tab

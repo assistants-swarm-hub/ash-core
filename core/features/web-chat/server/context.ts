@@ -20,8 +20,8 @@ import { getChatUserById, getMessagesSince } from "./repository";
  * tables and carried on the inbound event, exactly as the chat app did
  * before the dissolve. The pipeline composes prompts from this.
  *
- * A thread is simpler than a Telegram chat by construction: one human, one
- * assistant, one stream. The window semantics still match tg's so the same
+ * A thread is simpler than a platform chat by construction: one human, one
+ * assistant, one stream. The window semantics still match a transport's so the same
  * pipeline reads both the same way — last 24 hours, insertion order,
  * deleted rows and the current turn excluded.
  */

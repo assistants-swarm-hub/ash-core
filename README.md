@@ -1,14 +1,13 @@
 # ash-core
 
 The core of **assistants-swarm-hub**, a multi-user assistant platform: accounts
-run their own AI assistants — personas, Telegram bots, standing tasks, tools —
+run their own AI assistants — personas, chat bots, standing tasks, tools —
 on one shared brain (an OpenAI-compatible chat completions API, or a native
 Anthropic, Google or Z.ai backend), with a web chat and a control/observability
 dashboard. This repository is the core: the dashboard, the web chat, the whole
 pipeline and one Postgres database. Messaging platforms connect as
 **transports** — separate services in their own repositories that register
-themselves; Telegram's is
-[ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram). Grown out of the
+themselves; the core names none of them. Grown out of the
 [ollama-tg-bot](https://github.com/drumslave-git/ollama-tg-bot) MVP through a
 full Next.js rewrite and the v2 redesign (see [docs/PLAN.md](docs/PLAN.md)).
 Pending work is tracked in [`docs/TODO.md`](docs/TODO.md).
@@ -48,16 +47,17 @@ docker compose up -d
 ```
 
 That runs **released images** — the core on `ASH_VERSION` (pinned, so a clone
-runs a known-good build) and the Telegram transport on its own version from its
-own repository. No toolchain on the host and no build to wait for. To build
+runs a known-good build). No toolchain on the host and no build to wait for.
+Transports are not in this file: each is one service you add, on its own
+version from its own repository. To build
 this working tree's core instead, add the dev override:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
-`docker compose` starts Postgres (pgvector image), Redis, the core (`app`) and
-the Telegram transport (`tg`). The core container applies pending migrations
+`docker compose` starts Postgres (pgvector image), Redis and the core (`app`).
+The core container applies pending migrations
 (the programmatic drizzle migrator in `packages/db/migrate/`) before it serves,
 so it never runs against an unmigrated database. `DATABASE_URL` is built from
 the `POSTGRES_*` vars and points at the bundled `db` service; override it to use
@@ -66,8 +66,8 @@ the shared secret the apps present to each other, and the default `change-me`
 is a placeholder. Postgres persists into `./data/pg`, Redis into `./data/redis`.
 Stop with `docker compose down`; to reset, delete those directories.
 
-Adding another transport (Discord, Signal, …) is **one more service** and no
-change to the core — see the recipe in
+Adding a transport is **one more service** and no change to the core — see
+the recipe in
 [Deployment](docs/operations/deployment.md#adding-a-transport).
 
 ## Scripts
@@ -95,9 +95,9 @@ Root scripts fan out across the workspaces through turbo.
 Turborepo with npm workspaces. Root `npm run lint|typecheck|test|build` fan out
 across every workspace via turbo. Boundaries are intentional: apps never import
 each other's code — only packages — and cross-app pointers are scoped refs
-(`tg:user:123`), never foreign keys into another app's data. That rule is what
-let the Telegram transport leave for its own repository without a single
-change to the core.
+(`acme:user:123`), never foreign keys into another app's data. That rule is what
+let the first transport leave for its own repository without a single change
+to the core.
 
 | Path | Responsibility |
 | --- | --- |
@@ -109,7 +109,7 @@ change to the core.
 | `core/store/` | THE database module: the Drizzle schema (`schema.ts`) and the one migration chain (`migrations/`). |
 | `core/lib/` | Small shared utilities and pure contracts importable by both client and server. |
 | `core/test/` | Test support (stubs, fixtures, the Testcontainers database helper). |
-| — | Transports are **not** in this repository. Each is its own repository and its own image, built on `packages/transport-sdk` and connected by registration alone; Telegram's is [ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram), the reference for [adding a transport](docs/development/adding-a-transport.md). |
+| — | Transports are **not** in this repository. Each is its own repository and its own image, built on `packages/transport-sdk` and connected by registration alone — see [adding a transport](docs/development/adding-a-transport.md). |
 | `packages/contracts/` | Cross-app zod schemas (`@assistants-swarm-hub/contracts`): scoped refs, transport events, reply delivery and turn lifecycle, the internal APIs, the trace contract, realtime topics. |
 | `packages/bus/` | Redis plumbing (`@assistants-swarm-hub/bus`): BullMQ queues with `attempts: 1` and the pub/sub bus. |
 | `packages/service/` | What every transport service needs once (`@assistants-swarm-hub/service`): env access, the internal-token guard, serving an MCP server over Hono, the bus trace client. |
@@ -140,8 +140,8 @@ created by the migrations; the compose `pgvector` image ships them).
   core never serves against an unmigrated database.
 - Ids are generated in application code.
 
-The Telegram transport has no database: everything it needs comes from the core
-at registration.
+A transport has no database: everything it needs comes from the core at
+registration.
 
 ### Backups
 
@@ -166,8 +166,7 @@ way. See [Backup and restore](docs/operations/backup-and-restore.md).
 ## Configuration
 
 Env is bootstrap-only: `DATABASE_URL`, `REDIS_URL` and `INTERNAL_API_TOKEN` for
-the core; `REDIS_URL`, `INTERNAL_API_TOKEN` and its own URLs for the Telegram
-service. Every core variable also accepts a `<NAME>_FILE` Docker-secret variant.
+the core; `REDIS_URL`, `INTERNAL_API_TOKEN` and its own URLs for a transport. Every core variable also accepts a `<NAME>_FILE` Docker-secret variant.
 Required values are enforced at the point of use rather than at process boot, so
 the dashboard can run and report what is missing. Everything a person configures
 — LLM backends and models, bot tokens, personas, tasks — lives in the database
@@ -201,5 +200,5 @@ else's.
   Settings → Security). It requires the current password.
 - **Linking a chat identity** to your account: mint a one-time code on
   `/profile` and send it to any of the bots; memory and owner rights then follow
-  you across the web chat and Telegram.
+  you across the web chat and every platform.
 - `/api/health` stays public for the Docker healthcheck and orchestrators.

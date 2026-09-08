@@ -38,16 +38,15 @@ rather than crash-looping.
 
 Every transport is its own service and its own repository; these are the
 variables the contract gives them, read straight from the environment (the
-SDK's `requireEnv` / `optionalEnv`; no `_FILE` variants). Telegram's is
-[ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram).
+SDK's `requireEnv` / `optionalEnv`; no `_FILE` variants).
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `REDIS_URL` | — | Required. Same Redis as the core |
 | `INTERNAL_API_TOKEN` | — | Required. Must equal the core's |
-| `PORT` | `3210` | The service's HTTP port (health, the internal API, the MCP server) |
+| `PORT` | the transport's own | The service's HTTP port (health, the internal API, the MCP server) |
 | `CORE_API_URL` | `http://localhost:3200` | Where the core's internal API is |
-| `SELF_URL` | `http://localhost:<PORT>` | The base URL the service **announces** at registration — what the core calls back. Set it whenever the core cannot reach the service on localhost (compose: `http://tg:3210`) |
+| `SELF_URL` | `http://localhost:<PORT>` | The base URL the service **announces** at registration — what the core calls back. Set it whenever the core cannot reach the service on localhost (compose: `http://<service>:<PORT>`) |
 
 Everything else the service needs — bot tokens, which assistants to run —
 comes from the core at registration and on every change event.
@@ -58,7 +57,7 @@ Read by `docker-compose.yml`, not by application code:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `ASH_VERSION` | The version this checkout releases | Which released image tag the `app` and `tg` services run (`ghcr.io/assistants-swarm-hub/ash-*`). The default is rewritten by `npm run release:*`, so a clone runs a known-good set rather than a moving `latest` |
+| `ASH_VERSION` | The version this checkout releases | Which released image tag the `app` service runs (`ghcr.io/assistants-swarm-hub/ash-core`). The default is rewritten by `npm run release:*`, so a clone runs a known-good set rather than a moving `latest` |
 | `PORT` | `3200` | Host port published for the core |
 | `INTERNAL_API_TOKEN` | `change-me` | Passed to every app. **Set a real value** — it is what a transport authenticates with too |
 | `POSTGRES_USER` | `bot` | Bundled Postgres user |
@@ -115,7 +114,7 @@ model riding on it and clears what the new endpoint verifiably does not serve
 
 One typed row (`settings`, `id = 'singleton'`). Read with `GET /api/settings`,
 written with `PATCH /api/settings`; the dashboard form (Settings page) has one
-tab per concern — **Models**, **Telegram**, **General**, **Integrations**,
+tab per concern — **Models**, **Bots**, **General**, **Integrations**,
 **Security** — and one Save button that persists every changed field
 regardless of which tab is open. The exception is the **Security** tab: the
 password change there posts to its own endpoint
@@ -208,14 +207,14 @@ means the real connection works, not a test-only variant of it.
   real call in the configured mode, because whisper-class servers often serve
   it without `/v1/models`.
 
-### Telegram tab
+### Bots tab
 
 | Field | Type | Effect when unset |
 | --- | --- | --- |
 | `maintenanceModeEnabled` | boolean | `false`. When on, only senders holding owner rights (the assistant's owning account, admins) are answered — and only through deterministic addressing — everyone else gets a static notice, and no task fires |
 
-Bot tokens are **not** settings: each assistant carries its own Telegram
-connection, entered in the assistant editor on `/assistants` (the tab links
+Bot tokens are **not** settings: each assistant carries its own transport
+connections, entered in the assistant editor on `/assistants` (the tab links
 there). The token is stored as the connection's opaque config and handed to the
 transport at registration and on every change.
 
@@ -228,10 +227,9 @@ transport at registration and on every change.
 | `browserDownloadLimitGb` | int 1–100 | `10`. Hard ceiling on a single browser-agent download, for every download tool. A disk guard — it never lowers the quality the agent fetches |
 | `assistantLoopGuardTurns` | int 0–10 | `3`. In a chat with several assistants, how many assistant-authored messages in a row are allowed before the assistants fall silent until a person speaks (user decision, 2026-08-24) |
 
-The chat-attach ceiling is not a setting: it is fixed at 50 MB, Telegram's bot
-upload limit (`TELEGRAM_MAX_UPLOAD_MB` in `lib/telegram.ts`; user decision,
-2026-08-01 — the old `browserDownloadMaxMb` setting only ever restated a fact
-about Telegram).
+The chat-attach ceiling is not a setting: what a chat can take is the
+transport's to decide (user decision, 2026-08-01 — the old
+`browserDownloadMaxMb` setting only ever restated a platform's limit).
 
 ### Integrations tab
 
@@ -249,7 +247,7 @@ because it is a collection rather than one row:
 | Accounts, roles, passwords | `/accounts`, `/profile` | [Accounts](features/accounts.md) |
 | Assistants: name, persona, owner, tool selection | `/assistants` | [Assistants](features/assistants.md) |
 | Transport connections (bot tokens) | The assistant editor; rendered from the field schema each transport announces at registration; stored in `assistant_transports.config` | [Adding a transport](development/adding-a-transport.md) |
-| Transport-level config | `PUT /api/transports/{id}/config`; the Telegram transport announces no fields today | — |
+| Transport-level config | `PUT /api/transports/{id}/config`, rendered from the fields the transport announces | — |
 | Tasks | `/tasks` | [Tasks](features/tasks.md) |
 | Tool connections | `/tools` | [Tool connections](features/tool-connections.md) |
 | Per-person and per-chat reply language, aliases, group notes | `/users`, `/groups` | [Users and groups](features/known-users-and-groups.md) |
@@ -263,8 +261,8 @@ Nothing in this system reports "configured" from the presence of a variable.
 - **Overview** runs a real `SELECT 1` and a real `/v1/models` call, probes both
   filesystem write paths (the trace directory by opening the current month's
   file for append, the downloads directory by creating and removing a file),
-  and shows each Telegram connection's live poller state as the transport
-  reports it on its `/health` — "Not tracked" when the service is not running.
+  and shows each connection's live state as its transport reports it on its
+  `/health` — "Not tracked" when the service is not running.
 - **`GET /api/health`** returns `200`/`503` on the database probe alone.
   Configuration presence, trace-storage health and download-storage health are
   reported in the body but are deliberately *not* readiness gates: restart-looping

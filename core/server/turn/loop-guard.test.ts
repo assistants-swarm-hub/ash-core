@@ -17,7 +17,7 @@ function line(
     sourceMessageId,
     role,
     assistantId: role === "assistant" ? (assistantId ?? "assistant-1") : null,
-    senderRef: role === "user" ? "tg:user:5001" : null,
+    senderRef: role === "user" ? "acme:user:5001" : null,
     senderLabel: role === "user" ? "Alice (@alice_example)" : null,
     content: `message ${sourceMessageId}`,
     sentAt: new Date().toISOString(),
@@ -35,11 +35,11 @@ function event(input: {
     occurredAt: new Date().toISOString(),
     correlationId: "-300:40",
     type: "message.inbound",
-    source: "tg",
+    source: "acme",
     assistantId: "assistant-2",
     connection: { botUsername: "second_bot", botDisplayName: "Second" },
-    chat: { ref: "tg:chat:-300", kind: "group", title: "Fixture Group" },
-    sender: { ref: "tg:user:5001", isOwner: false, label: "Alice (@alice_example)" },
+    chat: { ref: "acme:chat:-300", kind: "group", title: "Fixture Group" },
+    sender: { ref: "acme:user:5001", isOwner: false, label: "Alice (@alice_example)" },
     ...(input.authoredByAssistantId
       ? { authoredByAssistantId: input.authoredByAssistantId }
       : {}),

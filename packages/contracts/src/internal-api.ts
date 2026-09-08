@@ -44,7 +44,7 @@ export type InternalSentMessageResponse = z.infer<typeof internalSentMessageResp
 
 /**
  * POST /internal/chats/:chatId/voice — deliver a reply as a voice bubble.
- * `audioBase64` is OGG/Opus (the one encoding Telegram renders as a voice
+ * `audioBase64` is OGG/Opus (the one encoding platforms render as a voice
  * message); `text` is the spoken text, which is what the source mirrors.
  * The source falls back to a text send when the voice send is refused and
  * reports what it actually delivered.
@@ -112,7 +112,7 @@ export type InternalSentFileResponse = z.infer<typeof internalSentFileResponseSc
  * DELETE /internal/chats/:chatId/messages/:messageId — remove one of the
  * assistant's own messages (a browsing acknowledgement whose run reported,
  * a stale feedback menu). `deleted: false` means the platform refused
- * (Telegram rejects deletes older than 48h) — cosmetic for every caller.
+ * (some platforms reject deletes past an age) — cosmetic for every caller.
  */
 export const internalDeleteMessageResponseSchema = z.object({
   deleted: z.boolean(),

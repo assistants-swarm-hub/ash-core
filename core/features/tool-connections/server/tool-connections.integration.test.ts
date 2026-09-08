@@ -44,7 +44,7 @@ const STORE_MIGRATIONS = fileURLToPath(new URL("../../../store/migrations", impo
  * two things.
  */
 
-/** Where the managed reconciler believes the tg app lives, per test. */
+/** Where the managed reconciler believes the transport lives, per test. */
 const { config } = vi.hoisted(() => ({ config: { url: null as string | null } }));
 
 process.env.INTERNAL_API_TOKEN = "secret-token";
@@ -53,13 +53,13 @@ vi.mock("@/server/transports/service", async (importOriginal) => {
   return {
     ...actual,
     getTransport: async (source: string) =>
-      source === "tg" && config.url
-        ? { id: "tg", name: "Telegram", baseUrl: config.url, mcpPath: "/mcp", enabled: true, contractMajor: CONTRACT_MAJOR }
+      source === "acme" && config.url
+        ? { id: "acme", name: "Acme Chat", baseUrl: config.url, mcpPath: "/mcp", enabled: true, contractMajor: CONTRACT_MAJOR }
         : null,
-    // The roster the reconcile walks: tg is always registered here; whether
+    // The roster the reconcile walks: acme is always registered here; whether
     // it is reachable is `config.url` (null = never announced a URL).
     listCompatibleTransports: async () => [
-      { id: "tg", name: "Telegram", baseUrl: config.url ?? "", mcpPath: "/mcp", enabled: true, contractMajor: CONTRACT_MAJOR },
+      { id: "acme", name: "Acme Chat", baseUrl: config.url ?? "", mcpPath: "/mcp", enabled: true, contractMajor: CONTRACT_MAJOR },
     ],
   };
 });
@@ -151,13 +151,13 @@ describe("tool connections service", () => {
   it("scopes a connection to one app and an explicit assistant selection", async () => {
     const assistant = await createAssistant({ name: "Anna", persona: "" }, trigger, null, db);
     const created = await createToolConnection(
-      { ...input, appScope: "tg", allAssistants: false, assistantIds: [assistant.id] },
+      { ...input, appScope: "acme", allAssistants: false, assistantIds: [assistant.id] },
       trigger,
       null,
       db,
     );
     expect(created).toMatchObject({
-      appScope: "tg",
+      appScope: "acme",
       allAssistants: false,
       assistantIds: [assistant.id],
     });
@@ -366,7 +366,7 @@ describe("connection toolset", () => {
 
   it("offers an applied global connection under its slug prefix", async () => {
     await ready();
-    expect(await names({ source: "tg", assistantId: "a1" })).toEqual(["weather__forecast"]);
+    expect(await names({ source: "acme", assistantId: "a1" })).toEqual(["weather__forecast"]);
     expect(await names({ source: "chat", assistantId: null })).toEqual(["weather__forecast"]);
   });
 
@@ -389,17 +389,17 @@ describe("connection toolset", () => {
     );
     await discoverToolConnection(created.id, trigger, null, db);
     // Discovered, not applied: the model is offered nothing.
-    expect(await names({ source: "tg" })).toEqual([]);
+    expect(await names({ source: "acme" })).toEqual([]);
 
     await applyToolConnection(created.id, trigger, null, db);
     await pool.query(`update tool_connections set enabled = false`);
-    expect(await names({ source: "tg" })).toEqual([]);
+    expect(await names({ source: "acme" })).toEqual([]);
   });
 
   it("keeps an app-scoped connection out of another source's turn", async () => {
     await ready({ appScope: "chat" });
     expect(await names({ source: "chat" })).toEqual(["weather__forecast"]);
-    expect(await names({ source: "tg" })).toEqual([]);
+    expect(await names({ source: "acme" })).toEqual([]);
     // A turn whose source is unknown gets no app-scoped tools either.
     expect(await names({})).toEqual([]);
   });
@@ -409,18 +409,18 @@ describe("connection toolset", () => {
     const igor = await createAssistant({ name: "Igor", persona: "" }, trigger, null, db);
     await ready({ allAssistants: false, assistantIds: [anna.id] });
 
-    expect(await names({ source: "tg", assistantId: anna.id })).toEqual(["weather__forecast"]);
-    expect(await names({ source: "tg", assistantId: igor.id })).toEqual([]);
-    expect(await names({ source: "tg", assistantId: null })).toEqual([]);
+    expect(await names({ source: "acme", assistantId: anna.id })).toEqual(["weather__forecast"]);
+    expect(await names({ source: "acme", assistantId: igor.id })).toEqual([]);
+    expect(await names({ source: "acme", assistantId: null })).toEqual([]);
   });
 
   it("calls the remote tool and carries the turn binding as _meta", async () => {
     await ready();
-    const toolset = await resolveConnectionToolset({ source: "tg", assistantId: "a1" }, db);
+    const toolset = await resolveConnectionToolset({ source: "acme", assistantId: "a1" }, db);
 
     const result = await runWithToolContext(
       {
-        source: "tg",
+        source: "acme",
         chatId: "-100200",
         assistantId: "a1",
         userId: "42",
@@ -434,7 +434,7 @@ describe("connection toolset", () => {
     expect(result.text).toContain("forecast for Riga");
     const meta = JSON.parse(result.text.split(" :: ")[1]);
     expect(meta).toMatchObject({
-      source: "tg",
+      source: "acme",
       chatId: "-100200",
       assistantId: "a1",
       userId: "42",
@@ -449,14 +449,14 @@ describe("connection toolset", () => {
 
   it("turns an unreachable server and an unknown name into tool errors", async () => {
     await ready();
-    const toolset = await resolveConnectionToolset({ source: "tg" }, db);
+    const toolset = await resolveConnectionToolset({ source: "acme" }, db);
 
     const unknown = await toolset.callTool("weather__nope", {});
     expect(unknown).toMatchObject({ isError: true });
     expect(unknown.text).toContain("Unknown tool");
 
     remote.failWith(500);
-    const dead = await runWithToolContext({ source: "tg", chatId: "-100200" }, () =>
+    const dead = await runWithToolContext({ source: "acme", chatId: "-100200" }, () =>
       toolset.callTool("weather__forecast", { city: "Riga" }),
     );
     expect(dead.isError).toBe(true);
@@ -491,8 +491,8 @@ describe("managed source connections", () => {
 
     const [connection] = await getToolConnections(null, db);
     expect(connection).toMatchObject({
-      slug: "tg",
-      appScope: "tg",
+      slug: "acme",
+      appScope: "acme",
       managed: true,
       enabled: true,
       allAssistants: true,
@@ -500,8 +500,8 @@ describe("managed source connections", () => {
     expect(connection.tools.map((tool) => tool.name)).toEqual(["set_message_reaction"]);
     // Offered on that source's turns, and only those.
     expect(
-      (await resolveConnectionToolset({ source: "tg" }, db)).tools.map((t) => t.function.name),
-    ).toEqual(["tg__set_message_reaction"]);
+      (await resolveConnectionToolset({ source: "acme" }, db)).tools.map((t) => t.function.name),
+    ).toEqual(["acme__set_message_reaction"]);
     expect((await resolveConnectionToolset({ source: "chat" }, db)).tools).toEqual([]);
   });
 
@@ -518,7 +518,7 @@ describe("managed source connections", () => {
     ]);
     await reconcileManagedConnections({ kind: "system" }, db);
 
-    const connection = await getToolConnectionBySlug(db, "tg");
+    const connection = await getToolConnectionBySlug(db, "acme");
     expect(connection!.tools.map((tool) => tool.name)).toEqual([
       "send_message",
       "set_message_reaction",
@@ -530,7 +530,7 @@ describe("managed source connections", () => {
     remote.failWith(503);
     await reconcileManagedConnections({ kind: "system" }, db);
 
-    const connection = await getToolConnectionBySlug(db, "tg");
+    const connection = await getToolConnectionBySlug(db, "acme");
     expect(connection!.tools.map((tool) => tool.name)).toEqual(["set_message_reaction"]);
     expect(connection!.lastError).toMatch(/streamable-http/);
 
@@ -544,11 +544,11 @@ describe("managed source connections", () => {
     config.url = null;
     await reconcileManagedConnections({ kind: "system" }, db);
 
-    const connection = await getToolConnectionBySlug(db, "tg");
+    const connection = await getToolConnectionBySlug(db, "acme");
     expect(connection!.enabled).toBe(false);
     // Its snapshot survives — what is gone is the app, not the operator's setup.
     expect(connection!.tools).toHaveLength(1);
-    expect((await resolveConnectionToolset({ source: "tg" }, db)).tools).toEqual([]);
+    expect((await resolveConnectionToolset({ source: "acme" }, db)).tools).toEqual([]);
   });
 });
 
@@ -630,7 +630,7 @@ describe("ownership + the public-address guard (Phase 9)", () => {
     ).rejects.toThrow(/public addresses only/);
     await expect(
       createToolConnection(
-        { ...base, appScope: "tg", assistantIds: [own.id] },
+        { ...base, appScope: "acme", assistantIds: [own.id] },
         trigger,
         user,
         db,
@@ -685,7 +685,7 @@ describe("ownership + the public-address guard (Phase 9)", () => {
     );
 
     const { resolveConnectionToolset } = await import("./toolset");
-    const toolset = await resolveConnectionToolset({ source: "tg", assistantId: own.id }, db);
+    const toolset = await resolveConnectionToolset({ source: "acme", assistantId: own.id }, db);
     expect(toolset.owns("mine__ping")).toBe(true);
     const result = await toolset.callTool("mine__ping", {});
     expect(result.isError).toBe(true);
@@ -693,7 +693,7 @@ describe("ownership + the public-address guard (Phase 9)", () => {
 
     // Promote the owner to admin: the same row stops being restricted.
     await pool.query(`UPDATE accounts SET role = 'admin' WHERE id = $1`, [user.id]);
-    const unrestricted = await resolveConnectionToolset({ source: "tg", assistantId: own.id }, db);
+    const unrestricted = await resolveConnectionToolset({ source: "acme", assistantId: own.id }, db);
     const after = await unrestricted.callTool("mine__ping", {});
     // Now it actually dials (and fails to connect) rather than refusing.
     expect(after.isError).toBe(true);

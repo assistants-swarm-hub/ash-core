@@ -29,7 +29,7 @@ export interface McpToolContext {
    * bindings) rather than guessing whose standing orders to touch.
    */
   assistantId?: string;
-  /** The sender's numeric Telegram user id, when known (absent for tests). */
+  /** The sender's source-local user id, when known (absent for tests). */
   userId?: string | null;
   /**
    * The turn's trace correlation (see `turnCorrelationId` for a reply turn,
@@ -129,12 +129,11 @@ const STORE_KEY = Symbol.for("assistants-swarm-hub.mcp.tool-context");
 
 /**
  * The one storage for this process, pinned to `globalThis` like every other
- * cross-bundle singleton here (`server/mcp/runtime.ts`,
- * `server/telegram/bot-manager.ts`).
+ * cross-bundle singleton here (`server/mcp/runtime.ts`).
  *
  * A module-level `AsyncLocalStorage` is one storage *per module instance*, and
  * Next evaluates the same server file in more than one bundle: instrumentation
- * (where the Telegram poller and the task scheduler run) and the app/Route
+ * (where the queue consumers and the task scheduler run) and the app/Route
  * Handler bundle (where the dashboard runs), plus a fresh copy on every dev hot
  * reload. The MCP registry is deliberately a global singleton that outlives all
  * of that, so its tool handlers keep reading whichever copy's storage existed

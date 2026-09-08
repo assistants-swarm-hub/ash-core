@@ -58,7 +58,7 @@ export interface FinishInput {
   /**
    * Correlation to settle with, for an action that only *learns* its correlation
    * by acting. A proactive send has no incoming message to key on at
-   * `startTrace` — it knows its `<chatId>:<messageId>` only once Telegram accepts
+   * `startTrace` — it knows its `<chatId>:<messageId>` only once the platform accepts
    * the message — so it opens on what it has and settles on what it delivered.
    * Omitted → the correlation given at `startTrace` stands.
    */

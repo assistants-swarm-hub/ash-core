@@ -13,10 +13,10 @@ because guessing is exactly what the trace archive exists to avoid.
    not doing its work.
 3. **`/debug`** — the trace for the specific thing that went wrong. Filter by feature
    (see the table at the end of the [operator guide](operator-guide.md#debug-debug)).
-4. **Server logs** — `docker compose logs app` for the core, `docker compose logs tg`
-   for the Telegram transport. The core log is the only place an unexpected
+4. **Server logs** — `docker compose logs app` for the core, and the transport
+   service's own log. The core log is the only place an unexpected
    `internal_error`'s real cause appears; the JSON body deliberately says nothing
-   more. The transport log is where registration and poller failures appear.
+   more. The transport log is where registration and connection failures appear.
 
 ---
 
@@ -30,30 +30,30 @@ because guessing is exactly what the trace archive exists to avoid.
 | Says "Error" ending in `no poller is tracked — is the <transport> transport running?` | The transport reports nothing for an enabled connection — see [A connection reads "Not tracked"](#a-connection-reads-not-tracked) |
 | Says "Error" naming a contract major | The transport was built against another contract major and this core refused it — rebuild one side on the same major |
 | Says "Error" ending in `reconnecting automatically` | The network dropped and the transport is retrying every 15s — nothing to do but restore the connection |
-| Says "Error" with anything else | Telegram refused: an invalid token, or another process holding the same token's `getUpdates` lock |
+| Says "Error" with anything else | The platform refused: an invalid token, or another process holding the same token's session |
 | Says "Running" but nothing happens | Continue below |
 | Overview → LLM endpoint is red | Fix the backend on `/backends`; its **Test connection** shows the real error |
 | Overview → Model says none selected | Pick one in Settings → Models → Chat |
 
 Another process holding the token is a real possibility during a redeploy or if you
-have a dev `tg` service and a container running against the same token. Telegram
-permits exactly one `getUpdates` consumer per token; the second one errors.
+have a dev transport and a container running against the same token. A platform that
+permits one session per token errors the second one.
 
 If the poller is running and the LLM is reachable, either the message never opened a
 turn — the next three sections — or it was not considered addressed — the one after.
 
 ## The assistant editor says the transport "has not announced itself yet"
 
-The Telegram transport (`tg`) has never registered with this core, so the connection
-section cannot render; with no transport registered at all the editor says "No
-transport has registered with this core yet". The transport registers at boot and
-retries every 10 s until the core accepts it, so read `docker compose logs tg`:
+That transport has never registered with this core, so its connection section
+cannot render; with no transport registered at all the editor says "No transport
+has registered with this core yet". A transport registers at boot and retries
+every 10 s until the core accepts it, so read its log:
 
 | Log line | Cause / fix |
 | --- | --- |
-| `registration with the core failed (core /api/internal/transports/register answered 401) — retrying in 10s` | `INTERNAL_API_TOKEN` differs between `app` and `tg`. Set one value for both and restart both |
+| `registration with the core failed (core /api/internal/transports/register answered 401) — retrying in 10s` | `INTERNAL_API_TOKEN` differs between `app` and the transport. Set one value for both and restart both |
 | `… failed (fetch failed …)` or a timeout, repeating | `CORE_API_URL` is wrong or the core is not up yet. Inside Compose it must be `http://app:3200`; the retry loop resolves itself once the core answers |
-| `registered with the core — N connection(s) desired` | Registration succeeded. The core log carries the matching `transport 'tg' registered from <SELF_URL>` |
+| `registered with the core — N connection(s) desired` | Registration succeeded. The core log carries the matching `transport '<id>' registered from <SELF_URL>` |
 | Nothing — the service exits at once | `REDIS_URL` or `INTERNAL_API_TOKEN` is unset; both are required for the transport to start |
 
 Once registered the section appears by itself (the registration publishes a `status`
@@ -61,17 +61,17 @@ event).
 
 ## A connection reads "Not tracked"
 
-The connection is enabled in the core, but the transport's `/health` reports no poller
+The connection is enabled in the core, but the transport's `/health` reports nothing
 for it. Overview folds the same state into its Error card as `connection is enabled
-but no poller is tracked — is the telegram service running?`.
+but no poller is tracked — is the <transport> transport running?`.
 
 | Cause | Fix |
 | --- | --- |
-| The `tg` service is down or restarting | `docker compose ps`; bring it up. It re-registers and reconciles its pollers from the desired state at boot |
-| The core cannot reach the transport at the URL it announced | The status probe fetches `<SELF_URL>/health` with a 5 s timeout and reports nothing on failure. `SELF_URL` must be reachable **from the core** — `http://tg:3210` inside Compose, never `localhost` |
-| The transport has not reconciled yet | Connect/Start/Stop announce a `transport.config.changed` bus event and the transport refetches. If the core log says `transport.config.changed for 'tg' was NOT published (bus unconfigured?)`, Redis is down — next section — and the transport picks the change up only on its next restart |
+| The transport service is down or restarting | `docker compose ps`; bring it up. It re-registers and reconciles its connections from the desired state at boot |
+| The core cannot reach the transport at the URL it announced | The status probe fetches `<SELF_URL>/health` with a 5 s timeout and reports nothing on failure. `SELF_URL` must be reachable **from the core** — `http://<service>:<port>` inside Compose, never `localhost` |
+| The transport has not reconciled yet | Connect/Start/Stop announce a `transport.config.changed` bus event and the transport refetches. If the core log says `transport.config.changed for '<id>' was NOT published (bus unconfigured?)`, Redis is down — next section — and the transport picks the change up only on its next restart |
 
-The poller's real state, once tracked, is on the same badge: Running, Error with the
+The connection's real state, once tracked, is on the same badge: Running, Error with the
 message, or Stopped.
 
 ## Redis is down, or messages pile up unanswered
@@ -103,7 +103,7 @@ Work from the message inward, in Debug:
    the turn: `replied`, `skipped` with the reason (`not addressed — …`, the loop
    guard, maintenance), or `error` with the provider's full response.
 3. A `reply` trace that ends in a delivery but no message in the chat: the delivery
-   travels back to the transport as a bus event; check `docker compose logs tg` for
+   travels back to the transport as a bus event; check the transport's log for
    the send error.
 
 ## The bot ignores me in a group
@@ -140,7 +140,7 @@ spellings.
 
 ## Two assistants in one group stopped answering each other
 
-The loop guard. Assistants cannot see each other on Telegram, so the core hands each
+The loop guard. A platform does not deliver one bot's messages to another, so the core hands each
 reply to the other assistants sharing the chat; Settings → General → **assistant
 replies in a row** bounds how many assistant messages may run in a row before every
 assistant there goes quiet until a person speaks again (default 3; 0 stops them
@@ -149,7 +149,7 @@ answering each other at all). The silence is on the record: the `reply` trace is
 
 ## Everyone gets a "maintenance" notice
 
-Maintenance mode is on. Settings → Telegram → turn it off.
+Maintenance mode is on. Settings → Bots → turn it off.
 
 While it is on: only senders with **owner rights** — the assistant's owning account
 (through their linked identity) and admins — get normal replies (and only through
@@ -216,7 +216,7 @@ than as an opaque Postgres rejection inside a nightly job.
 | Nothing in the queue, and the fact was said in group chatter | Passive extraction reads finished chat-days, so it appears after that day's nightly run. Check `pendingExtractionDays` on the job card |
 | A person's document is empty though notes were consumed | Check the `memory` trace: an **empty merge is treated as a failed pass**, so the notes should still be pending. If notes were consumed but nothing was written, the trace has the model response |
 | It remembered something wrong | Edit or rewrite the document on `/memory`. It is re-embedded on save |
-| It remembers a person on Telegram but not in the web chat (or the reverse) | Memory follows the person-link graph. Link the two identities — Users → Linked people as an admin, or the code from that person's Profile sent to the bot |
+| It remembers a person on a platform but not in the web chat (or the reverse) | Memory follows the person-link graph. Link the two identities — Users → Linked people as an admin, or the code from that person's Profile sent to the bot |
 
 ## Images are not described
 
@@ -224,7 +224,7 @@ than as an opaque Postgres rejection inside a nightly job.
 | --- | --- |
 | `/vision` shows pending rows and a growing backlog | Backfill only runs after ~45s of quiet. On a busy bot this is normal; "Run now" arms it as soon as possible |
 | The `vision`/`vision-backfill` trace shows a provider error | The configured model may not be vision-capable |
-| Row status is `unavailable` | The file could not be downloaded from Telegram — the token, or Telegram's file retention |
+| Row status is `unavailable` | The file could not be downloaded from the platform — the token, or the platform's file retention |
 | GIF/video rows fail | `ffmpeg` is missing. Both Docker images install it; locally it must be on `PATH` |
 
 ## The browser agent fails to launch
@@ -417,7 +417,7 @@ than by exact phrasing.
 Attach:
 
 1. The **trace bundle** for the failing action (`/debug` → the trace → Download).
-2. The relevant server log lines — `app`, and `tg` when a bot connection is involved.
+2. The relevant server log lines — `app`, and the transport's when a bot connection is involved.
 3. `GET /api/health` output.
 4. The version (shown on Overview and in the sidebar, and in the health body).
 

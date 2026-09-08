@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "assistants-swarm-hub",
-  description: "Telegram LLM bot control dashboard",
+  description: "Assistant platform control dashboard",
 };
 
 // This is a live, DB-backed dashboard: every page already opts into dynamic

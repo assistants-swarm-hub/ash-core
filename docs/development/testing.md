@@ -95,8 +95,8 @@ that the interesting logic *is* pure and does not need a database or a model:
 
 Services are testable here too, because their collaborators are **injected**:
 `features/bot-messaging/server/service.test.ts` drives the whole reply policy with no
-LLM and no Telegram. `test/__mocks__/` holds the standard fakes (`policy`,
-`telegram`, `users`, `vision`); `test/fake-mcp-server.ts` and
+LLM and no transport. `test/__mocks__/` holds the standard fakes (`policy`,
+`bot`, `users`, `vision`); `test/fake-mcp-server.ts` and
 `test/fake-source-content.ts` stand in for a remote MCP server and a source's content
 API.
 
@@ -155,7 +155,7 @@ Persistence and the flows that only make sense end to end:
 | `features/*/server/*.integration.test.ts` (the rest) | Each feature's persistence, plus its job's idempotency |
 | `packages/bus/src/bus.integration.test.ts` | Redis via Testcontainers (`redis:7-alpine`, the compose image): a queue job is delivered exactly once and a failure is **never retried** (`attempts: 1` — the turn runner owns re-enqueue), and pub/sub fans out and survives a poisoned message |
 
-## Exercising the pipeline without Telegram
+## Exercising the pipeline without a transport
 
 There is no simulation harness: the transport seam is the queue, so the two pipeline
 stages are driven directly with the same event shapes the transport and the ingest
@@ -210,7 +210,7 @@ container and call `resetEnvCache()`; the store reads it. It pins:
 
 Use these two as the template for a new pipeline behavior: build the event, stub the
 one collaborator the behavior needs, assert on what was published and what was
-stored. Nothing here touches Telegram, a token, or a model.
+stored. Nothing here touches a platform, a token, or a model.
 
 ## Tool-selection tests
 
@@ -249,7 +249,7 @@ so a transport author can validate their events against
 [`events.schema.json`](../api/transport/events.schema.json) and trust that the
 core's half is covered.
 
-The [Telegram transport](https://github.com/assistants-swarm-hub/ash-transport-telegram) is the worked example: a plain `vitest.config.ts`
+A transport's own suite is the same shape: a plain `vitest.config.ts`
 (no aliases, no `server-only` guard) and five unit files under `src/` covering
 the structural addressing verdicts, one-event-per-update, the HTML renderer's
 balance, and the split-and-send path. It has no integration suite: it is
@@ -320,7 +320,7 @@ dependencies.
 | Concern | Approach |
 | --- | --- |
 | Real browser behavior | Live integration tests marked `*-live`, plus pure tests for the snapshot script builder and HLS parsing |
-| Telegram API | The queue seam — the ingest and the turn consumer run against real Postgres with the transport's events built by hand and every send captured |
+| A platform's API | The queue seam — the ingest and the turn consumer run against real Postgres with the transport's events built by hand and every send captured |
 | Redis | Testcontainers in `packages/bus`; the core suites replace the queue producer with an array |
 | Model quality | Not asserted. What *is* asserted: tool selection, that verdicts require real citations, and that parsers fail closed |
 | Timing/scheduling | The scheduler shapes are pure and directly unit-tested; the tickers themselves are thin |

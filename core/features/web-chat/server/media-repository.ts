@@ -10,10 +10,10 @@ import { webMedia, webMediaBlobs, webMessages } from "../../../store/schema";
 
 /**
  * Media in the web-chat tables: an image, a voice note, or a produced file
- * attached to one message, stored as ordered frames the way the tg store
+ * attached to one message, stored as ordered frames the way the conversation store
  * does, so the vision pipeline treats both sources alike.
  *
- * **One deliberate difference from tg: the bytes stay.** Telegram is its own
+ * **One deliberate difference from a transport: the bytes stay.** A platform is its own
  * archive — a described photo can be dropped there because the chat still
  * shows it. A web thread has no such archive: dropping the bytes would erase
  * the picture the operator is looking at. They are already bounded (a
@@ -135,7 +135,7 @@ export async function getMediaByMessage(
 /**
  * Record a description. Returns the updated row, or null when the row was no
  * longer pending — a concurrent describe pass won, and its text stands (the
- * same contract the tg store serves).
+ * same contract the conversation store serves).
  */
 export async function markDescribed(
   id: string,

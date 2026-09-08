@@ -39,9 +39,9 @@ import { BotMcpRegistry, type McpToolRegistrar, type ToolOfferPredicate } from "
  * the bot manager — so it survives module re-evaluation across Next bundles and
  * dev hot-reload, and the MCP server is never connected twice.
  *
- * New tool-owning features add their registrar here. Telegram's outbound
+ * New tool-owning features add their registrar here. A transport's outbound
  * tools (delivering a message, reacting to one) are NOT here: they are the
- * tg app's own, served from its MCP server and reached as a managed
+ * transport's own, served from its MCP server and reached as a managed
  * connection (Phase 5). The web chat's delivery tools ARE here since the
  * chat dissolve (Phase 6) — the web chat is a core feature now — offered
  * only on web-chat turns through their offer predicate.

@@ -38,7 +38,7 @@ const NOT_A_SEND_TURN =
 
 /** How the delivery tools word themselves for one platform. */
 export interface DeliveryToolTexts {
-  /** How the platform names itself in a tool description ("Discord"). */
+  /** How the platform names itself in a tool description ("Matrix"). */
   platform: string;
   replyToMessage?: string;
   sendMessage?: string;

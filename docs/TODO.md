@@ -155,7 +155,7 @@ Any core edit for a new source id is a bug.
      consumer, the internal message route, the voice text-fallback and the
      MCP delivery tools all go through it (`SentChatMessage.messageIds`
      lists the parts, `messageId` is the first). Docs: the manual's Step 4
-     ("You split"), `telegram-pipeline.md` Stage 7, `features/bot-messaging.md`.
+     ("You split"), `message-pipeline.md` Stage 7, `features/bot-messaging.md`.
      Proof: `npm run typecheck` (8/8), `npm run lint`, `npm run test` (tg 44
      incl. `split.test.ts` + `send.test.ts`, core 1175). Not run live.
    - **The Overview and the shell summarize every transport (`done`,
@@ -830,6 +830,50 @@ Any core edit for a new source id is a bug.
       was rebuilt; the workdir `CLAUDE.md` and the IDE module files follow.
       Trace bundles exported from now on carry the new schema id; nothing
       reads bundles back, so the old exports lose nothing.
+
+13. **The core knows no transport** (`done`, 2026-09-08).
+    - **Rule (user, 2026-09-08):** the core must not know or care about any
+      transport. Run #21 of the release failed because `verify` asked the
+      registry for the Telegram image (removed in item 7's note); the sweep
+      that followed found the same knowledge everywhere else: a `tg` service
+      in `docker-compose.yml`, grammY in the core's dependencies and a raw
+      Telegram `Message` path in bot-messaging that nothing calls since the
+      split, "Telegram" in prompts, UI copy, trace reasons and constants,
+      `tg`/"Telegram" as the test fixture, and the docs describing the
+      deployment as core + Telegram.
+    - **Scope:** compose ships the core, Postgres and Redis only (a transport
+      is the operator's one added service, per the deployment recipe); no
+      transport package, type, id, name or limit anywhere in `core/` or
+      `packages/`; tests use a synthetic transport; docs describe transports
+      generically and name none. Dated history in this tracker and in
+      `docs/PLAN.md`'s phase log stays as written.
+    - **Landed (2026-09-08).** Compose runs `app`, `db` and `redis` only; the
+      transport service and `ASH_TELEGRAM_VERSION` are gone (an operator adds
+      a transport per the deployment recipe, whose example is now placeholders).
+      grammY left `core/package.json`; the raw-message branch of
+      `handleIncomingMessage` (`checkAddressed` over a platform `Message`,
+      dead since the split — the consumer always passes the verdict) and its
+      wire-shape helpers are deleted, `IncomingMessage.addressing` is
+      required, `BotIdentity` lost its numeric id, and `chatType` is
+      `private`/`group`. The legacy `telegram` trigger kind left both trace
+      enums (traces on disk are cast, not validated, so old rows still load;
+      the dev store held none). Prompts say "chat assistant" / "group chat";
+      trace reasons say "the transport marked …"; the settings tab, the
+      empty-state copy, the profile hint, the layout description and every
+      comment in `core/` and `packages/` are platform-free. Tests use the
+      synthetic `acme` transport (`core/test/transports.ts`,
+      `core/test/__mocks__/bot.ts` replaces the Telegram mock). Docs:
+      `architecture/telegram-pipeline.md` → `message-pipeline.md`, and 40
+      other pages describe transports generically; the manual links the
+      organization, not a transport. `AGENTS.md` carries the standing
+      decision.
+    - **Proof.** `npm run lint`, `npm run typecheck` (8/8), `npm run test`
+      (core 1165, contracts 20, service 3, SDK 26 after `wire:generate`),
+      `npm run test:integration` (32 files, 423 tests), `npm run build`,
+      `docker compose config` (three services). A case-insensitive sweep of
+      the repository for any transport name finds only this tracker's and
+      `docs/PLAN.md`'s dated history, the frozen migration `0015`, and the
+      MVP repository's name.
 
 **Landed with the org move (`done`, 2026-09-02):** local `origin` repointed;
 the guide, the tracker and the link-fetch user-agent name the new repository;

@@ -4,7 +4,7 @@ Background work runs **in-process**, on shared scheduler primitives, guarded by
 Postgres advisory locks. There is no external cron, no separate worker service
 and no on-demand-only work. That is the recorded operating model for this app: the
 core container already runs in-process singletons (the queue consumers, the MCP
-registry, Chromium, the realtime hub), and jobs run the same way. The Telegram
+registry, Chromium, the realtime hub), and jobs run the same way. A transport's
 poller is not one of them — it lives in the transport's own service.
 
 ## The three primitives
@@ -16,7 +16,7 @@ the job body.
 ### Idle-debounced — `idle-scheduler.ts`
 
 Runs a job only after the system has been quiet for a debounce interval.
-`onActivity()` is called on every unit of live work (a handled Telegram message),
+`onActivity()` is called on every unit of live work (a handled chat message),
 which re-arms the wait **and aborts any batch currently running**. Backfill-style
 work therefore never competes with a live reply for the LLM.
 

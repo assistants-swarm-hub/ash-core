@@ -6,7 +6,7 @@ import type { SourceId } from "@assistants-swarm-hub/contracts";
  */
 
 /**
- * The kinds of media the bot can read from a Telegram message: the visual kinds
+ * The kinds of media the bot can read from a chat message: the visual kinds
  * (described by the vision model) plus `voice` (transcribed by the audio-capable
  * chat model — the transcript plays the role of the description).
  */
@@ -34,7 +34,7 @@ export interface ImagePayload {
 }
 
 /**
- * The vision-capable media found on a Telegram message, before download. Enough
+ * The vision-capable media found on a chat message, before download. Enough
  * to fetch the bytes and to record the row.
  */
 export interface DetectedMedia {
@@ -59,7 +59,7 @@ export interface DetectedMedia {
    */
   isAudio: boolean;
   /**
-   * Telegram's single-frame JPEG thumbnail, used as a fallback when frame
+   * The platform's single-frame JPEG thumbnail, used as a fallback when frame
    * extraction is unavailable/fails. Null when the message carries no thumbnail.
    */
   thumbnailFileId: string | null;
@@ -86,7 +86,7 @@ export interface MediaView {
   id: string;
   /** Which source app holds this row (the gallery tags each card with it). */
   source: SourceId;
-  /** The source's human name, as it announced itself ("Telegram", "Web chat"). */
+  /** The source's human name, as it announced itself ("Web chat", a transport's name). */
   sourceLabel: string;
   chatId: string;
   /** The platform's id of the message carrying the media. */
@@ -99,7 +99,7 @@ export interface MediaView {
   /**
    * Where the picture can be fetched when the owning source still has it but
    * did not ship it with the listing (a described web-chat image). Null when
-   * the bytes are gone for good, which is what a described telegram row is.
+   * the bytes are gone for good, which is what a described transport row is.
    */
   bytesUrl: string | null;
   /** All sampled frames as data URLs for a pending video/GIF, else null. */

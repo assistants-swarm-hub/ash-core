@@ -55,7 +55,7 @@ export function webChatOutbound(): SourceOutboundPort {
     /**
      * A voice reply: the pipeline synthesized the audio; this stores it as an
      * assistant message with the spoken text as its content — that text is
-     * what the transcript, the window and the next turn read, exactly as tg
+     * what the transcript, the window and the next turn read, exactly as a transport
      * mirrors the words rather than the bubble. `asVoice` is always true
      * here: a browser plays whatever it is given, so there is no refusal to
      * fall back from.
@@ -83,7 +83,7 @@ export function webChatOutbound(): SourceOutboundPort {
     /**
      * Generated images. One message per image, each carrying the picture as
      * `pending` media so the vision pass describes what the assistant itself
-     * put in the thread (tg does the same).
+     * put in the thread (a transport does the same).
      */
     async sendPhotos(threadId, opts) {
       await requireThread(threadId);

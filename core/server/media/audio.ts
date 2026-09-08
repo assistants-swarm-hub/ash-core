@@ -9,12 +9,12 @@ import { runFfmpeg } from "./ffmpeg";
 /**
  * Audio transcoding for voice messages, on the shared system ffmpeg:
  *
- *  - Telegram delivers voice as OGG/Opus, which OpenAI-compatible `input_audio`
+ *  - Messaging platforms deliver voice as OGG/Opus, which OpenAI-compatible `input_audio`
  *    parts do not accept (the spec allows only `wav`/`mp3`), so transcription
  *    converts to 16 kHz mono WAV — whisper-class models' native rate, and the
  *    most universally decodable container.
  *  - Speech endpoints answer `/v1/audio/speech` with MP3 (the one format every
- *    implementation serves), while Telegram's `sendVoice` needs OGG/Opus for a
+ *    implementation serves), while a platform's voice send needs OGG/Opus for a
  *    real voice bubble, so synthesis converts the other way.
  */
 
@@ -58,7 +58,7 @@ export function toWavForTranscription(input: Buffer): Promise<Buffer> {
 }
 
 /**
- * Synthesized speech (MP3) → OGG/Opus mono. Telegram `sendVoice` requires it
+ * Synthesized speech (MP3) → OGG/Opus mono. A platform's voice send requires it
  * to render a real voice bubble (an MP3 upload shows as a music file), and a
  * browser plays it as happily — so every source's voice reply is this.
  */

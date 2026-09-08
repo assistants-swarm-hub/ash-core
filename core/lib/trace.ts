@@ -55,14 +55,13 @@ export type TraceEventType = z.infer<typeof traceEventTypeSchema>;
  * What or who triggered a traced action. One kind per way in: a message from
  * a transport is `transport` (any registered platform — the actor and the
  * correlation name the chat), a web thread is `chat`, so Debug can filter a
- * turn apart from an operator pressing a dashboard button. `telegram` is
- * what rows recorded before 2026-09-02 carry; nothing stamps it any more.
+ * turn apart from an operator pressing a dashboard button.
  */
 export const traceTriggerSchema = z.object({
-  kind: z.enum(["transport", "chat", "dashboard", "cron", "system", "api", "test", "telegram"]),
+  kind: z.enum(["transport", "chat", "dashboard", "cron", "system", "api", "test"]),
   /** Human-readable actor, e.g. chat id, user, job name. */
   actor: z.string().optional(),
-  /** Correlation id linking related traces (e.g. a Telegram update id). */
+  /** Correlation id linking related traces (e.g. a turn's correlation id). */
   correlationId: z.string().optional(),
 });
 export type TraceTrigger = z.infer<typeof traceTriggerSchema>;
@@ -180,7 +179,7 @@ export const traceEventSchema = z.object({
 });
 export type TraceEvent = z.infer<typeof traceEventSchema>;
 
-/** A single meaningful action, e.g. handling one Telegram message. */
+/** A single meaningful action, e.g. handling one chat message. */
 export const traceSchema = z.object({
   id: z.string(),
   feature: z.string(),

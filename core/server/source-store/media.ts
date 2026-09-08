@@ -8,7 +8,7 @@ import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { sourceMedia, sourceMediaBlobs, sourceMessages } from "../../store/schema";
 
 /**
- * Transport media in the conversation store — the former tg media store,
+ * Transport media in the conversation store — the former transport-side media store,
  * source-parameterized: rows in `source_media`, pending payloads as ordered
  * frames in `source_media_blobs` (a still image is one frame, a video its
  * sampled sequence, a voice message its raw audio as frame 0). Describing is

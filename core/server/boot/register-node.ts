@@ -45,9 +45,9 @@ import { startTurnConsumerFromEnv, type TurnConsumer } from "@/server/turn/consu
  * instrumentation module. Imported dynamically only when the server runs in
  * the Node.js runtime.
  *
- * Since the source split the core runs NO Telegram poller: inbound turns
- * arrive on the queue (the tg app enqueues), replies leave as bus events,
- * and everything Telegram-shaped is the tg service's. What boots here is
+ * Since the source split the core runs NO platform client: inbound turns
+ * arrive on the queue (a transport enqueues), replies leave as bus events,
+ * and everything platform-shaped is the transport's. What boots here is
  * the brain — the queue consumer, the bus subscriber, and the background
  * jobs.
  */

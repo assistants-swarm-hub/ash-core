@@ -16,7 +16,7 @@ import {
  * reply, and the standing-task match. No tools, no history, no persona —
  * not a conversation.
  *
- * It lives here rather than in the Telegram runtime so the settings probe can
+ * It lives here rather than in the turn consumer so the settings probe can
  * exercise the *same* call the bot makes, and so the two call sites in the
  * reply path cannot drift apart on reasoning effort or budget. The runtime is a
  * parameter (resolved by the caller from `getClassifierRuntime`), which keeps

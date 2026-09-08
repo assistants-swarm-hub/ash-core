@@ -16,7 +16,7 @@ import type { ChatMessageRecord } from "./repository";
 function record(over: Partial<ChatMessageRecord>): ChatMessageRecord {
   return {
     id: 1,
-    chatRef: "tg:chat:5",
+    chatRef: "acme:chat:5",
     sourceMessageId: "10",
     role: "user",
     userId: "100",

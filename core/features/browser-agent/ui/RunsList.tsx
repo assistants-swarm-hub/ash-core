@@ -252,7 +252,7 @@ export function RunsList({ runs }: { runs: BrowserAgentRun[] }) {
       <EmptyState
         icon={Globe}
         title="No runs yet"
-        description="Start a run above, or ask the bot in Telegram to browse the web for you."
+        description="Start a run above, or ask the bot in a chat to browse the web for you."
       />
     );
   }

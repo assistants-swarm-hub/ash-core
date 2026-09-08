@@ -13,7 +13,7 @@ import {
  * an identity is named by a scoped ref or not at all.
  */
 
-const ALICE = "tg:user:1";
+const ALICE = "acme:user:1";
 const ALICE_WEB = "chat:user:2";
 
 describe("createPersonLinkSchema", () => {
@@ -50,7 +50,7 @@ describe("createPersonLinkSchema", () => {
   });
 
   it("bounds the number of identities", () => {
-    const many = Array.from({ length: MAX_MEMBERS + 1 }, (_, i) => `tg:user:${i}`);
+    const many = Array.from({ length: MAX_MEMBERS + 1 }, (_, i) => `acme:user:${i}`);
     expect(() => createPersonLinkSchema.parse({ members: many })).toThrow(
       new RegExp(`At most ${MAX_MEMBERS}`),
     );

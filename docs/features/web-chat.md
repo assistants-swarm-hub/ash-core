@@ -49,7 +49,7 @@ A message needs text, an image, a voice note, or some of each:
 | Attachment | Stored as | Then |
 | --- | --- | --- |
 | An image (base64, capped at 16 MB on the route) | Normalized to a bounded JPEG and stored `pending` in `web_media` / `web_media_blobs` | The vision pass describes it inside the turn; the bytes **stay** after describing — a web thread is the only archive its pictures have — and `GET /api/chat/media/{id}` serves them to the thread view |
-| A voice note (`audio/webm`, as the browser records it) | Stored raw as `kind = 'voice'` | Transcribed by the core exactly as a Telegram voice message is; the turn answers the words |
+| A voice note (`audio/webm`, as the browser records it) | Stored raw as `kind = 'voice'` | Transcribed by the core exactly as a transport's voice message is; the turn answers the words |
 
 Media that cannot be stored does not lose the message — the turn runs on the
 text.
@@ -61,7 +61,7 @@ storing the line and pinging the dashboard. `server/delivery.ts` consumes the
 pipeline's `reply.delivery` events for `chat` in-process (wired in
 `server/source/events-consumer.ts`), appends the assistant row, and records
 the delivery as a `bot-messaging` / `deliver` trace on the turn's correlation —
-the same record the Telegram transport writes for its sends. A reply for a
+the same record a transport writes for its sends. A reply for a
 thread that was deleted while the turn ran is dropped, and the trace says so.
 
 The `turn.lifecycle` events are this source's typing indicator

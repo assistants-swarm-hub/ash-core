@@ -7,7 +7,7 @@ import type { TurnLifecycleEvent } from "@assistants-swarm-hub/contracts";
  * renders it.
  *
  * The pipeline publishes a turn's lifecycle (accepted → progress → settled)
- * and each source renders it natively (PLAN.md): Telegram turns it into the
+ * and each source renders it natively (PLAN.md): a transport turns it into its
  * typing indicator, a web thread into live progress under the transcript.
  * The state is per running turn and worth nothing after a restart — the
  * transcript is the durable record — so it lives in this process's memory.

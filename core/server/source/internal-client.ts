@@ -45,7 +45,7 @@ export type InternalRequest = (
 export interface InternalRequesterOptions {
   /** Resolve the transport's config per call — registration can change. */
   config: () => Promise<InternalApiConfig | null>;
-  /** Named in error messages, e.g. `tg internal API`. */
+  /** Named in error messages, e.g. `<source> internal API`. */
   label: string;
   timeoutMs?: number;
 }

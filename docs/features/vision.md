@@ -17,8 +17,7 @@ and the bytes can be dropped.
 **Ingest** is split along the transport contract. The transport downloads the
 file with the connection's token — only it can talk to its platform's file API —
 normalizes it, and attaches the payload to the `transport.message` event as
-ordered base64 `frames` plus a `visionHint` (`ash-transport-telegram/src/media/ingest.ts`,
-`telegram-files.ts`, `normalize.ts`, `frames.ts` — all in the transport; the core
+ordered base64 `frames` plus a `visionHint` (the transport's media ingest; the core
 holds no platform download code). The core's ingest stores the
 row `status = 'pending'` with its bytes in `source_media_blobs`
 (`server/source-store/media.ts`). A payload that could not be loaded travels as
@@ -51,7 +50,7 @@ carry images are the describe pass itself and the browser agent's own loop.
 
 ## Detection
 
-`ash-transport-telegram/src/media/detect.ts` (pure, ported verbatim from the core's
+the transport's media detection (pure, ported verbatim from the core's
 `features/vision/detect.ts`, which stays as the unit-tested reference) decides
 *what* file to read and how to hint the describer. Precedence mirrors the MVP, with
 one change:
@@ -61,13 +60,13 @@ one change:
 | Photo | Decoded directly as a still image |
 | Static sticker | Decoded directly; the sticker's emoji and pack name become the `vision_hint` |
 | Image document | Decoded directly |
-| `animation` / `video` (Telegram delivers both as mp4) | Points at the **actual media file** so frames can be sampled with ffmpeg. Telegram's single-frame thumbnail is kept as a fallback for when frame extraction is unavailable |
+| `animation` / `video` | Points at the **actual media file** so frames can be sampled with ffmpeg. The platform's single-frame thumbnail is kept as a fallback for when frame extraction is unavailable |
 | Voice | Handled by the [Voice](voice.md) feature, on the same media pipeline |
 
 ## Normalization and frames
 
 - **Normalization** (`normalizeImageForChat` — `@assistants-swarm-hub/media`, and the
-  transport's `ash-transport-telegram/src/media/normalize.ts`): any image — WebP stickers,
+  transport's normalizer): any image — WebP stickers,
   PNGs, oversized photos — is converted to a bounded JPEG via `sharp` (longest
   edge 768 px, under 900 KB), so OpenAI-compatible vision endpoints accept it
   reliably and the base64 stays small enough to store and send.
@@ -77,8 +76,8 @@ one change:
   (`fps=count/duration`, the duration probed with ffprobe when the platform did
   not say), so short and long clips alike are covered end to end rather than
   just the opening seconds; the frames travel as an ordered image sequence with
-  a sequence hint. The Telegram transport samples them for its own ingest path
-  (`ash-transport-telegram/src/media/frames.ts`, on `ash-transport-telegram/src/media/ffmpeg.ts`). The core
+  a sequence hint. A transport samples them for its own ingest path with its
+  own ffmpeg. The core
   keeps its own sampler (`features/vision/server/frames.ts`, on
   `server/media/ffmpeg.ts`) behind `ingestMessageMedia` / `resolveMediaText` in
   `features/vision/server/service.ts`; nothing on the live turn path calls

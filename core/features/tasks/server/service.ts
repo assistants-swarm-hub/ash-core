@@ -55,7 +55,7 @@ import {
 
 /**
  * Tasks domain service — the boundary Route Handlers, the dashboard, the
- * Telegram runtime, and the MCP tools call. Owns trigger validation (via
+ * turn consumer, and the MCP tools call. Owns trigger validation (via
  * `normalizeTrigger` + next-run computation in the operator timezone), the
  * scope/audience rules, the per-kind permission gates, the enabled/next-run
  * lifecycle, and trace recording for every mutation. Reads are cheap and
@@ -145,7 +145,7 @@ export async function findTasks(
 /**
  * Server-only: the enabled prompt tasks composed into a chat's reply prompt,
  * and the `message` subset that may open a turn nobody addressed. Read once per
- * incoming message by the Telegram runtime.
+ * incoming message by the turn consumer.
  *
  * `senderUserId` is who sent the message this set is being built for. Tasks
  * that name specific people are filtered against it here, before anything

@@ -28,7 +28,7 @@ once per turn in `server/toolset.ts`:
 | Dimension | Column | Rule |
 | --- | --- | --- |
 | Enabled | `enabled` | A disabled connection keeps its snapshot but is offered to nobody |
-| App | `app_scope` | Null = every source; else only turns of that source app (`tg`, `chat`) — how each transport's own MCP server stays out of the other's prompt |
+| App | `app_scope` | Null = every source; else only turns of that source (a transport's id, `chat`) — how each transport's own MCP server stays out of the other's prompt |
 | Assistant | `all_assistants` + `assistant_tool_connections` | Every assistant, or the explicit selection; absent rows then mean "no assistant", not "everyone" |
 
 Per-chat and per-user scoping are not part of v2. The store is read on every
@@ -73,8 +73,9 @@ connection slug rides on each trace.
 
 ## Managed connections — the transports' own servers
 
-Each transport hosts an MCP server for its platform's actions (Telegram:
-`reply_to_message`, `send_message`, `set_message_reaction`), and the core
+Each transport hosts an MCP server for its platform's actions (the SDK's
+`reply_to_message` and `send_message`, plus its own such as
+`set_message_reaction`), and the core
 registers it as a **managed** connection (`server/managed.ts`): slug = the
 source id, name "<Transport> tools", endpoint = the registered `baseUrl` +
 `mcpPath`, auth header = the shared internal token, app scope = the source,
@@ -88,8 +89,8 @@ transport that does not answer keeps its last snapshot (dropping it because
 the app is still starting would make the first turns after a restart quietly
 less capable); a source this deployment does not run has its row disabled.
 The operator still owns the judgment calls — enabling, and which assistants
-may call it. `TRANSPORT_SOURCE_IDS` (`["tg"]`) is the list a new transport
-adds itself to
+may call it. There is no list to join: every registered transport's server is
+reconciled
 ([Adding a transport](../development/adding-a-transport.md#step-6--the-mcp-server)).
 The web chat's delivery tools left this list with the dissolve: they are
 in-process registry tools now ([Web chat](web-chat.md)).
@@ -128,7 +129,7 @@ bearer token pasted into Debug is a leaked credential.
 `features/tool-connections/ui/ConnectionsManager.tsx`): the built-in catalog,
 then each connection with its applied tools, drift, last check, **Discover**
 and **Apply** buttons, and an editor whose "Where it applies" picker offers
-every source / Telegram turns only / web chat turns only plus the assistant
+every source / one transport's turns only / web chat turns only plus the assistant
 selection. A managed connection is badged "provided by the hub" and its
 identity fields are read-only. Live on the `tools` topic. A user-role account
 sees the catalog, its own connections, and its own assistants in the pickers.

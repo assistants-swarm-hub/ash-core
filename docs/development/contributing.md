@@ -38,7 +38,7 @@ Clean, readable, DRY. Concretely:
 - **Apps never import each other.** The core and a transport share code only
   through `packages/*` — and a transport, living in its own repository, only
   through the published `packages/transport-sdk`; a cross-app pointer is a
-  scoped ref (`tg:user:123`), never a foreign key. Anything that touches a
+  scoped ref (`acme:user:123`), never a foreign key. Anything that touches a
   platform's API belongs in that platform's transport; the core stays
   platform-agnostic. A change to what crosses the boundary is a change to
   `packages/contracts`, to the SDK's version, and to both sides — and, when

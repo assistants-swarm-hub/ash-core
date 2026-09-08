@@ -72,7 +72,7 @@ on the chat role — a fired task is a real message to a person.
 ## The form
 
 `SettingsForm` is a Client Component with one tab per concern — **Models** (all
-nine roles above, one card each), **Telegram** (maintenance mode, and a pointer
+nine roles above, one card each), **Bots** (maintenance mode, and a pointer
 to `/assistants`, where bot tokens live per assistant), **General** (timezone,
 daily run time, browser download cap, the assistant loop guard),
 **Integrations** (Tavily) and **Security** (password change; its own endpoint

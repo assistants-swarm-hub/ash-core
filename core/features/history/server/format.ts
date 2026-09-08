@@ -6,7 +6,7 @@ import type { ChatMessageRecord } from "./repository";
  * are unit-testable in isolation.
  *
  * History is injected as ONE user message containing a transcript, where every
- * line is anchored by its Telegram message id: `[#<id>] <sender>: <text>`. A
+ * line is anchored by its source message id: `[#<id>] <sender>: <text>`. A
  * reply is marked with `[reply to #<id>]` (when the target is stored and can be
  * dereferenced) or with the quoted text inline (when it is not). The anchors let
  * the model follow reply chains precisely — who answered whom about what — and
@@ -36,7 +36,7 @@ export function fallbackSpeakerLabel(userId: string | null): string {
  * How a message's reply target is referenced in a transcript line:
  * - `anchor` — the target is stored in history, referenced as `#<id>` (the model
  *   can read it in the transcript or fetch it by id with the history tools). An
- *   optional partial `quote` (Telegram's quote feature) narrows the reference.
+ *   optional partial `quote` (a platform's quote feature) narrows the reference.
  * - `inline` — the target is not stored, so its sender and full text (never
  *   trimmed) are inlined; `text` is null when the target had no textual content.
  */

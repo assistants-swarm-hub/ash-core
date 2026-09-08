@@ -92,7 +92,7 @@ export function extForUrl(url: string, mime: string): string {
  * downloaders read `Content-Type` off the response; the media downloader only
  * ever sees a file yt-dlp wrote to disk, so its type has to come from the name.
  * Covers the containers yt-dlp actually produces; anything else is served as a
- * generic binary, which Telegram sends as a plain document.
+ * generic binary, which a transport sends as a plain document.
  */
 const EXTENSION_MIMES: Record<string, string> = {
   mp4: "video/mp4",

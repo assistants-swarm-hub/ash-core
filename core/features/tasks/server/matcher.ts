@@ -6,7 +6,7 @@ import type { ChatMessage } from "@/server/llm/client";
  * tasks, if any, does the current message trigger?
  *
  * Prompt building and parsing are pure, so the whole decision is unit-testable
- * without a provider. The caller (the Telegram runtime) owns the completion and
+ * without a provider. The caller (the turn consumer) owns the completion and
  * the trace; this module owns what is asked and how the answer is read.
  *
  * Its answer decides two separate things, which is why it runs on addressed and
@@ -87,7 +87,7 @@ export interface TaskMatchInput {
   tasks: readonly MatchableTask[];
   /** The message's user text (body, caption, or voice transcript). */
   text: string;
-  /** Telegram chat type, for context only. */
+  /** The chat kind (private or group), for context only. */
   chatType: string;
   /** Who sent this message, labelled as the tasks label their people. */
   senderLabel?: string | null;

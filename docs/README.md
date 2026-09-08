@@ -1,13 +1,13 @@
 # Documentation
 
 Full documentation for **assistants-swarm-hub** — a multi-user assistant platform:
-accounts run their own AI assistants (personas, Telegram bots, standing tasks,
+accounts run their own AI assistants (personas, chat bots, standing tasks,
 tools) on one shared brain (an OpenAI-compatible chat completions API, or a
 native Anthropic, Google or Z.ai backend), with a web chat and a
 control/observability dashboard. The platform is two apps: the **core**
-(dashboard, web chat, the whole pipeline, one Postgres database) and a
-stateless **Telegram transport** that registers with it; another messaging
-platform connects the same way.
+(dashboard, web chat, the whole pipeline, one Postgres database) and
+stateless **transports** that register with it, one per messaging platform.
+The core names none of them.
 
 Everything here describes the code in this repository. Pending and upcoming
 work — features with their agreed specs and decisions, plus open operational
@@ -34,7 +34,7 @@ items — is tracked in [TODO](TODO.md). The v2 redesign's design is
 
 **I want to connect another messaging platform.**
 [Adding a transport](development/adding-a-transport.md) — the contract, step
-by step, with the Telegram app as the worked example.
+by step.
 
 **I want to call the API.**
 [API conventions](api/README.md) → [Endpoint reference](api/endpoints.md) →
@@ -55,7 +55,7 @@ by step, with the Telegram app as the worked example.
 | --- | --- |
 | [Overview](architecture/overview.md) | The two apps and the shared packages, layers, the cross-app message lifecycle, process singletons, boot |
 | [Data model](architecture/data-model.md) | Every Postgres table and column, relationships, migrations |
-| [The message pipeline](architecture/telegram-pipeline.md) | An incoming message end to end: transport → ingest → addressing → context → tools → delivery |
+| [The message pipeline](architecture/message-pipeline.md) | An incoming message end to end: transport → ingest → addressing → context → tools → delivery |
 | [Background jobs](architecture/background-jobs.md) | The three scheduler primitives, advisory locks, progress, the Jobs board |
 | [LLM and MCP](architecture/llm-and-mcp.md) | The provider clients, the tool loop, in-process and remote MCP tools, the tool catalog |
 | [Observability](architecture/observability.md) | The trace contract across apps, the file-backed trace store, Debug UI, live SSE updates |
@@ -78,9 +78,9 @@ its behavior, configuration, data, traces and tests.
 
 | Document | What it covers |
 | --- | --- |
-| [Deployment](operations/deployment.md) | Docker Compose (core, Telegram service, Redis, Postgres), the images, migrations on start, health checks, releases |
+| [Deployment](operations/deployment.md) | Docker Compose (core, Redis, Postgres, plus the transports you add), the images, migrations on start, health checks, releases |
 | [Operator guide](operations/operator-guide.md) | Every dashboard page and what to do on it |
-| [Using the bot in chat](operations/using-the-bot.md) | What end users can do in Telegram, and how an assistant decides to answer |
+| [Using the bot in chat](operations/using-the-bot.md) | What end users can do in a chat, and how an assistant decides to answer |
 | [Backup and restore](operations/backup-and-restore.md) | What state exists, where, and how to back each part up |
 | [Troubleshooting](operations/troubleshooting.md) | Symptom → cause → fix, with the trace to look at |
 
@@ -90,7 +90,7 @@ its behavior, configuration, data, traces and tests.
 | --- | --- |
 | [Contributing](development/contributing.md) | Engineering standards, the feature contract, where code goes |
 | [Adding a transport](development/adding-a-transport.md) | The transport contract, for an author with no access to this repository: registration, events, delivery, the HTTP surface, MCP tools, shipping an image |
-| [Testing](development/testing.md) | Unit tests, Testcontainers integration tests, exercising the pipeline without Telegram |
+| [Testing](development/testing.md) | Unit tests, Testcontainers integration tests, exercising the pipeline without a transport |
 | [UI kit](development/ui-kit.md) | The design system, shared components, and the UI conventions features must follow |
 | [TODO](TODO.md) | The working tracker: pending features with their agreed specs, and open items |
 
@@ -103,9 +103,10 @@ its behavior, configuration, data, traces and tests.
   administers the deployment — an admin account. **Owner rights** in a chat
   belong to the assistant's owning account (resolved through identity links)
   and to every admin; there is no single global owner.
-- A **source** is where a conversation lives — `tg` (Telegram) or `chat` (the
-  web chat) — and a **transport** is the service that connects a platform
-  source. Cross-app pointers are scoped refs, `tg:user:123`.
+- A **source** is where a conversation lives — a transport's id (`acme`,
+  say) or `chat` (the web chat) — and a **transport** is the service that
+  connects a platform source. Cross-app pointers are scoped refs,
+  `acme:user:123`.
 - Times shown in the dashboard are always rendered in the configured operator
   timezone, never the viewer's local zone.
 - Where a doc states a decision was the user's, it was made by asking the user

@@ -44,7 +44,7 @@ const triggerKind = z.enum([
 ]) satisfies z.ZodType<TriggerKind>;
 const scheduleKind = z.enum(["once", "daily", "weekly"]) satisfies z.ZodType<ScheduleKind>;
 /**
- * The chat's scoped ref (`tg:chat:-100…`); null means the global scope
+ * The chat's scoped ref (`acme:chat:42`); null means the global scope
  * (applies in every chat; prompt kinds only).
  */
 const chatRef = z

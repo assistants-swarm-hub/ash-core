@@ -22,7 +22,7 @@ Tavily API kept as a last-resort fallback there.
 | The generic browser toolset | **Nothing.** These are plain OpenAI tool definitions for the agent's own loop and are never offered to the chat model |
 
 The chat model does **not** drive the browser itself (recorded decision: background
-run, not inline). A browsing session is many rounds of latency; holding a Telegram
+run, not inline). A browsing session is many rounds of latency; holding a chat
 turn open for it would stall the chat.
 
 ## `browse_web`
@@ -87,7 +87,7 @@ the server's disk):
   a CDN host other than the message's site is also refused on a restricted run —
   the rule use-case is media pages, where `browser_download_media` takes the page
   URL itself.
-- **Attach or fail.** A file the chat cannot take (over Telegram's 50 MB bot
+- **Attach or fail.** A file the chat cannot take (over the platform's bot
   upload ceiling) is deleted, recorded with `discarded: true`, and reported as a
   failed delivery — the requester cannot reach the server's downloads folder, so
   keeping the file would strand it. The run's report is then sent without a
@@ -290,14 +290,14 @@ file-then-recap flow repeated the same filename twice and spammed the chat):
   (silently, by name) the moment they land.
 - The runner hands each file to the owning source's outbound port
   (`sendFile` in `server/turn/source-outbound.ts` — the transport's
-  `POST /internal/chats/:chatId/files`, allowed 500 s for Telegram's own
+  `POST /internal/chats/:chatId/files`, allowed 500 s for the platform's own
   upload; the web chat keeps the file on the message). The transport sends
-  files **as the media they are** (`ash-transport-telegram/src/outbound.ts`): an
-  MP4/QuickTime video goes out via `sendVideo` (playable straight in Telegram,
+  files **as the media they are**: an
+  MP4/QuickTime video goes out as a video (playable straight in the chat,
   streaming enabled), an MP3/M4A via `sendAudio` (music player), anything else
-  as a document. A container Telegram rejects as media falls back to a document
+  as a document. A container the platform rejects as media falls back to a document
   send. Captions render like any bot message (HTML with a plain-text fallback).
-- The combined form needs one staged file and a report that fits Telegram's
+- The combined form needs one staged file and a report that fits the platform's
   1024-character caption cap. Otherwise each staged file goes out under its own
   filename line and the report follows as text. The report's recap section lists
   **only files that did not reach the chat** — a delivered attachment speaks for
@@ -390,7 +390,7 @@ themselves (user decision, 2026-07-29: add the tool).
 - **`mode`** — `audio` takes the best audio-only rendition and transcodes it to
   **mp3** at yt-dlp's highest VBR setting (`--audio-quality 0`). Keeping the native
   container would avoid a lossy-to-lossy re-encode, and that is what shipped first —
-  but YouTube's best audio is usually opus, and **Telegram will not play an `.opus`
+  but YouTube's best audio is usually opus, and **a chat client will not play an `.opus`
   document**, so the first real run produced a file nobody could listen to (user
   decision, 2026-07-29: mp3). An unplayable file's quality does not matter.
   `video` takes best video + best audio and merges, mp4 preferred, falling back to a
@@ -441,7 +441,7 @@ the screenshots, live progress while running, and the final report. Live-updates
 the `browser` topic.
 
 The **start-a-run form** exists so the operator can exercise or drive the agent
-directly, mirroring the conversational tool without needing Telegram.
+directly, mirroring the conversational tool without needing a chat.
 
 ## API
 

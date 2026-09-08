@@ -541,7 +541,7 @@ function Composer({
   /**
    * Recording uses whatever container the browser gives us (webm/opus in
    * Chrome): the service stores the bytes as they are and the pipeline converts
-   * before transcribing, exactly as it does for a Telegram voice message.
+   * before transcribing, exactly as it does for a transport's voice message.
    */
   const startRecording = async () => {
     setLocalError(null);

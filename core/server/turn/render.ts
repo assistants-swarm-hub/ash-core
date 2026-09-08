@@ -31,7 +31,7 @@ import type { ChatMessage } from "@/server/llm/client";
 /**
  * The bot's own label in transcripts. Plain "You" — the assistant's identity
  * is the ASSISTANT's name, asserted by the persona block; the bot account's
- * @username/display name confused the model into answering as its Telegram
+ * @username/display name confused the model into answering as its platform
  * handle (user decision, 2026-08-24 — departs from the v1 `You (@name)`
  * shape). The account names still drive addressing, never the reply context.
  */
@@ -177,9 +177,9 @@ export function renderCurrentTurn(
  */
 /**
  * Where the conversation is happening, in one sentence. The model used to be
- * told "a Telegram chat" by the base prompt, which became a lie the moment a
- * second source existed — a web thread would confidently place itself in
- * Telegram. A transport's turn is placed by the name the transport announced
+ * told "a <platform> chat" by the base prompt, which became a lie the moment a
+ * second source existed — a web thread would confidently place itself on
+ * that platform. A transport's turn is placed by the name the transport announced
  * at registration (`sourceName`), so a new transport needs no phrase here;
  * the hub's own web chat, the one built-in in-process source, keeps its own.
  */
@@ -197,7 +197,7 @@ export function surfaceLine(event: InboundMessageEvent, sourceName: string): str
 
 export function renderChatContext(
   event: InboundMessageEvent,
-  /** The human name of the turn's transport ("Telegram"), as it registered. */
+  /** The human name of the turn's transport, as it registered. */
   sourceName: string,
 ): { content: string; data?: Record<string, unknown> } | null {
   const where = surfaceLine(event, sourceName);

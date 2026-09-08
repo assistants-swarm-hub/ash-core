@@ -45,8 +45,8 @@ describe("summarizeTransports", () => {
     const two = summarizeTransports([
       roster({ connections: [connection()] }),
       roster({
-        id: "discord",
-        name: "Discord",
+        id: "beta",
+        name: "Beta Chat",
         connections: [connection({ id: "c2", status: { state: "running", username: "other", since: null, error: null } })],
       }),
     ]);
@@ -56,9 +56,9 @@ describe("summarizeTransports", () => {
   it("reports a refused transport before anything else", () => {
     const summary = summarizeTransports([
       roster({ connections: [connection()] }),
-      roster({ id: "discord", name: "Discord", refusedReason: "Discord speaks contract major 2" }),
+      roster({ id: "beta", name: "Beta Chat", refusedReason: "Beta Chat speaks contract major 2" }),
     ]);
-    expect(summary.status).toMatchObject({ state: "error", error: "Discord speaks contract major 2" });
+    expect(summary.status).toMatchObject({ state: "error", error: "Beta Chat speaks contract major 2" });
     expect(summary.configured).toBe(true);
   });
 

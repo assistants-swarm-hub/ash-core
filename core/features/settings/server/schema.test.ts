@@ -28,7 +28,7 @@ describe("updateSettingsSchema", () => {
 
   it("does not take a bot token — connections are per assistant since Phase 3", () => {
     // An unknown key alone is an empty (rejected) update; zod strips it.
-    expect(updateSettingsSchema.safeParse({ telegramBotToken: "12345:x" }).success).toBe(false);
+    expect(updateSettingsSchema.safeParse({ botToken: "12345:x" }).success).toBe(false);
   });
 });
 

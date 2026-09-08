@@ -23,15 +23,15 @@ import {
  * Fresh database, fresh migration chain (`store/migrations`).
  *
  * Never a foreign key into another app's database: anything that points at a
- * source-owned entity (a telegram user, a web-chat thread) stores a **scoped
- * ref** string (`tg:user:123`, `chat:thread:45` — `@assistants-swarm-hub/contracts`).
+ * source-owned entity (a transport's user, a web-chat thread) stores a **scoped
+ * ref** string (`acme:user:123`, `chat:thread:45` — `@assistants-swarm-hub/contracts`).
  * `*_ref` columns hold scoped refs; source-local details that ride along
- * (telegram message ids, forum-topic thread ids) keep their own columns and
+ * (source message ids, sub-thread ids) keep their own columns and
  * are only meaningful to the source the ref names.
  *
  * Tables the v1 app owns that are NOT here: raw conversation mirrors,
  * media, message search, chat summaries and feedbacks (conversation-derived
- * content is source-owned — the tg store; the core's features write it
+ * content is source-owned — the conversation store; the core's features write it
  * through the owning app's API — user decision, 2026-08-22), analytics
  * rollups and browser-agent runs (start fresh; their tables join this
  * schema when their feature is rewired), search-engine stats (self-healing
@@ -140,7 +140,7 @@ export type AccountLinkCodeRow = typeof accountLinkCodes.$inferSelect;
  * Application settings — the shared brain configuration. A single typed row
  * (`id = 'singleton'`), exactly the v1 table minus what left the core:
  *
- * - `telegram_bot_token` — became a transport connection row (bot token per
+ * - the bot token — became a transport connection row (bot token per
  *   assistant, stored opaquely and handed to the transport as desired state).
  * - `active_personality_id` — personalities became assistants; "active" is
  *   replaced by transport connections binding an assistant to a chat.
@@ -249,8 +249,8 @@ export type SettingsInsert = typeof settings.$inferInsert;
  * per-assistant: the persona, transport connections (stored by the owning
  * source app, keyed by this id), and standing tasks.
  *
- * Migration seeds these from v1 personalities, **id-preserving** — so the tg
- * import can bind the v1 bot token to the assistant converted from the active
+ * Migration seeds these from v1 personalities, **id-preserving** — so the first
+ * transport's import can bind the v1 bot token to the assistant converted from the active
  * personality without coordinating with this script. When v1 had no active
  * personality, both imports fall back to the same fixed id
  * (`assistant-default`), created here with an empty persona.
@@ -322,7 +322,7 @@ export type MemoryEntryInsert = typeof memoryEntries.$inferInsert;
 export const userMemories = pgTable(
   "user_memories",
   {
-    /** Scoped ref of the person (`tg:user:123`, `chat:user:<uuid>`). */
+    /** Scoped ref of the person (`acme:user:123`, `chat:user:<uuid>`). */
     userRef: text("user_ref").primaryKey(),
     /** The merged memory document — durable facts, one per line. */
     content: text("content").notNull(),
@@ -402,7 +402,7 @@ export type SelfCorrectionInsert = typeof selfCorrections.$inferInsert;
  * Words the addressing analyzer must stop reading as an assistant's name.
  * Bot-wide facts (v1 decision); the chat/message/user columns are provenance
  * of the report, now as scoped refs / source-local ids with no FKs — the
- * feedback rows they came from live in the tg store.
+ * feedback rows they came from live in the conversation store.
  */
 export const addressingExclusions = pgTable(
   "addressing_exclusions",
@@ -421,7 +421,7 @@ export const addressingExclusions = pgTable(
     sourceMessageId: text("source_message_id"),
     /** Scoped ref of who reported it (provenance). */
     userRef: text("user_ref"),
-    /** Id of the tg-store feedback row that created it (provenance, no FK). */
+    /** Id of the conversation-store feedback row that created it (provenance, no FK). */
     feedbackId: text("feedback_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -434,7 +434,7 @@ export type AddressingExclusionInsert = typeof addressingExclusions.$inferInsert
 /**
  * Tasks — one standing instruction plus the trigger that runs it (v1 shape),
  * now owned by an assistant and pointing at chats/people via scoped refs.
- * `thread_id` stays a source-local delivery detail (telegram forum topic),
+ * `thread_id` stays a source-local delivery detail (a platform sub-thread),
  * meaningful only to the source `chat_ref` names.
  */
 export const tasks = pgTable(
@@ -588,7 +588,7 @@ export type TurnActionRow = typeof turnActions.$inferSelect;
 
 /**
  * Person links — the operator-managed declaration that identities across
- * sources are the same human (PLAN.md): "tg user X = web user Y". One link
+ * sources are the same human (PLAN.md): "platform user X = web user Y". One link
  * row is one person; members are that person's scoped user refs. Memory
  * reads resolve through the link group, so knowledge follows the person
  * across sources; unlinked users stay separate.
@@ -616,7 +616,7 @@ export const personLinkMembers = pgTable(
     linkId: text("link_id")
       .notNull()
       .references(() => personLinks.id, { onDelete: "cascade" }),
-    /** Scoped user ref (`tg:user:123`, `chat:user:<uuid>`). */
+    /** Scoped user ref (`acme:user:123`, `chat:user:<uuid>`). */
     userRef: text("user_ref").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -845,7 +845,7 @@ export type WebMessageInsert = typeof webMessages.$inferInsert;
 
 /**
  * Uploaded media attached to one message (image upload / voice note / a
- * produced file). Same describe lifecycle as the tg store's media, with one
+ * produced file). Same describe lifecycle as the conversation store's media, with one
  * deliberate difference: **the bytes stay after describing** — a web thread
  * is the only archive its pictures have (see `web-chat/server/media-repository.ts`).
  */
@@ -902,13 +902,13 @@ export type WebMediaBlobInsert = typeof webMediaBlobs.$inferInsert;
  * The generalized conversation store (redesign Phase 7, PLAN.md "Data
  * ownership"): every transport's users, chats, messages, media, search
  * index, summaries and feedbacks in ONE set of tables, keyed by a `source`
- * discriminator plus **source-local text ids**. The former tg store, table
- * for table, with the telegram-shaped columns generalized:
+ * discriminator plus **source-local text ids**. The former transport-side
+ * store, table for table, with the platform-shaped columns generalized:
  *
- * - `telegram_message_id bigint` → `source_message_id text` — ordering
+ * - the platform's `message_id bigint` → `source_message_id text` — ordering
  *   always comes from the identity `id`, never from the source id, so a
  *   transport with non-numeric ids costs nothing.
- * - platform stream semantics (telegram's "a group is one shared stream,
+ * - platform stream semantics ("a group is one shared stream,
  *   a DM is per-bot") arrive as a transport-computed `dedupe_key`; core
  *   code never inspects a chat id's sign.
  *
@@ -916,15 +916,15 @@ export type WebMediaBlobInsert = typeof webMediaBlobs.$inferInsert;
  * transport); unifying them here is a later phase.
  */
 
-/** Every person a transport has seen (the former tg `users`). */
+/** Every person a transport has seen (the former transport-side `users`). */
 export const sourceUsers = pgTable(
   "source_users",
   {
     /** Which transport knows them. */
     source: text("source").notNull(),
-    /** Source-local user id (numeric for telegram, but never assumed so). */
+    /** Source-local user id (numeric on some platforms, but never assumed so). */
     userId: text("user_id").notNull(),
-    /** Platform handle (telegram @username, normalized lowercase), or null. */
+    /** Platform handle (@username, normalized lowercase), or null. */
     username: text("username"),
     firstName: text("first_name"),
     lastName: text("last_name"),
@@ -944,7 +944,7 @@ export const sourceUsers = pgTable(
 export type SourceUserRow = typeof sourceUsers.$inferSelect;
 export type SourceUserInsert = typeof sourceUsers.$inferInsert;
 
-/** Every group conversation a transport participates in (the former tg `chats`). */
+/** Every group conversation a transport participates in (the former transport-side `chats`). */
 export const sourceChats = pgTable(
   "source_chats",
   {
@@ -968,7 +968,7 @@ export const sourceChats = pgTable(
 export type SourceChatRow = typeof sourceChats.$inferSelect;
 export type SourceChatInsert = typeof sourceChats.$inferInsert;
 
-/** Chat ↔ user membership (the former tg `chat_members`). */
+/** Chat ↔ user membership (the former transport-side `chat_members`). */
 export const sourceChatMembers = pgTable(
   "source_chat_members",
   {
@@ -988,7 +988,7 @@ export type SourceChatMemberRow = typeof sourceChatMembers.$inferSelect;
 
 /**
  * Which assistants are present in a chat, stamped from what the transport
- * actually delivered to each connection (the former tg `chat_assistants`).
+ * actually delivered to each connection (the former transport-side `chat_assistants`).
  * The cross-feed and the group fan-out read it.
  */
 export const sourceChatAssistants = pgTable(
@@ -1006,10 +1006,10 @@ export const sourceChatAssistants = pgTable(
 export type SourceChatAssistantRow = typeof sourceChatAssistants.$inferSelect;
 
 /**
- * The 1:1 mirror of every transport conversation (the former tg `messages`):
+ * The 1:1 mirror of every transport conversation (the former transport-side `messages`):
  * every human message and every assistant reply, keyed by chat. Append-only
  * log — identity id preserves insertion order; `dedupe_key` (computed by the
- * owning transport — for telegram `g:<chat>:<msg>` for the shared group
+ * owning transport — e.g. `g:<chat>:<msg>` for the shared group
  * stream, `d:<chat>:<assistant>:<msg>` for per-bot DM streams) makes
  * re-deliveries no-ops without the core knowing the platform's stream rules.
  */
@@ -1067,7 +1067,7 @@ export type SourceMessageRow = typeof sourceMessages.$inferSelect;
 export type SourceMessageInsert = typeof sourceMessages.$inferInsert;
 
 /**
- * The searchable projection of one mirrored message (the former tg
+ * The searchable projection of one mirrored message (the former transport-side
  * `message_search`): message text + rendered media annotation, plus its
  * embedding.
  */
@@ -1097,7 +1097,7 @@ export const sourceMessageSearch = pgTable(
 export type SourceMessageSearchRow = typeof sourceMessageSearch.$inferSelect;
 
 /**
- * Media attached to a transport message (the former tg `media`). One row per
+ * Media attached to a transport message (the former transport-side `media`). One row per
  * media-bearing message; bytes live in {@link sourceMediaBlobs} while the
  * row is `pending` and are dropped once described — the platform is its own
  * archive.
@@ -1111,7 +1111,7 @@ export const sourceMedia = pgTable(
     sourceMessageId: text("source_message_id").notNull(),
     /** Media kind: `photo` | `sticker` | `image_document` | `animation` | `video` | `voice`. */
     kind: text("kind").notNull(),
-    /** Source-local file handle (telegram `file_id`), for re-downloads. */
+    /** Source-local file handle, for re-downloads. */
     fileId: text("file_id").notNull(),
     /** Source-local stable file identity, or null. */
     fileUniqueId: text("file_unique_id"),
@@ -1159,7 +1159,7 @@ export type SourceMediaBlobRow = typeof sourceMediaBlobs.$inferSelect;
 
 /**
  * One piece of user feedback on a bot reply, collected via a reaction and
- * the follow-up menu (the former tg `feedbacks`). Raw material; the
+ * the follow-up menu (the former transport-side `feedbacks`). Raw material; the
  * distilled outputs (preferences, corrections) live in their own tables.
  */
 export const sourceFeedbacks = pgTable(
@@ -1217,7 +1217,7 @@ export type SourceFeedbackRow = typeof sourceFeedbacks.$inferSelect;
 
 /**
  * One topic discussed in one chat on one day, distilled by the
- * summarization job (the former tg `summaries`). `message_ids` are
+ * summarization job (the former transport-side `summaries`). `message_ids` are
  * source-local message ids (the `#<id>` transcript anchors) — no FK,
  * deliberately.
  */
@@ -1252,13 +1252,13 @@ export type SourceSummaryRow = typeof sourceSummaries.$inferSelect;
  * contract"): a transport announces itself at boot — id, name, base URL,
  * MCP path, config schemas — and the row is what every core→transport call
  * resolves against (no more per-transport env vars). `config` is the
- * transport-level opaque blob (telegram's owner identity lives there);
+ * transport-level opaque blob (an owner identity, say, lives there);
  * `enabled` is the admin's switch.
  */
 export const transports = pgTable("transports", {
-  /** The source id ("tg"). */
+  /** The source id, as the transport announced it. */
   id: text("id").primaryKey(),
-  /** Human name ("Telegram"). */
+  /** Human name, as the transport announced it. */
   name: text("name").notNull(),
   /** The transport's announced internal API base URL. */
   baseUrl: text("base_url").notNull(),
@@ -1298,9 +1298,9 @@ export type TransportRow = typeof transports.$inferSelect;
 export type TransportInsert = typeof transports.$inferInsert;
 
 /**
- * Per-assistant transport connections (the former tg `connections`,
+ * Per-assistant transport connections (the former transport-side `connections`,
  * generalized): the assistant's record carries one opaque config section per
- * transport (a telegram section holds the bot token). Desired state — the
+ * transport (a section holds the bot token, say). Desired state — the
  * transport fetches it at boot and on change events and reconciles; actual
  * state is published on the bus, not stored.
  */
@@ -1502,7 +1502,7 @@ export const chatHourInsights = pgTable(
   "chat_hour_insights",
   {
     id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
-    /** Scoped ref of the chat this insight belongs to (`tg:chat:-100…`). */
+    /** Scoped ref of the chat this insight belongs to (`acme:chat:42`). */
     chatRef: text("chat_ref").notNull(),
     /** The insight hour (`YYYY-MM-DD HH`) as wall-clock in the operator timezone. */
     insightHour: text("insight_hour").notNull(),

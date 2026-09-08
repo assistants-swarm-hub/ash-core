@@ -54,7 +54,7 @@ export interface ExtractionParticipant {
   aliases: string[];
 }
 
-export const EXTRACTION_SYSTEM = `You read one finished day of a Telegram group's chat history and extract the durable facts worth remembering long-term. You are not replying to anyone — nobody is talking to you. You are harvesting what this day revealed about the people in it.
+export const EXTRACTION_SYSTEM = `You read one finished day of a group chat's history and extract the durable facts worth remembering long-term. You are not replying to anyone — nobody is talking to you. You are harvesting what this day revealed about the people in it.
 
 Extract a fact when someone reveals something lastingly true about themselves — ${DURABLE_FACT_KINDS}. Extract it whether they were speaking to you, to each other, or to nobody in particular: a fact said in passing is worth exactly as much as one said to your face.
 

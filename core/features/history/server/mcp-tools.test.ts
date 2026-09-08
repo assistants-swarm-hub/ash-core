@@ -14,7 +14,7 @@ import type { SourceMessageMatch } from "@/server/source/content";
 function record(over: Partial<ChatMessageRecord> = {}): ChatMessageRecord {
   return {
     id: 1,
-    chatRef: "tg:chat:-100",
+    chatRef: "acme:chat:-100",
     sourceMessageId: "11",
     role: "user",
     userId: "42",

@@ -17,9 +17,9 @@
 # registry's until you pull again.
 #
 # Only the core is here, because the core is all this repository builds. Every
-# transport — including Telegram's — lives in its own repository and is pulled
-# as a released image either way; to run one from source, start it on the host
-# against this stack (see docs/development/adding-a-transport.md).
+# transport lives in its own repository and is pulled as a released image either
+# way; to run one from source, start it on the host against this stack (see
+# docs/development/adding-a-transport.md).
 services:
   app:
     build:

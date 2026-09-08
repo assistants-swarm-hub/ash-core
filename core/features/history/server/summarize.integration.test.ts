@@ -21,7 +21,7 @@ import {
  * pass → embed → replace-day write-back → marker stamp, plus the
  * idempotency and self-healing rules the job leans on. The summaries' own
  * SQL (storage, hybrid search, the day buckets) lives with the data in the
- * tg app and is pinned by its content suite.
+ * conversation store and is pinned by its content suite.
  */
 
 let ctx: TestStoreDb;
@@ -39,7 +39,7 @@ beforeEach(async () => {
   await registerTestTransport(ctx.db);
 });
 
-const CHAT = "tg:chat:555";
+const CHAT = "acme:chat:555";
 /** "Now" for the run: the 14th, so the 13th is a finished, summarizable day. */
 const NOW = new Date("2026-07-14T12:00:00.000Z");
 const YESTERDAY = "2026-07-13";

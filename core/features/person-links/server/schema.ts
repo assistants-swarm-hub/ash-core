@@ -8,7 +8,7 @@ import { scopedRefSchema } from "@assistants-swarm-hub/contracts";
  * Route Handlers, and the dashboard.
  *
  * A link is the operator's declaration that several identities are the same
- * human (PLAN.md, "Person links"): "tg user X = web user Y", or two accounts
+ * human (PLAN.md, "Person links"): "platform user X = web user Y", or two accounts
  * on one source. Memory reads resolve through it, so what the bot knows about
  * a person follows them across the identities they reach it by; unlinked
  * identities stay separate.
@@ -47,7 +47,7 @@ const members = z
 
 /** One identity in a link, resolved against the aggregated directory. */
 export const personLinkMemberSchema = z.object({
-  /** Scoped user ref (`tg:user:123`) — the stored identity. */
+  /** Scoped user ref (`acme:user:123`) — the stored identity. */
   userRef: z.string(),
   /** Source the ref belongs to, and its human name. */
   source: z.string(),

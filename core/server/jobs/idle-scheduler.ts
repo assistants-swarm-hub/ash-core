@@ -5,12 +5,12 @@ import type { JobProgress } from "./progress";
 /**
  * Shared in-process idle-debounced job scheduler — the background-job operating
  * model for this app (recorded decision). A single self-hosted container already
- * runs in-process singletons (the Telegram poller, MCP registry, Playwright
+ * runs in-process singletons (the queue consumers, MCP registry, Playwright
  * browser, realtime hub); background jobs run the same way rather than as an
  * external cron, a separate worker, or on-demand only.
  *
  * The trigger is idle-debounced (MVP parity): {@link IdleScheduler.onActivity}
- * is called on every unit of live work (e.g. a handled Telegram message), which
+ * is called on every unit of live work (e.g. a handled chat message), which
  * (re)arms a debounce timer and aborts any batch currently running. The job body
  * only runs once the system has been quiet for `debounceMs`, so backfill-style
  * work never competes with a live reply for the LLM.

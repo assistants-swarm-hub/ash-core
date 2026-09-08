@@ -146,7 +146,7 @@ A scoped route answers `not_found`, not `forbidden`, for an id outside the scope
 ### Internal transport routes
 
 The five `/api/internal/transports/*` routes are how a transport service (the
-Telegram app today, a Signal one tomorrow) talks back to the core: register at
+any platform's transport) talks back to the core: register at
 boot, refetch desired state, write back into its own config, ask the mirror
 about a message, and answer a feedback-menu button press. They ignore the
 session cookie and require the shared secret instead:
@@ -202,13 +202,13 @@ replaces the whole set when sent, since a merge could never remove a header.
 ## Identifiers
 
 Rows the core owns carry app-generated UUIDs. Anything that points across apps
-is a **scoped ref** - `source:kind:id` with sources `tg` and `chat`, kinds
+is a **scoped ref** - `source:kind:id` with a transport's id or `chat` as the source, kinds
 `user`, `chat`, `thread`, `message` - never a foreign key. Refs appear as the
-`{id}` of `/api/users/{id}` and `/api/groups/{id}` (`tg:user:123`,
-`tg:chat:-100…`), as the `{userId}` of `/api/memory/users/{userId}` and the
+`{id}` of `/api/users/{id}` and `/api/groups/{id}` (`acme:user:123`,
+`acme:chat:42`), as the `{userId}` of `/api/memory/users/{userId}` and the
 `userId` query of `DELETE /api/profile/memory`, and as person-link `members`.
 The `{id}` of `/api/transports/{id}` and `/api/internal/transports/{id}/*` is a
-bare source id (`tg`, `chat`).
+bare source id (a transport's, or `chat`).
 
 ## Pagination
 

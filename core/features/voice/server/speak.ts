@@ -10,14 +10,14 @@ import { startTrace } from "@/server/trace";
 
 /**
  * Voice-reply synthesis: reply text → MP3 on the configured speech endpoint →
- * OGG/Opus for Telegram's `sendVoice`. Traced under `voice`/`synthesize`,
+ * OGG/Opus for a platform's voice bubble. Traced under `voice`/`synthesize`,
  * correlated with the reply trace by `chatId:messageId`.
  */
 
 const FEATURE = FEATURES["voice"];
 
 /**
- * Synthesize a reply chunk as a Telegram-ready voice payload, or null when the
+ * Synthesize a reply chunk as a platform-ready voice payload, or null when the
  * speech endpoint is unconfigured (no trace — every text-only deployment would
  * be noise) or synthesis/transcoding failed (traced as the failure it is). The
  * caller falls back to the plain text send either way.
@@ -38,7 +38,7 @@ export async function synthesizeVoiceReply(params: {
       feature: FEATURE.id,
       action: "synthesize",
       // The way in, named honestly — a web thread's voice reply is not a
-      // telegram one, and Debug filters on this.
+      // transport's, and Debug filters on this.
       trigger: {
         kind: params.source === "chat" ? "chat" : "transport",
         actor: params.chatId,

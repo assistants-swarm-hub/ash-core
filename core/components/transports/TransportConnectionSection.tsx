@@ -20,7 +20,7 @@ import {
  * Phase 7, PLAN.md "Dashboard"): every registered transport contributes a
  * connection section rendered from the config field schema it announced at
  * registration — no build-time UI package, so a new transport gets its
- * dashboard surface for free. Behaviors carried over from the tg app's old
+ * dashboard surface for free. Behaviors carried over from the first transport's old
  * hand-written section: connect, replace secrets (write-only), start/stop,
  * disconnect with a confirm, live poller state.
  *

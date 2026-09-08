@@ -7,7 +7,7 @@
  * `3491c387` (llama.cpp b10588, gemma-4-26B-A4B-it-abliterated, 2026-08-24),
  * **10 of 10** replies were raw deliberation — the transcript echoed back,
  * options weighed, "I'll say X" repeated — with the thought channel never
- * opened, so the server had nothing to strip. One went out as three Telegram
+ * opened, so the server had nothing to strip. One went out as three chat
  * messages. Nothing downstream can tell such an answer from a real one.
  *
  * Two rules, both mechanical — the shape of the output, never what it says:

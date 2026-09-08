@@ -1452,7 +1452,7 @@ export async function testClassifier(
       const startedAt = Date.now();
       const messages = buildAnalyzerMessages({
         bot: CLASSIFIER_PROBE_BOT,
-        chatType: "supergroup",
+        chatType: "group",
         text: CLASSIFIER_PROBE_MESSAGE,
       });
       await trace.event({

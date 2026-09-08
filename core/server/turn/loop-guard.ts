@@ -5,7 +5,7 @@ import type { HistoryMessage, InboundMessageEvent } from "@assistants-swarm-hub/
 /**
  * The bot-to-bot loop guard (PLAN "Shared-chat behavior"; user decision,
  * 2026-08-24 — N defaults to 3). Assistants sharing a chat hear each other
- * through the source's cross-feed, so nothing in Telegram stops two of them
+ * through the source's cross-feed, so nothing on the platform stops two of them
  * from answering each other forever. This does: once a chat holds N
  * assistant-authored messages in a row, every assistant there stays silent
  * until a human speaks again.

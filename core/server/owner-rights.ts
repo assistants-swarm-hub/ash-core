@@ -14,7 +14,7 @@ import { getStoreDb, type StoreDb } from "@/server/store/db";
  * Owner-rights resolution (redesign Phase 8, PLAN.md "Assistants"): a sender
  * holds owner rights in a turn iff their account — resolved through identity
  * links — is the assistant's owning account; admins hold owner rights on
- * every assistant. This replaces the global owner identity the tg transport
+ * every assistant. This replaces the global owner identity the first transport
  * used to resolve from its config.
  *
  * The account's identity ref is its web-chat ref, `chat:user:<accountId>`

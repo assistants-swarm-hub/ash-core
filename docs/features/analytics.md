@@ -152,7 +152,7 @@ expression on every nightly run *and* every jobs-dashboard read.
 But new owed hours only ever appear near the present, so a process-local watermark
 holds a proven floor. Two exceptions, both handled explicitly:
 
-- Telegram can deliver a backlogged update up to ~24 hours old, landing a fresh row in
+- A platform can deliver a backlogged update up to about a day late, landing a fresh row in
   an old hour — so the floor never advances closer than a safety margin behind "now".
 - A history CSV import writes, and a regenerate un-scores, arbitrarily old hours. Both
   call `resetInsightScanFloor()`, so the next scan is unbounded and sees them.

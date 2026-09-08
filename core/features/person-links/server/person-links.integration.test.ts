@@ -44,9 +44,9 @@ const STORE_MIGRATIONS = fileURLToPath(new URL("../../../store/migrations", impo
  * not be read" shape the dashboard must survive.
  */
 
-const ALICE = "tg:user:1001";
-const ALICE_WORK = "tg:user:1002";
-const BOB = "tg:user:2001";
+const ALICE = "acme:user:1001";
+const ALICE_WORK = "acme:user:1002";
+const BOB = "acme:user:2001";
 const ALICE_WEB = "chat:user:11111111-1111-4111-8111-111111111111";
 
 describe("person links", () => {
@@ -86,7 +86,7 @@ describe("person links", () => {
     // Sources are unreachable in this suite: the ref stands in for a name
     // rather than a name being invented for it.
     expect(created.members.every((member) => member.label === null)).toBe(true);
-    expect(created.members.map((member) => member.source)).toEqual(["tg", "chat"]);
+    expect(created.members.map((member) => member.source)).toEqual(["acme", "chat"]);
 
     expect(await getPersonLinks(db)).toHaveLength(1);
 

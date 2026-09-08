@@ -43,7 +43,7 @@ async function seedPending(over?: { chatId?: string; sourceMessageId?: number })
   await seedSourceMessage(ctx, { chatId, sourceMessageId });
   return insertMedia(ctx.db, {
     id: crypto.randomUUID(),
-    source: "tg",
+    source: "acme",
     chatId,
     sourceMessageId: String(sourceMessageId),
     kind: "photo",
@@ -72,14 +72,14 @@ describe("message_media repository", () => {
     expect(first?.status).toBe("pending");
     const second = await seedPending();
     expect(second).toBeNull(); // conflict → no duplicate
-    expect(await listRecentMedia(ctx.db, "tg")).toHaveLength(1);
+    expect(await listRecentMedia(ctx.db, "acme")).toHaveLength(1);
   });
 
   it("records an unavailable placeholder with no bytes", async () => {
     await seedSourceMessage(ctx, { chatId: "5", sourceMessageId: 11 });
     const row = await insertUnavailableMedia(ctx.db, {
       id: crypto.randomUUID(),
-      source: "tg",
+      source: "acme",
       chatId: "5",
       sourceMessageId: "11",
       kind: "sticker",
@@ -112,7 +112,7 @@ describe("message_media repository", () => {
     await seedSourceMessage(ctx, { chatId: "5", sourceMessageId: 50 });
     await insertMedia(ctx.db, {
       id: crypto.randomUUID(),
-      source: "tg",
+      source: "acme",
       chatId: "5",
       sourceMessageId: "50",
       kind: "video",
@@ -130,7 +130,7 @@ describe("message_media repository", () => {
     expect(blobs.map((b) => b.data.toString())).toEqual(["frame-one", "frame-two", "frame-three"]);
 
     // Reading the row back reassembles the same base64 sequence, first frame as preview.
-    const record = await getMediaByMessage(ctx.db, "tg", "5", "50");
+    const record = await getMediaByMessage(ctx.db, "acme", "5", "50");
     expect(record?.frames).toEqual(frames);
     expect(record?.dataBase64).toBe(frames[0]);
   });
@@ -140,13 +140,13 @@ describe("message_media repository", () => {
     await markDescribed(ctx.db, described!.id, "a cat");
     await seedPending({ sourceMessageId: 61 });
 
-    const list = await listRecentMedia(ctx.db, "tg");
+    const list = await listRecentMedia(ctx.db, "acme");
     const byMessage = new Map(list.map((r) => [r.sourceMessageId, r]));
     expect(byMessage.get("61")?.dataBase64).toBe("QUJD");
     expect(byMessage.get("60")?.dataBase64).toBeNull();
 
     // The backfill batch carries references only — never payloads.
-    const pending = await listPendingMedia(ctx.db, "tg");
+    const pending = await listPendingMedia(ctx.db, "acme");
     expect(pending).toEqual([
       { id: byMessage.get("61")!.id, chatId: "5", sourceMessageId: "61" },
     ]);
@@ -156,7 +156,7 @@ describe("message_media repository", () => {
     const pending = await seedPending({ sourceMessageId: 20 });
     await markDescribed(ctx.db, pending!.id, "a cat");
     await seedPending({ sourceMessageId: 21 });
-    const annotations = await getMediaAnnotations(ctx.db, "tg", "5", ["20", "21", "99"]);
+    const annotations = await getMediaAnnotations(ctx.db, "acme", "5", ["20", "21", "99"]);
     expect(annotations.get("20")).toEqual({ kind: "photo", status: "described", description: "a cat" });
     expect(annotations.get("21")).toEqual({ kind: "photo", status: "pending", description: null });
     expect(annotations.has("99")).toBe(false);
@@ -167,7 +167,7 @@ describe("message_media repository", () => {
     await markDescribed(ctx.db, described!.id, "a red car");
     await seedPending({ sourceMessageId: 23 }); // still pending
 
-    const suffixes = await getMediaSuffixesForMessages("tg", "5", ["22", "23", "99"], ctx.db);
+    const suffixes = await getMediaSuffixesForMessages("acme", "5", ["22", "23", "99"], ctx.db);
     expect(suffixes.get("22")).toBe(" [photo: a red car]"); // described → shows the recognition
     expect(suffixes.get("23")).toBe(" [photo]"); // pending → bare marker, never blank
     expect(suffixes.has("99")).toBe(false);
@@ -178,14 +178,14 @@ describe("describeAndStore", () => {
   it("describes pending media, drops the bytes, and records a success trace", async () => {
     await seedPending({ sourceMessageId: 30 });
     const result = await describeAndStore(
-      { source: "tg", chatId: "5", sourceMessageId: "30" },
+      { source: "acme", chatId: "5", sourceMessageId: "30" },
       { complete: async () => fakeComplete("a red car on a street") },
       { db: ctx.db },
     );
     expect(result?.status).toBe("described");
     expect(result?.description).toBe("a red car on a street");
 
-    const annotations = await getMediaAnnotationsForMessages("tg", "5", ["30"], ctx.db);
+    const annotations = await getMediaAnnotationsForMessages("acme", "5", ["30"], ctx.db);
     expect(annotations.get("30")?.description).toBe("a red car on a street");
 
     const traces = await listTraces({ feature: "vision" });
@@ -196,7 +196,7 @@ describe("describeAndStore", () => {
     await seedSourceMessage(ctx, { chatId: "5", sourceMessageId: 40 });
     await insertMedia(ctx.db, {
       id: crypto.randomUUID(),
-      source: "tg",
+      source: "acme",
       chatId: "5",
       sourceMessageId: "40",
       kind: "video",
@@ -210,7 +210,7 @@ describe("describeAndStore", () => {
 
     let seen: unknown = null;
     const result = await describeAndStore(
-      { source: "tg", chatId: "5", sourceMessageId: "40" },
+      { source: "acme", chatId: "5", sourceMessageId: "40" },
       {
         complete: async (messages) => {
           seen = messages;
@@ -236,7 +236,7 @@ describe("describeAndStore", () => {
 
   it("skips (no throw) when there is no pending media", async () => {
     const result = await describeAndStore(
-      { source: "tg", chatId: "5", sourceMessageId: "999" },
+      { source: "acme", chatId: "5", sourceMessageId: "999" },
       { complete: async () => fakeComplete("unused") },
       { db: ctx.db },
     );
@@ -248,7 +248,7 @@ describe("describeAndStore", () => {
   it("leaves the row pending and fails the trace when the model errors", async () => {
     await seedPending({ sourceMessageId: 31 });
     const result = await describeAndStore(
-      { source: "tg", chatId: "5", sourceMessageId: "31" },
+      { source: "acme", chatId: "5", sourceMessageId: "31" },
       {
         complete: async () => {
           throw new Error("provider down");
@@ -257,7 +257,7 @@ describe("describeAndStore", () => {
       { db: ctx.db },
     );
     expect(result).toBeNull();
-    const annotations = await getMediaAnnotationsForMessages("tg", "5", ["31"], ctx.db);
+    const annotations = await getMediaAnnotationsForMessages("acme", "5", ["31"], ctx.db);
     expect(annotations.get("31")?.status).toBe("pending");
     const traces = await listTraces({ feature: "vision" });
     expect(traces.traces[0]?.status).toBe("error");

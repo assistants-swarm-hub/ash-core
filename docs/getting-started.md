@@ -3,7 +3,7 @@
 Two ways to run it: local Node dev servers against your own Postgres and Redis,
 or the bundled Docker Compose stack. Both end at the same place — a dashboard on
 port 3200 that you must claim with the first admin account before anyone else
-does, and a Telegram transport that registers with it.
+does, and whichever transports you run registering with it.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ does, and a Telegram transport that registers with it.
 | `yt-dlp` on `PATH` | The browser agent's `browser_download_media` tool. Optional — without it that one tool reports it is not installed. The app also keeps a self-updated copy in `data/bin` and prefers it |
 | Chromium (via Playwright) | The browser agent drives a headless browser |
 | Docker | For `npm run test:integration` (Testcontainers) and for the Compose stack. Also the easiest way to get Postgres and Redis for local development |
-| A Telegram bot token | From [@BotFather](https://t.me/BotFather); entered per assistant in the dashboard, not in env |
+| A bot token for your platform | Entered per assistant in the dashboard, not in env |
 | An OpenAI-compatible LLM endpoint | Anything serving `/v1/chat/completions` and `/v1/models` — Ollama, llama.cpp, vLLM, LocalAI, or a hosted API. Anthropic, Google and Z.ai are supported natively as backend types |
 
 Env holds bootstrap plumbing only — where the database and Redis are, and the
@@ -46,8 +46,7 @@ In `core/.env` set `DATABASE_URL`, `REDIS_URL` and `INTERNAL_API_TOKEN`.
 That token is what lets a transport register with the core — with it unset,
 every internal route answers 401 and any transport retries registration
 forever. A transport is a separate service with its own checkout and its own
-`.env` carrying the **same** token (Telegram's is
-[ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram)); the core runs fine with none, it just has
+`.env` carrying the **same** token; the core runs fine with none, it just has
 no platform to speak on. Then apply the schema:
 
 ```bash
@@ -63,10 +62,10 @@ npm run dev
 The dashboard is at <http://localhost:3200>. On first contact it redirects to
 `/setup`.
 
-To talk to Telegram as well, run its transport from its own checkout against
-the same Redis and token ([ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram)): it listens on 3210
-and logs `registered with the core` once the dashboard is up. The core runs
-fine without it — there is simply no platform to speak on.
+To talk to a messaging platform as well, run its transport from its own
+checkout against the same Redis and token: it listens on its own port and
+logs `registered with the core` once the dashboard is up. The core runs fine
+without one — there is simply no platform to speak on.
 
 The core's boot-time modules (the queue consumers, the schedulers) do not
 hot-reload the way a page does, and neither does a transport's registration —
@@ -91,10 +90,10 @@ instead, set `CHROMIUM_EXECUTABLE_PATH` (this is what the Docker image does).
 docker compose up -d
 ```
 
-That starts four services: `db` (the `pgvector/pgvector:pg17` image), `redis`,
-`app` (the core) and `tg` (the Telegram service). The two application services
-run **released images** pinned to one version, so this needs nothing on the
-host but Docker. Building this working tree instead is the dev override:
+That starts three services: `db` (the `pgvector/pgvector:pg17` image), `redis`
+and `app` (the core). The core runs a **released image** pinned to one
+version, so this needs nothing on the host but Docker. A transport is one
+more service you add — see [Deployment](operations/deployment.md#adding-a-transport). Building this working tree instead is the dev override:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
@@ -106,8 +105,8 @@ one to set a real `INTERNAL_API_TOKEN` (the default is the placeholder
 or the host data directories.
 
 The core container runs pending migrations before it serves, so it never answers
-requests against an unmigrated database. The Telegram service has no database;
-it registers with the core and retries until the core answers. Details, volumes
+requests against an unmigrated database. A transport has no database; it
+registers with the core and retries until the core answers. Details, volumes
 and the upgrade procedure are in [Deployment](operations/deployment.md).
 
 - Dashboard: <http://localhost:3200>
@@ -129,12 +128,12 @@ and the upgrade procedure are in [Deployment](operations/deployment.md).
    calls (and thinking, if you want it).
 4. **Set the timezone.** Settings → General. An IANA name; it governs every
    rendered timestamp, every task's wall-clock time, and the daily-job run time.
-5. **Create an assistant and connect Telegram.** Assistants → New: a name (the
-   name people summon it by in a group) and a persona. In its editor, the
-   **Telegram connection** section appears as soon as the Telegram service has
-   registered; paste the bot token and press Connect. The section shows
-   **Running** with the bot's @username within a few seconds — the poller
-   starts as soon as the service reconciles.
+5. **Create an assistant and connect a platform.** Assistants → New: a name
+   (the name people summon it by in a group) and a persona. In its editor, a
+   connection section appears for every transport that has registered; fill
+   in the fields it announced (a bot token, typically) and press Connect. The
+   section shows **Running** with the bot's @username within a few seconds —
+   the connection starts as soon as the transport reconciles.
 6. **Say something to the bot.** In a private chat it always answers. In a group
    it answers when addressed — see
    [Using the bot in chat](operations/using-the-bot.md).
@@ -144,11 +143,11 @@ and the upgrade procedure are in [Deployment](operations/deployment.md).
    the service's `deliver` traces on the same correlation id.
 8. **Link your own chat identity** (optional). Profile → mint a link code and
    send it to the bot in a private chat: from then on memory and owner rights
-   follow you across the web chat and Telegram.
+   follow you across the web chat and every platform.
 
 Overview shows honest, probed state throughout: a real `SELECT 1` against the
-database, a real `/v1/models` call against the LLM, and each Telegram
-connection's live poller state as the service reports it.
+database, a real `/v1/models` call against the LLM, and each connection's
+live state as its transport reports it.
 
 ## Optional capabilities
 
@@ -171,7 +170,7 @@ Root scripts fan out across the workspaces through turbo.
 
 | Script | Purpose |
 | --- | --- |
-| `npm run dev` | Dev servers: the core on 3200 and the Telegram service on 3210 |
+| `npm run dev` | Dev server: the core on 3200 |
 | `npm run build` | Production build of every workspace (`next build`, standalone output, for the core) |
 | `npm run start` | Serve the core's production build |
 | `npm run lint` | ESLint |

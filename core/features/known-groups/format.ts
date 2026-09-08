@@ -17,7 +17,7 @@ export function formatKnownGroupLabel(group: KnownGroupLabelParts): string {
 
 /** One participant, already reduced to a display label and their aliases. */
 export interface GroupContextMember {
-  /** Numeric Telegram user id — the exact form anything identifying a person takes. */
+  /** Source-local user id — the exact form anything identifying a person takes. */
   userId: string;
   label: string;
   aliases: string[];

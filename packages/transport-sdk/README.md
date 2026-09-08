@@ -1,7 +1,7 @@
 # `@assistants-swarm-hub/transport-sdk`
 
-Everything a **transport** needs to connect a messaging platform (Discord,
-Signal, Matrix, Slack, …) to a running [assistants-swarm-hub][core] core — as a
+Everything a **transport** needs to connect a messaging platform (Signal,
+Matrix, Slack, …) to a running [assistants-swarm-hub][core] core — as a
 **runtime** you hand your platform to, over the wire contracts, Redis helpers,
 token guard, MCP server, trace client and image normalization it is built on.
 
@@ -114,8 +114,8 @@ import {
 const updates = openQueue(TRANSPORT_UPDATES_QUEUE, requireEnv("REDIS_URL"));
 
 const registration = transportRegistrationRequestSchema.parse({
-  id: "discord",
-  name: "Discord",
+  id: "matrix",
+  name: "Matrix",
   contractMajor: CONTRACT_MAJOR,
   baseUrl: process.env.SELF_URL ?? "http://localhost:3220",
   mcpPath: "/mcp",
@@ -131,7 +131,7 @@ await updates.add("update", {
   /* transportMessageEventSchema — every message you see, addressed or not */
 });
 
-console.log(scopedRef("discord", "chat", "1183…")); // discord:chat:1183…
+console.log(scopedRef("matrix", "chat", "!abc…")); // matrix:chat:!abc…
 ```
 
 ## What is in here

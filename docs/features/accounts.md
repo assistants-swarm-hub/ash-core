@@ -102,7 +102,7 @@ global views.
 
 ## Self-link: a code sent to any bot
 
-The self-service way to declare "this Telegram user is me"
+The self-service way to declare "this chat user is me"
 (`features/accounts/server/self-link.ts`):
 
 1. The account mints a code on `/profile`: `link-xxxxxxxx`, eight characters
@@ -183,7 +183,7 @@ Two steps, and the first is reversible:
 | Feature id | Actions |
 | --- | --- |
 | `auth` | `setup`, `login` (successes and failures alike — a failed attempt is a trace with status error), `change-password`. No password, temporary or not, ever appears in a trace body |
-| `accounts` | `create`, `activate` / `deactivate`, `change-role`, `reset-password`, `delete`, `update-profile`, `mint-link-code`, `self-link` (trigger kind `telegram`, actor the sender's ref) |
+| `accounts` | `create`, `activate` / `deactivate`, `change-role`, `reset-password`, `delete`, `update-profile`, `mint-link-code`, `self-link` (trigger kind `transport`, actor the sender's ref) |
 
 ## Tests
 

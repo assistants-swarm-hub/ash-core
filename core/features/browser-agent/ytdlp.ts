@@ -59,7 +59,7 @@ export function buildYtDlpArgs(params: {
     params.mode === "audio"
       ? // Best audio-only rendition, transcoded to mp3 at yt-dlp's highest VBR
         // setting. Keeping the native container (usually opus, what YouTube serves)
-        // would avoid a lossy-to-lossy re-encode, but Telegram will not play an
+        // would avoid a lossy-to-lossy re-encode, but a chat client will not play an
         // .opus document — and an unplayable file's quality does not matter (user
         // decision, 2026-07-29). mp3 is the format every client handles.
         ["-f", "bestaudio/best", "-x", "--audio-format", "mp3", "--audio-quality", "0"]

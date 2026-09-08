@@ -37,7 +37,7 @@ import {
 
 /**
  * Every id crossing this port is the OWNING platform's own, verbatim, as a
- * string — never parsed into a number. A Discord snowflake does not survive
+ * string — never parsed into a number. A 64-bit snowflake id does not survive
  * `Number()`, and a web thread's uuid never did; the store keeps message ids
  * as text end to end, so the port that hands them back must too.
  */
@@ -93,7 +93,7 @@ export interface SourceOutboundPort {
   /**
    * Name a conversation whose source asked to have it named
    * (`chatInfo.titleProvisional`). Absent on sources whose conversations have
-   * real names of their own — Telegram's do — which is why it is optional
+   * real names of their own — most platforms' do — which is why it is optional
    * rather than a call that answers "unsupported".
    */
   setChatTitle?(chatId: string, title: string): Promise<{ title: string }>;
@@ -142,8 +142,8 @@ export function sourceOutbound(source: SourceId): SourceOutboundPort | null {
 const REQUEST_TIMEOUT_MS = 60_000;
 
 /**
- * File sends carry up to Telegram's 50MB cap and wait on Telegram's own
- * upload — grammy's client allows 500s, so the port does too.
+ * File sends carry tens of megabytes and wait on the platform's own upload,
+ * so the port allows 500s.
  */
 const FILE_REQUEST_TIMEOUT_MS = 500_000;
 

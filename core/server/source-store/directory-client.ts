@@ -29,7 +29,7 @@ import {
  * over every source through {@link SourceDirectoryClient}, and a transport's
  * entry answers from the core's own tables instead of over HTTP.
  *
- * Telegram-shaped only in one place: a chat with no stored row is a direct
+ * Platform-shaped only in one place: a chat with no stored row is a direct
  * conversation (transports create chat rows for groups), and the kind of a
  * stored row follows its `type`.
  */

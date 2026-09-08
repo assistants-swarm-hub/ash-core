@@ -7,14 +7,14 @@ the trace store.
 
 Messaging platforms are **transports**: stateless services that own a platform
 connection and nothing else, each in its own repository and its own image
-(Telegram's is [ash-transport-telegram](https://github.com/assistants-swarm-hub/ash-transport-telegram)). They talk to the core over
+(the core names none of them). They talk to the core over
 Redis (a BullMQ queue and a pub/sub channel) and over two small
 token-authenticated HTTP surfaces, and they connect by registering — the core
 holds no list of them. A new platform is another container; see
 [Adding a transport](../development/adding-a-transport.md).
 
 ```
-   Telegram ◄──long polling──► transport  (stateless, its own repo, :3210)
+   platform ◄──its own API──► transport  (stateless, its own repo, its own port)
                                   │  queue `transport-updates`          ▲ `reply.delivery`, `turn.lifecycle`
                                   ▼  (every message, edit, reaction,    │ (Redis pub/sub `assistants-swarm-hub:events`)
                                      delivery — media bytes attached)   │
@@ -48,7 +48,7 @@ Paths in this document are relative to `core/` unless they start with
 | `packages/transport-sdk` | The **published** package a transport is built on: the four packages above it needs, bundled into built output (ESM + `.d.ts`) so a transport in another repository resolves nothing private. Also generates the language-neutral wire contract under [`docs/api/transport/`](../api/transport/) | — |
 
 Apps never import each other's code — only packages. Cross-app pointers are
-scoped refs (`tg:user:123`, `chat:thread:<id>`), never foreign keys into another
+scoped refs (`acme:user:123`, `chat:thread:<id>`), never foreign keys into another
 app's data.
 
 The four packages a transport needs are private and unpublished; what a
@@ -160,7 +160,7 @@ is kept fresh over SSE — see [Observability](observability.md#live-updates).
 
 ## Message lifecycle (the cross-app hot path)
 
-The full walk-through is [The message pipeline](telegram-pipeline.md). In short:
+The full walk-through is [The message pipeline](message-pipeline.md). In short:
 
 1. **The transport forwards.** It receives an update, downloads any
    media, computes the structural addressing verdict for each running bot, and
@@ -216,7 +216,7 @@ The consequence: the core is a **single-instance** design. Scaling to multiple
 replicas would need an external fan-out behind the realtime hub's API and an
 external trace store behind the store's API. Cross-process *job* overlap is
 already handled — see [Background jobs](background-jobs.md#advisory-locks).
-The transport is single-instance per bot token by nature: Telegram permits
+A transport is single-instance per bot token where its platform permits
 exactly one `getUpdates` consumer per token.
 
 ## Boot sequence
@@ -274,9 +274,9 @@ consumer.
 | Decision | Rationale |
 | --- | --- |
 | Stateless transports, one store in the core (Phase 7, 2026-08-30) | A transport is a translation layer; storing conversations in two places was two sources of truth. The core owns the mirror, presence, context composition and the cross-feed |
-| A transport connects with no core change | Registration announces its config schemas; the dashboard renders them; platform actions are the transport's own MCP tools. The source id is whatever registers (validated by shape, checked against the registration table at runtime — no list in the core); the one handshake is the contract major. Dashboard surfaces still keyed on Telegram are tracked in `docs/TODO.md` and listed in [Adding a transport](../development/adding-a-transport.md#known-telegram-only-surfaces) |
+| A transport connects with no core change | Registration announces its config schemas; the dashboard renders them; platform actions are the transport's own MCP tools. The source id is whatever registers (validated by shape, checked against the registration table at runtime — no list in the core); the one handshake is the contract major. Nothing in the core names a platform |
 | Redis queue with `attempts: 1` (user decision, 2026-08-22) | The queue never retries on its own. A failed turn is re-enqueued only when it performed no action yet — the turn runner alone can know that |
-| Telegram long polling in the transport, not a webhook | A self-hosted bot behind NAT has no public URL |
+| A transport pulls from its platform rather than exposing a webhook | A self-hosted bot behind NAT has no public URL |
 | Per-chat sequential, cross-chat concurrent (user decision, 2026-07-20) | Kept at every stage: the poller's `sequentialize`, the ingest's per-chat chains, the turn consumer's per-chat chains |
 | Config in the database, not env | An operator changes the model from the dashboard, not by editing a file and restarting. Env is bootstrap only |
 | DB-backed accounts with roles (Phase 8) | The single operator password and the single global owner are retired; owner rights resolve through the assistant's owning account and identity links |

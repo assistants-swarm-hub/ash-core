@@ -254,7 +254,7 @@ describe("posting", () => {
     expect(posted.message.media).toMatchObject({ kind: "image", status: "pending" });
     const mediaId = posted.message.media!.id;
 
-    // The event references it the way a Telegram photo does.
+    // The event references it the way a transport's photo does.
     expect(enqueued.at(-1)!.message.media).toEqual([
       { id: mediaId, kind: "image", status: "pending", description: null },
     ]);
@@ -463,7 +463,7 @@ describe("delivery tools", () => {
     expect(webChatToolOffered(CHAT_SEND_TOOL, { source: "chat", delivery: "send" })).toBe(true);
     // The wrong kind, the wrong source, or an ordinary reply: not offered.
     expect(webChatToolOffered(CHAT_REPLY_TOOL, { source: "chat", delivery: "send" })).toBe(false);
-    expect(webChatToolOffered(CHAT_SEND_TOOL, { source: "tg", delivery: "send" })).toBe(false);
+    expect(webChatToolOffered(CHAT_SEND_TOOL, { source: "acme", delivery: "send" })).toBe(false);
     expect(webChatToolOffered(CHAT_REPLY_TOOL, { source: "chat", delivery: null })).toBe(false);
   });
 });

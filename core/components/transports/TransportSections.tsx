@@ -40,8 +40,8 @@ export function TransportSections({
   if (transports.length === 0) {
     return (
       <p className="text-sm text-muted">
-        No transport has registered with this core yet — start one (the telegram service) and
-        it appears here by itself.
+        No transport has registered with this core yet — start one and it appears here by
+        itself.
       </p>
     );
   }

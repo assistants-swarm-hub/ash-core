@@ -77,7 +77,7 @@ export interface Task {
    * a chat, so it needs one.
    */
   chatId: string | null;
-  /** The chat's scoped ref (`tg:chat:-100…`), or null for a global task. */
+  /** The chat's scoped ref (`acme:chat:42`), or null for a global task. */
   chatRef: string | null;
   /** The transport the chat lives on — the namespace of every id on this row — or null for a global task. */
   chatSource: SourceId | null;

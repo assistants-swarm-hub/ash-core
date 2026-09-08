@@ -11,7 +11,7 @@ import { z } from "zod";
  *
  * Shapes are source-neutral: ids are source-local strings (the scoped-ref
  * prefix is the aggregator's business), `kind` distinguishes direct chats
- * from groups, and source-specific extras (a Telegram group's `type`) ride
+ * from groups, and source-specific extras (a platform's group `type`) ride
  * nullable fields.
  */
 

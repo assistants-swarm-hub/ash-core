@@ -21,7 +21,7 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Single-chat detail, addressed by scoped ref (`tg:chat:-100…`). Server
+ * Single-chat detail, addressed by scoped ref (`acme:chat:42`). Server
  * Component: the chat's curated fields and the roster of participants its
  * source knows, both read from the source that owns the conversation.
  * `notFound()` for a ref no source carries.

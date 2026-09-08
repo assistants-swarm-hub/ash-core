@@ -10,7 +10,7 @@ import { Button, Fab, Modal, Textarea } from "@/components/ui";
  * Operator-facing "start a run" form. A dashboard run has no chat to deliver to —
  * the report lands on the run row and is read here — so this is for the operator
  * to exercise or drive the agent directly, mirroring the conversational
- * `browse_web` tool without needing Telegram.
+ * `browse_web` tool without needing a chat.
  *
  * The goal is written in a modal (user decision, 2026-08-14) rather than in a
  * card above the run list. It is a one-field form used occasionally, and the

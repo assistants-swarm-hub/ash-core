@@ -88,16 +88,16 @@ describe("accountForSenderRef", () => {
     await insertPersonLink(db, {
       id: randomUUID(),
       note: null,
-      members: ["tg:user:1001", `chat:user:${accountId}`],
+      members: ["acme:user:1001", `chat:user:${accountId}`],
     });
-    expect(await accountForSenderRef("tg:user:1001", db)).toEqual({
+    expect(await accountForSenderRef("acme:user:1001", db)).toEqual({
       id: accountId,
       role: "user",
     });
   });
 
   it("finds no account for an unlinked identity or a deactivated account", async () => {
-    expect(await accountForSenderRef("tg:user:404", db)).toBeNull();
+    expect(await accountForSenderRef("acme:user:404", db)).toBeNull();
     const parked = await seedAccount("user", false);
     expect(await accountForSenderRef(`chat:user:${parked}`, db)).toBeNull();
   });
@@ -111,17 +111,17 @@ describe("resolveOwnerRights", () => {
     await insertPersonLink(db, {
       id: randomUUID(),
       note: null,
-      members: ["tg:user:1001", `chat:user:${owner}`],
+      members: ["acme:user:1001", `chat:user:${owner}`],
     });
     await insertPersonLink(db, {
       id: randomUUID(),
       note: null,
-      members: ["tg:user:2002", `chat:user:${stranger}`],
+      members: ["acme:user:2002", `chat:user:${stranger}`],
     });
 
-    expect(await resolveOwnerRights({ senderRef: "tg:user:1001", assistantId }, db)).toBe(true);
-    expect(await resolveOwnerRights({ senderRef: "tg:user:2002", assistantId }, db)).toBe(false);
-    expect(await resolveOwnerRights({ senderRef: "tg:user:404", assistantId }, db)).toBe(false);
+    expect(await resolveOwnerRights({ senderRef: "acme:user:1001", assistantId }, db)).toBe(true);
+    expect(await resolveOwnerRights({ senderRef: "acme:user:2002", assistantId }, db)).toBe(false);
+    expect(await resolveOwnerRights({ senderRef: "acme:user:404", assistantId }, db)).toBe(false);
   });
 
   it("grants admins on every assistant, owned or not", async () => {
@@ -132,11 +132,11 @@ describe("resolveOwnerRights", () => {
     await insertPersonLink(db, {
       id: randomUUID(),
       note: null,
-      members: ["tg:user:9", `chat:user:${admin}`],
+      members: ["acme:user:9", `chat:user:${admin}`],
     });
 
-    expect(await resolveOwnerRights({ senderRef: "tg:user:9", assistantId: owned }, db)).toBe(true);
-    expect(await resolveOwnerRights({ senderRef: "tg:user:9", assistantId: preAuth }, db)).toBe(
+    expect(await resolveOwnerRights({ senderRef: "acme:user:9", assistantId: owned }, db)).toBe(true);
+    expect(await resolveOwnerRights({ senderRef: "acme:user:9", assistantId: preAuth }, db)).toBe(
       true,
     );
   });
@@ -186,7 +186,7 @@ describe("ownership helpers (Phase 9)", () => {
     const theirs = await seedAssistant(other);
     await pool.query(
       `INSERT INTO source_chat_assistants (source, chat_id, assistant_id)
-       VALUES ('tg', '-100111', $1), ('tg', '555', $1), ('tg', '-100222', $2)`,
+       VALUES ('acme', '-100111', $1), ('acme', '555', $1), ('acme', '-100222', $2)`,
       [mine, theirs],
     );
 
@@ -194,7 +194,7 @@ describe("ownership helpers (Phase 9)", () => {
     expect(await servedChatKeys(null, db)).toBeNull();
 
     const served = await servedChatKeys({ id: owner, role: "user" }, db);
-    expect(served).toEqual(new Set([chatKey("tg", "-100111"), chatKey("tg", "555")]));
+    expect(served).toEqual(new Set([chatKey("acme", "-100111"), chatKey("acme", "555")]));
 
     // An account with no assistants serves nowhere.
     const empty = await seedAccount("user");

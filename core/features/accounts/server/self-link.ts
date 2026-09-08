@@ -49,8 +49,8 @@ const ADDRESSING_PREFIX = /^(?:@[^\s@]+\s+)+/;
  * A code has to be the WHOLE message, and on a platform where addressing a bot
  * in a shared channel REQUIRES mentioning it, that is unreachable — the code is
  * never alone (user decision, 2026-09-04, after `@bot link-xxxxxxxx` fell
- * through to the model on Discord). Telegram groups have had the same problem
- * since the beginning.
+ * through to the model on one platform). Groups everywhere have had the same
+ * problem since the beginning.
  *
  * Only the addressing comes off, so the property that made the anchor worth
  * having survives: a code quoted inside a sentence still does not redeem,

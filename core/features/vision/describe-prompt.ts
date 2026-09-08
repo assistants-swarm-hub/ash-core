@@ -9,7 +9,7 @@
 /** Enough tokens for dense transcription + scene/object detail. */
 export const VISION_DESCRIBE_MAX_TOKENS = 2048;
 
-export const VISION_DESCRIBE_SYSTEM = `You describe images for a Telegram chat bot's memory. Another model reads your text later — anything you omit is lost forever.
+export const VISION_DESCRIBE_SYSTEM = `You describe images for a chat assistant's memory. Another model reads your text later — anything you omit is lost forever.
 
 Write a thorough plain-text description. No markdown, no preamble ("In this image…"), no bullet syntax.
 

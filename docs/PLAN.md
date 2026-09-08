@@ -13,11 +13,12 @@ target below is what phases 6–10 build.
 
 ## Vision
 
-The Telegram bot becomes one connectable transport on top of a general
+The original bot becomes one connectable transport on top of a general
 assistant platform named **assistants-swarm-hub**. The generic foundation —
 pipeline, memory, tools, traces, dashboard, web chat — is the product;
-Telegram and any future transport (Signal, mobile apps) are interchangeable
-stateless transport apps that plug into it **without any core changes**.
+every transport (a messaging platform, a mobile app) is an interchangeable
+stateless transport app that plugs into it **without any core changes**,
+and the core names none of them.
 
 Three pillars:
 
@@ -63,10 +64,10 @@ packages/
 ```
 
 Transports are not workspaces here. Each is its own repository and its own
-image, built on `transport-sdk` — the Telegram one (one grammY poller per
-enabled connection, media fetching, update normalization, reply delivery,
-typing, and an MCP server for Telegram's outbound actions) is
-`assistants-swarm-hub/ash-transport-telegram`. None has a database.
+image, built on `transport-sdk` (one platform connection per enabled
+assistant connection, media fetching, update normalization, reply delivery,
+typing, and an MCP server for the platform's outbound actions). None has a
+database, and the core names none of them.
 
 Domain logic lives inside `core`; only genuinely cross-app code is a
 package. The build-time extension registry from the original design is
@@ -79,10 +80,10 @@ no UI package at all.
 ```
 Browser ── HTTP/SSE ── core ──┬── LLM endpoint(s)
                           │        ├── remote MCP servers (HTTP)
-                          │        ├── transport MCP servers (tg, …)
+                          │        ├── transport MCP servers (one per transport)
                           │        └── Playwright / media pipelines
                           │
-Telegram ─ pollers ─ transport ── Redis (queue + pub/sub) ── core
+platform ─ connections ─ transport ── Redis (queue + pub/sub) ── core
 
 (transports: inbound events out, reply-delivery + lifecycle events in;
  each hosts an MCP server for its platform's outbound actions)
@@ -97,16 +98,16 @@ Web chat has no transport app: it is a core feature, served and stored by
 
 The core owns all storage. Conversation data from every transport lands in
 generalized core tables — platform users, chats, messages (all kinds),
-media — keyed by **scoped refs** (`tg:chat:123`, defined in
+media — keyed by **scoped refs** (`acme:chat:123`, defined in
 `packages/contracts`) with platform-specific detail carried as opaque
-metadata, never as telegram-shaped columns. The core composes conversation
+metadata, never as platform-shaped columns. The core composes conversation
 context (history window, participant roster) from its own store; no
 transport is ever asked for history.
 
 Transport configuration also lives in the core store, but as **opaque
 per-transport sections** the core never interprets: an assistant's record
-carries a config blob per transport (the Telegram section holds the bot
-token and connection settings), validated and rendered against the schema
+carries a config blob per transport (a section holds the bot token and
+connection settings, say), validated and rendered against the schema
 the transport publishes at registration. Transports receive their desired
 state (their connection list with config) from the core at boot and on
 change events, and publish actual state back. A transport holds nothing
@@ -139,11 +140,11 @@ A transport:
   outbound capability flags;
 - **renders turn-lifecycle events** natively: the core publishes
   accepted-for-processing, progress, and settled for every inbound
-  message; tg turns them into the Telegram typing indicator;
+  message; a transport turns them into its platform's typing indicator;
 - **hosts an MCP server** for its platform's outbound actions. Tools are
   the capability surface: a platform with reactions offers a reaction
   tool, one without simply doesn't. The core gates nothing on "is this
-  telegram";
+  platform X";
 - **relays identity-link codes**: a one-time code a person sends to the
   bot is reported to the core, which links the platform identity to the
   account that minted the code;
@@ -154,8 +155,8 @@ There are no capability flags anywhere in the contract. The core supports
 all media kinds natively; typing is lifecycle rendering; platform actions
 are MCP tools.
 
-The Telegram transport (`assistants-swarm-hub/ash-transport-telegram`) is
-the first implementation; adding Signal later means writing another
+The first transport was the original bot's platform, in its own repository;
+adding another platform means writing another
 transport on the SDK, publishing its image, and adding one service to the
 operator's compose file.
 
@@ -216,7 +217,7 @@ so a password change invalidates that account's sessions only.
   assistants, all conversations, all traces, tool-connection registry,
   account management.
 - **user** — the web chat plus their own data: their threads; their own
-  assistants and everything those assistants do (their telegram chats and
+  assistants and everything those assistants do (their platform chats and
   messages, web threads, tasks, and those turns' traces); their profile
   and identity links; the memory held about them (view + delete — no
   self-authoring). Nothing global, nothing of other users'.
@@ -243,7 +244,7 @@ store are shared. Per-assistant: persona, transport connections (opaque
 config sections, e.g. a bot token), standing tasks, and tool selection.
 
 Users create their own assistants with **full parity**: a user's assistant
-can have its own telegram bot token, tasks, and tool selection, exactly
+can have its own bot tokens, tasks, and tool selection, exactly
 like an admin's. It is visible and usable only to its owner (and admins).
 
 **Owner rights in a turn:** the sender holds owner rights iff their
@@ -303,7 +304,7 @@ Stored in the core store, with an **owning account**:
   time.
 - stdio stays modeled but disabled, admin-side only.
 
-Transport MCP servers (tg's outbound actions) are managed connections the
+Transport MCP servers (each transport's outbound actions) are managed connections the
 core provisions from transport registrations, scoped per-app so a
 platform's tools appear only on its own turns. Built-in feature tools
 (browse_web, memory, tasks, image-gen, web-chat outbound, …) remain an
@@ -345,7 +346,7 @@ runbook with a rollback path (restore backup, redeploy last v1 image).
 
 Docker images on the org's GitHub Container Registry:
 `ghcr.io/assistants-swarm-hub/ash-core` from this repository, and one per
-transport from its own (`ash-transport-telegram`, …), each named after its
+transport from its own repository, each named after its
 repository. Each release pipeline builds and publishes on its own version
 bump; compose pins every service to a version, the core's and each
 transport's separately. Compose runs one Postgres database (core's) and one

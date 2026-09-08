@@ -47,8 +47,8 @@ import {
  * published by the core and consumed by its own events consumer, so the
  * learning half did not move at all.
  *
- * Platform constraint carried over: in telegram groups `message_reaction`
- * updates are only delivered when the bot is an administrator.
+ * Platform constraints are the transport's: some platforms deliver reaction
+ * updates in groups only when the bot is an administrator.
  */
 
 /** Menu operations on the owning transport (an HTTP client, or a test fake). */

@@ -65,7 +65,7 @@ export interface MenuButton {
   callbackData: string;
 }
 
-/** Rows of buttons (Telegram inline-keyboard shape). */
+/** Rows of buttons (an inline-keyboard shape every platform can render). */
 export type MenuKeyboard = MenuButton[][];
 
 /** The "Other" selection, encoded as a non-numeric option token. */
@@ -75,8 +75,8 @@ export const OTHER_OPTION = "other" as const;
 export type MenuSelection = { feedbackId: string; option: number | typeof OTHER_OPTION };
 
 /**
- * Callback-data prefix for feedback menus. Telegram caps `callback_data` at
- * 64 bytes; `fb:<36-char uuid>:<token>` stays well under it.
+ * Callback-data prefix for feedback menus. Platforms cap callback data (64 bytes
+ * on the strictest); `fb:<36-char uuid>:<token>` stays well under it.
  */
 const CALLBACK_PREFIX = "fb";
 
@@ -122,7 +122,7 @@ export function buildMenuKeyboard(reaction: FeedbackReaction, feedbackId: string
  * Toast shown to the reactor once their answer is stored. A confirmation
  * *message* would be chat noise (user decision) — the menu message is
  * deleted instead and this transient popup is the only acknowledgement.
- * Telegram only offers a toast in answer to a button press, so the
+ * A platform offers a toast in answer to a button press, so the
  * free-text flow, which has no callback query to answer, is acknowledged by
  * the menu simply disappearing.
  */
