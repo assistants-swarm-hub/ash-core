@@ -7,6 +7,10 @@ import {
   HISTORY_SEARCH_TOOL,
 } from "@/features/history/server/mcp-tools";
 import { START_AGENT_TOOL } from "@/features/agents/server/mcp-tools";
+import {
+  COLLECTIONS_CREATE_TOOL,
+  COLLECTIONS_TOOL_NAMES,
+} from "@/features/collections/server/mcp-tools";
 import { READ_DOCUMENT_TOOL } from "@/features/documents/server/mcp-tools";
 import { IMAGE_GENERATE_TOOL } from "@/features/image-gen/server/mcp-tools";
 import { UPDATE_USER_ALIASES_TOOL } from "@/features/known-users/server/mcp-tools";
@@ -67,6 +71,10 @@ const COMMON_TOOLS = [
   // Reading a document is a lookup, not a delivery: every turn may read a
   // file sent in its conversation.
   READ_DOCUMENT_TOOL,
+  // The one collections tool offered before an assistant has a collection;
+  // the rest are gated on that fact, resolved per toolset (asserted in the
+  // feature's own tests).
+  COLLECTIONS_CREATE_TOOL,
 ].sort();
 
 /**
@@ -78,7 +86,13 @@ const COMMON_TOOLS = [
  * the catalog, but offered only on web-chat turns through their offer
  * predicate (asserted below).
  */
-const ALL_TOOLS = [...COMMON_TOOLS, ...WEB_CHAT_TOOL_NAMES].sort();
+const ALL_TOOLS = [
+  ...COMMON_TOOLS,
+  ...WEB_CHAT_TOOL_NAMES,
+  // The gated collections tools: in the catalog, offered once the turn's
+  // assistant has a collection.
+  ...COLLECTIONS_TOOL_NAMES.filter((name) => name !== COLLECTIONS_CREATE_TOOL),
+].sort();
 
 describe("getToolsView", () => {
   it("lists every registered tool with its owning feature and a description", async () => {
@@ -93,6 +107,7 @@ describe("getToolsView", () => {
     expect(featureOf(IMAGE_GENERATE_TOOL)).toBe("image-gen");
     expect(featureOf(START_AGENT_TOOL)).toBe("agents");
     expect(featureOf(READ_DOCUMENT_TOOL)).toBe("documents");
+    expect(featureOf(COLLECTIONS_CREATE_TOOL)).toBe("collections");
     expect(featureOf(ROLL_CHANCE_TOOL)).toBe("randomness");
     expect(featureOf(CHAT_REPLY_TOOL)).toBe("web-chat");
     expect(view.tools.every((t) => t.description.length > 0)).toBe(true);

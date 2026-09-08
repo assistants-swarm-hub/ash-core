@@ -114,7 +114,9 @@ and critical UI/debug behavior (integration suites bootstrap through
   prompt + persona only. The analytics-only mood score stays.
 - The **Specialists** feature was removed completely (2026-08-19).
 - No embedding/keyword **toolset routing** (2026-08-19): the full stable
-  toolset is offered.
+  toolset is offered. An offer may vary only by a stable fact of the turn —
+  its source, its delivery kind, whether its assistant has a collection —
+  never by message content.
 - No lexical pre-filters in front of LLM classifications; no linguistic
   heuristics in code; never rewrite model output in code — fix the prompt,
   model, or serving instead.

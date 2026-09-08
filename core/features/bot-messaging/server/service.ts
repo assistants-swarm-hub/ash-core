@@ -325,6 +325,11 @@ export interface BotMessagingDeps {
    */
   standingTasks?: string | null;
   /**
+   * The assistant's collections this sender may see, as a composed prompt
+   * block (the collections feature owns the wording). Null/absent → none.
+   */
+  collections?: string | null;
+  /**
    * Apply this chat's standing tasks to the current message: work out which of
    * them it triggers, which settles two things.
    *
@@ -728,6 +733,7 @@ export async function handleIncomingMessage(
         personalityPrompt: deps.personalityPrompt,
         selfCorrection: deps.selfCorrection,
         standingTasks: deps.standingTasks,
+        collections: deps.collections,
       });
       await trace.event({
         type: "step",
@@ -736,6 +742,7 @@ export async function handleIncomingMessage(
           personalityApplied: hasPersonality(deps.personalityPrompt),
           selfCorrectionApplied: Boolean(deps.selfCorrection?.trim()),
           standingTasksApplied: Boolean(deps.standingTasks?.trim()),
+          collectionsApplied: Boolean(deps.collections?.trim()),
           systemPrompt,
         },
       });

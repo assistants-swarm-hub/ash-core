@@ -39,7 +39,7 @@ export const sourceIdSchema = z
   .regex(SOURCE_ID_PATTERN, "a source id is a short lowercase slug (letters, digits, dashes)");
 
 /** Entity kinds refs can point at. */
-export const REF_KINDS = ["user", "chat", "thread", "message"] as const;
+export const REF_KINDS = ["user", "chat", "thread", "message", "document"] as const;
 export type RefKind = (typeof REF_KINDS)[number];
 
 export interface ScopedRef {

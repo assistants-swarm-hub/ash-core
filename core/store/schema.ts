@@ -1641,3 +1641,92 @@ export const searchEngineStats = pgTable("search_engine_stats", {
   lastError: text("last_error"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * An assistant's structured data (user decisions, 2026-09-08): a collection
+ * is a typed table the model proposed from the data and code enforces —
+ * movies, books, expenses are the same feature. Belongs to one assistant
+ * (cascade); writes need owner rights on it, reads follow `visibility`.
+ * The columns live on the collection as JSON (a shape the model wrote, not
+ * a DDL change per collection); the rows below hold values keyed by column.
+ */
+export const collections = pgTable(
+  "collections",
+  {
+    id: text("id").primaryKey(),
+    /** The owning assistant; the collection dies with it. */
+    assistantId: text("assistant_id")
+      .notNull()
+      .references(() => assistants.id, { onDelete: "cascade" }),
+    /** What people call it — unique per assistant, case-insensitively (service-enforced). */
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** `private` (owner-rights senders only) | `shared` (anyone in a chat with the assistant reads). */
+    visibility: text("visibility").notNull().default("private"),
+    /** How the assistant fills what a row lacks — composed into its prompt. */
+    fillInstruction: text("fill_instruction").notNull().default(""),
+    /** How an item is presented in chat — composed into its prompt. */
+    presentationInstruction: text("presentation_instruction").notNull().default(""),
+    /** The typed columns (`CollectionColumn[]`): key, label, type, options, scale, isKey, requiredForComplete. */
+    columns: jsonb("columns").$type<CollectionColumnJson[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("collections_assistant_idx").on(t.assistantId),
+    check("collections_visibility_check", sql`${t.visibility} in ('private', 'shared')`),
+  ],
+);
+
+/** One column of a collection, as stored — mirrors `features/collections/types.ts`. */
+export interface CollectionColumnJson {
+  key: string;
+  label: string;
+  type: string;
+  options?: string[];
+  scale?: number;
+  isKey: boolean;
+  requiredForComplete: boolean;
+}
+
+export type CollectionRow = typeof collections.$inferSelect;
+export type CollectionInsert = typeof collections.$inferInsert;
+
+/**
+ * The rows of a collection. `key_value` is the key column's value as text,
+ * unique within the collection — a write with an existing key updates the
+ * row instead of duplicating it. `complete` is derived on every write from
+ * the columns marked required-for-complete; `embedding` is the semantic
+ * half of row search, present when an embedding model is configured.
+ */
+export const collectionRows = pgTable(
+  "collection_rows",
+  {
+    id: text("id").primaryKey(),
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    keyValue: text("key_value").notNull(),
+    /** Cell values keyed by column key, normalized per the column's type; null is empty. */
+    values: jsonb("values").$type<Record<string, unknown>>().notNull(),
+    complete: boolean("complete").notNull().default(false),
+    /** Embedding of the row's filled cells, for the semantic half of a query. */
+    embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
+    /** Scoped ref of whoever wrote the row first, or null (dashboard, import). */
+    createdByUserRef: text("created_by_user_ref"),
+    /** Scoped ref of the chat the row was written from (provenance), or null. */
+    originChatRef: text("origin_chat_ref"),
+    /** Scoped ref of the document an import wrote the row from, or null. */
+    sourceDocumentRef: text("source_document_ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("collection_rows_key_idx").on(t.collectionId, t.keyValue),
+    index("collection_rows_complete_idx").on(t.collectionId, t.complete),
+    index("collection_rows_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
+);
+
+export type CollectionRowRow = typeof collectionRows.$inferSelect;
+export type CollectionRowInsert = typeof collectionRows.$inferInsert;

@@ -170,6 +170,12 @@ export interface AgentPromptOptions {
   withAssistantTools: boolean;
   /** Whether the final report is posted only on failure. */
   quiet: boolean;
+  /**
+   * The assistant's collections as the run may see them, as a composed
+   * prompt block — a run whose goal is filling gaps works by their ids.
+   * Null/absent → no block.
+   */
+  collections?: string | null;
 }
 
 export function buildAgentSystemPrompt(
@@ -190,8 +196,10 @@ export function buildAgentSystemPrompt(
     : `You are a web-browsing agent working in the background for a chat bot. ` +
       `You are given a goal and a set of browser tools. Accomplish the goal by ` +
       `navigating the web step by step, then write a final report.\n\n`;
+  const collections = options.collections?.trim();
   return (
     identity +
+    (collections ? `${collections}\n\n---\n` : "") +
     `Rules:\n` +
     `- Start with browser_navigate when the goal gives you a URL, and with browser_search ` +
     `when it does not — never guess a URL you were not given. After each action you get the page text plus a ` +
@@ -296,6 +304,8 @@ export interface RunAgentParams {
   assistantTools?: Toolset | null;
   /** The assistant's persona block, or null when the assistant is gone. */
   persona?: string | null;
+  /** The assistant's collections block as the run may see them, or null. */
+  collections?: string | null;
   /** Reply language required for the destination chat, or null for the default. */
   requiredLanguage: string | null;
   /** Recording options for the shared LLM tracing layer, forwarded to the loop. */
@@ -341,6 +351,7 @@ export async function runAgent(params: RunAgentParams): Promise<AgentRunResult> 
         persona: params.persona ?? null,
         withAssistantTools: assistantTools !== null,
         quiet: params.quiet === true,
+        collections: params.collections ?? null,
       }),
     },
     {

@@ -66,6 +66,8 @@ tags:
   - name: memory
   - name: vision
   - name: tasks
+  - name: collections
+    description: An assistant's structured data — typed columns and rows
   - name: self-improvement
   - name: agents
   - name: analytics
@@ -2245,6 +2247,286 @@ paths:
                       data: { $ref: "#/components/schemas/VisionBackfillSnapshot" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+
+  # --------------------------- collections ------------------------
+  /api/collections:
+    get:
+      tags: [collections]
+      x-access: account
+      summary: List collections
+      description: Every collection of the caller's assistants, oldest first; `assistant` narrows to one.
+      parameters:
+        - name: assistant
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Collections
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Collection" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [collections]
+      x-access: account
+      summary: Create a collection
+      description: |
+        Typed columns the assistant fills and queries. Exactly one column is
+        the key (`isKey`); `requiredForComplete` marks what a row must have.
+        The assistant must be the caller's own (404 otherwise); names are
+        unique per assistant (409); at most 16 collections per assistant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CollectionCreate" }
+      responses:
+        "201":
+          description: The created collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Collection" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/collections/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [collections]
+      x-access: account
+      summary: One collection
+      responses:
+        "200":
+          description: The collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Collection" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [collections]
+      x-access: account
+      summary: Update a collection
+      description: |
+        Partial; at least one field. `columns` replaces the whole list and
+        reshapes every row (a dropped column loses its values, `complete` is
+        re-derived); the key column cannot change while rows exist (400).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CollectionUpdate" }
+      responses:
+        "200":
+          description: The updated collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Collection" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [collections]
+      x-access: account
+      summary: Delete a collection and every row in it
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletedFlag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/collections/{id}/rows:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [collections]
+      x-access: account
+      summary: Query rows
+      description: |
+        One page of rows. `q` is a free text — semantic when an embedding
+        model is configured, a substring match otherwise; `filters` is a JSON
+        array of `{ column, op, value }` (`op`: eq, neq, contains, gt, gte,
+        lt, lte, empty, not_empty); `gaps=1` keeps only incomplete rows.
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string, maxLength: 500 } }
+        - { name: gaps, in: query, required: false, schema: { type: string, enum: ["1", "0"] } }
+        - { name: sort, in: query, required: false, schema: { type: string }, description: A column key }
+        - { name: direction, in: query, required: false, schema: { type: string, enum: [asc, desc] } }
+        - { name: offset, in: query, required: false, schema: { type: integer, minimum: 0 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50 } }
+        - { name: filters, in: query, required: false, schema: { type: string }, description: JSON array of filters }
+      responses:
+        "200":
+          description: A page of rows
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/RowPage" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    post:
+      tags: [collections]
+      x-access: account
+      summary: Add a row, or update the row with that key
+      description: Every value is checked against its column's type (400 with the column named). The key column must be present.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [values]
+              properties:
+                values: { $ref: "#/components/schemas/RowValues" }
+      responses:
+        "201":
+          description: A new row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/RowWrite" }
+        "200":
+          description: The key existed — that row, updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/RowWrite" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/collections/{id}/rows/{rowId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+      - name: rowId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [collections]
+      x-access: account
+      summary: One row
+      responses:
+        "200":
+          description: The row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Row" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [collections]
+      x-access: account
+      summary: Update some columns of a row
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [values]
+              properties:
+                values: { $ref: "#/components/schemas/RowValues" }
+      responses:
+        "200":
+          description: The updated row
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiOk"
+                  - properties:
+                      data: { $ref: "#/components/schemas/Row" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [collections]
+      x-access: account
+      summary: Delete a row
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletedFlag" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/collections/{id}/export:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [collections]
+      x-access: account
+      summary: Export a collection as CSV
+      description: "The whole collection, the column keys as header, one line per row (`Content-Disposition: attachment`)."
+      responses:
+        "200":
+          description: CSV
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ------------------------------ tasks ---------------------------
   /api/tasks:
@@ -4723,6 +5005,110 @@ components:
         rules composed into prompts; `interval`/`timeout`/`schedule` are fired
         by the poller, and only the fields their kind uses are non-null.
 
+    CollectionColumn:
+      type: object
+      required: [key, label, type, isKey, requiredForComplete]
+      properties:
+        key: { type: string, pattern: "^[a-z][a-z0-9_]{0,63}$" }
+        label: { type: string, maxLength: 80 }
+        type:
+          type: string
+          enum: [text, long_text, number, date, url, image, list, enum, rating, boolean]
+        options: { type: array, items: { type: string }, description: For enum — the allowed values }
+        scale: { type: integer, minimum: 1, description: For rating — the top of the scale (default 10) }
+        isKey: { type: boolean, description: Exactly one column; a write with an existing key updates the row }
+        requiredForComplete: { type: boolean, description: Part of what makes a row complete }
+    Collection:
+      type: object
+      required:
+        [id, assistantId, name, description, visibility, fillInstruction, presentationInstruction, columns, rowCount, gapCount, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        assistantId: { type: string }
+        name: { type: string, maxLength: 80 }
+        description: { type: string, maxLength: 1000 }
+        visibility: { type: string, enum: [private, shared] }
+        fillInstruction: { type: string, maxLength: 4000, description: How the assistant fills what a row lacks }
+        presentationInstruction: { type: string, maxLength: 4000, description: How an item is presented in chat }
+        columns:
+          type: array
+          items: { $ref: "#/components/schemas/CollectionColumn" }
+        rowCount: { type: integer }
+        gapCount: { type: integer, description: Rows not yet complete }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CollectionCreate:
+      type: object
+      required: [assistantId, name, columns]
+      properties:
+        assistantId: { type: string }
+        name: { type: string, maxLength: 80 }
+        description: { type: string, maxLength: 1000 }
+        visibility: { type: string, enum: [private, shared], default: private }
+        fillInstruction: { type: string, maxLength: 4000 }
+        presentationInstruction: { type: string, maxLength: 4000 }
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items: { $ref: "#/components/schemas/CollectionColumn" }
+    CollectionUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, maxLength: 80 }
+        description: { type: string, maxLength: 1000 }
+        visibility: { type: string, enum: [private, shared] }
+        fillInstruction: { type: string, maxLength: 4000 }
+        presentationInstruction: { type: string, maxLength: 4000 }
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items: { $ref: "#/components/schemas/CollectionColumn" }
+    RowValues:
+      type: object
+      description: Cells keyed by column key; a value is typed by its column, null or absent is empty.
+      additionalProperties:
+        oneOf:
+          - { type: string }
+          - { type: number }
+          - { type: boolean }
+          - { type: array, items: { type: string } }
+          - { type: "null" }
+    Row:
+      type: object
+      required: [id, collectionId, keyValue, values, complete, gaps, createdByUserRef, originChatRef, sourceDocumentRef, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        collectionId: { type: string }
+        keyValue: { type: string, description: The key column's value as text; unique within the collection }
+        values: { $ref: "#/components/schemas/RowValues" }
+        complete: { type: boolean }
+        gaps: { type: array, items: { type: string }, description: The required columns still empty }
+        createdByUserRef: { type: [string, "null"] }
+        originChatRef: { type: [string, "null"] }
+        sourceDocumentRef: { type: [string, "null"], description: "<source>:document:<media id> of the import that wrote the row" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RowWrite:
+      type: object
+      required: [row, created]
+      properties:
+        row: { $ref: "#/components/schemas/Row" }
+        created: { type: boolean, description: False when the key existed and that row was updated }
+    RowPage:
+      type: object
+      required: [rows, offset, limit, total, hasMore, semantic]
+      properties:
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/Row" }
+        offset: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        hasMore: { type: boolean }
+        semantic: { type: boolean, description: The page was ranked by meaning (a text query with an embedding model configured) }
     Task:
       type: object
       required:

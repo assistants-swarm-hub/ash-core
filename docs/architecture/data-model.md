@@ -80,6 +80,7 @@ communication_preferences · self_corrections · addressing_exclusions
 chat_summary_days · memory_extraction_days              (per-day job markers, chat_ref)
 turn_actions                                            (correlation_id)
 agent_runs ──► agent_run_screenshots
+collections ──► collection_rows                         (assistant_id → assistants CASCADE)
 chat_hour_insights ··rolls up··► period_insights
 search_engine_stats
 ```
@@ -812,6 +813,43 @@ global scope.
 | `computed_at` | timestamptz NOT NULL | |
 
 Unique `period_insights_key_idx (granularity, bucket, chat_ref)`.
+
+### `collections`
+
+An assistant's structured data (user decisions, 2026-09-08): a typed table
+the model proposed and code enforces. See
+[collections.md](../features/collections.md).
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | text PK | |
+| `assistant_id` | text NOT NULL → `assistants.id` CASCADE | The owning assistant; the collection dies with it |
+| `name` | text NOT NULL | Unique per assistant, case-insensitively (service-enforced) |
+| `description` | text NOT NULL, default `''` | |
+| `visibility` | text NOT NULL, default `private` | `check`: `private` \| `shared` |
+| `fill_instruction`, `presentation_instruction` | text NOT NULL, default `''` | The owner's words on filling gaps and presenting an item, composed into the prompt |
+| `columns` | jsonb NOT NULL | `[{ key, label, type, options?, scale?, isKey, requiredForComplete }]` — exactly one `isKey` (service-enforced) |
+| `created_at`, `updated_at` | timestamptz NOT NULL | |
+
+Index: `collections_assistant_idx (assistant_id)`.
+
+### `collection_rows`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | text PK | |
+| `collection_id` | text NOT NULL → `collections.id` CASCADE | |
+| `key_value` | text NOT NULL | The key column's value as text; a write with an existing key updates the row |
+| `values` | jsonb NOT NULL | Cells keyed by column key, normalized per type; `null` is empty |
+| `complete` | boolean NOT NULL, default `false` | Every `requiredForComplete` column holds a value — derived on every write |
+| `embedding` | vector(1024) | The semantic half of a query, from a `label: value` rendering of the filled cells; null without an embedding model |
+| `created_by_user_ref`, `origin_chat_ref` | text | Provenance (scoped refs), null for the dashboard |
+| `source_document_ref` | text | `<source>:document:<media id>` of the import that wrote the row, or null |
+| `created_at`, `updated_at` | timestamptz NOT NULL | |
+
+Indexes: `collection_rows_key_idx (collection_id, key_value)` UNIQUE,
+`collection_rows_complete_idx (collection_id, complete)` — the gap counts —
+and `collection_rows_embedding_idx` (HNSW, cosine).
 
 ### `search_engine_stats`
 

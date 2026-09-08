@@ -250,6 +250,8 @@ Additional instructions:
 Self-correction guidelines (learned from user feedback on your replies):
 <latest self-correction>
 ---
+<the assistant's collections this sender may see>
+---
 <standing tasks that apply to this chat>
 ```
 
@@ -276,7 +278,7 @@ so the Debug event flow stays stable:
 The final message array, in order:
 
 ```
-system   base + persona + self-correction + standing tasks
+system   base + persona + self-correction + collections + standing tasks
 system   chat context            (omitted when empty)
 system   long-term memory        (omitted when empty)
 system   sender preferences      (omitted when empty)

@@ -136,13 +136,16 @@ export async function getToolset(options?: {
   const source = options?.source ?? ctx?.source;
   const assistantId = options?.assistantId ?? ctx?.assistantId ?? null;
   // In-process tools that declared an offer predicate are scoped like a
-  // connection's are — the web chat's delivery tools ride this (Phase 6).
+  // connection's are — the web chat's delivery tools ride this (Phase 6),
+  // and a feature whose rule needs a fact the turn does not carry (the
+  // collections tools, offered once the assistant has one) declares a
+  // resolver the registry runs once here.
+  const scope = await registry.resolveScope(
+    { source, assistantId, delivery: options?.delivery ?? null },
+    options?.db,
+  );
   const builtins = (await registry.listOpenAiTools()).filter((tool) =>
-    registry.isOffered(tool.function.name, {
-      source,
-      assistantId,
-      delivery: options?.delivery ?? null,
-    }),
+    registry.isOffered(tool.function.name, scope),
   );
 
   const connections = await resolveConnectionToolset({ source, assistantId }, options?.db);

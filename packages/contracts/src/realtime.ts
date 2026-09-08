@@ -26,6 +26,7 @@ export const REALTIME_TOPICS = [
   "threads",
   "tools",
   "accounts",
+  "collections",
 ] as const;
 
 export type RealtimeTopic = (typeof REALTIME_TOPICS)[number];

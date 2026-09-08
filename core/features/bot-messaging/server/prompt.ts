@@ -160,6 +160,14 @@ export interface SystemPromptOptions {
    * they are what a reply is judged against. Null/empty means no block.
    */
   standingTasks?: string | null;
+  /**
+   * The assistant's collections the turn may see, composed into a block by
+   * {@link import("@/features/collections/format").buildCollectionsBlock}:
+   * what structured data it keeps, by id, and how to fill and present it.
+   * Sits above the standing tasks (per-assistant data, not a chat's
+   * orders). Null/empty means the turn sees none.
+   */
+  collections?: string | null;
 }
 
 /** Whether a non-empty personality prompt is present (after trimming). */
@@ -178,11 +186,15 @@ export function buildSystemPrompt(options: SystemPromptOptions = {}): string {
   const persona = options.personalityPrompt?.trim();
   const correction = options.selfCorrection?.trim();
   const standing = options.standingTasks?.trim();
+  const collections = options.collections?.trim();
   let prompt = BASE_SYSTEM_PROMPT;
   if (persona) prompt += `\n\n---\nAdditional instructions:\n${persona}`;
   if (correction) {
     prompt += `\n\n---\nSelf-correction guidelines (learned from user feedback on your replies):\n${correction}`;
   }
+  // The collections block carries its own heading too (composed by the
+  // collections feature); it precedes the standing block, which stays last.
+  if (collections) prompt += `\n\n---\n${collections}`;
   // The standing block carries its own heading (it is composed by the tasks
   // feature, which owns how a standing task is phrased to the model).
   if (standing) prompt += `\n\n---\n${standing}`;

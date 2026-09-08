@@ -342,6 +342,20 @@ export const FEATURES = {
     group: "tools",
     path: "/tools",
   },
+  collections: {
+    id: "collections",
+    label: "Collections",
+    group: "knowledge",
+    realtimeTopic: "collections",
+    relatedIdsKey: "collections",
+    path: "/collections",
+  },
+  "mcp-tools-collections": {
+    id: "mcp-tools-collections",
+    label: "Collection tools",
+    group: "tools",
+    path: "/tools",
+  },
   "mcp-tools-agents": {
     id: "mcp-tools-agents",
     label: "Agent tool",

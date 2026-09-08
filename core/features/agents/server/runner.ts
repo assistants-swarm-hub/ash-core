@@ -12,6 +12,8 @@ import {
 import { WEB_CHAT_SOURCE, parseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getAssistantPersona } from "@/features/assistants/server/service";
+import { buildCollectionsBlock } from "@/features/collections/format";
+import { getVisibleCollections } from "@/features/collections/server/service";
 import { getChatLanguage } from "@/features/known-groups/server/service";
 import { getToolset, type Toolset } from "@/features/mcp-tools/server/service";
 import { FEATURES } from "@/lib/features";
@@ -423,6 +425,15 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
     // resolves to null only when the assistant was deleted mid-flight.
     const binding = runTurnBinding(run);
     const persona = await getAssistantPersona(run.assistantId).catch(() => null);
+    // The run sees the assistant's collections with the rights its turn
+    // carried — the same gate its tool calls take.
+    const ownerRights = run.senderIsOwner || run.authorityIsOwner;
+    const collections = await getVisibleCollections(
+      { kind: "chat", assistantId: run.assistantId, ownerRights },
+      db,
+    )
+      .then((list) => buildCollectionsBlock(list, { ownerRights }))
+      .catch(() => null);
     const assistantToolset = await getToolset({
       delivery: "send",
       source: binding.source,
@@ -462,6 +473,7 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
       data: {
         assistantId: run.assistantId,
         personaComposed: persona !== null,
+        collectionsComposed: collections !== null,
         assistantTools: assistantTools?.tools.map((tool) => tool.function.name) ?? [],
         quiet: run.quiet,
       },
@@ -478,6 +490,7 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
         toolContext,
         assistantTools,
         persona,
+        collections,
         requiredLanguage: resolveRequiredLanguage(storedLanguage) ?? null,
         trace: {
           recorder: trace,

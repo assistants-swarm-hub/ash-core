@@ -408,6 +408,31 @@ account deletes its *own* documents through `DELETE /api/profile/memory`.
 | `GET` | `/api/vision/backfill` | admin | `{ status: IdleJobStatus, pending: number }` |
 | `POST` | `/api/vision/backfill` | admin | The same, immediately after arming a run (fire-and-forget) |
 
+## Collections
+
+| Method | Path | Access | Body | Returns |
+| --- | --- | --- | --- | --- |
+| `GET` | `/api/collections` | account | — (`?assistant=` narrows) | `Collection[]` (a user-role account: its own assistants') |
+| `POST` | `/api/collections` | account | `{ assistantId, name, description?, visibility?, fillInstruction?, presentationInstruction?, columns }` | The created collection — **201** |
+| `GET` | `/api/collections/{id}` | account | — | `Collection` |
+| `PATCH` | `/api/collections/{id}` | account | Any subset of `name, description, visibility, fillInstruction, presentationInstruction, columns`, ≥1 | The updated collection (a column change reshapes every row) |
+| `DELETE` | `/api/collections/{id}` | account | — | `{ deleted: true }` |
+| `GET` | `/api/collections/{id}/rows` | account | — (`?q&gaps=1&sort&direction&offset&limit&filters=<JSON [{column,op,value}]>`) | `{ rows: Row[], offset, limit, total, hasMore, semantic }` |
+| `POST` | `/api/collections/{id}/rows` | account | `{ values }` | `{ row, created }` — **201** when new, **200** when the key updated an existing row |
+| `GET` | `/api/collections/{id}/rows/{rowId}` | account | — | `Row` |
+| `PATCH` | `/api/collections/{id}/rows/{rowId}` | account | `{ values }` (the columns that change) | The updated row |
+| `DELETE` | `/api/collections/{id}/rows/{rowId}` | account | — | `{ deleted: true }` |
+| `GET` | `/api/collections/{id}/export` | account | — | CSV download, the column keys as header |
+
+`Collection` = `{ id, assistantId, name, description, visibility, fillInstruction,
+presentationInstruction, columns: [{ key, label, type, options?, scale?, isKey,
+requiredForComplete }], rowCount, gapCount, createdAt, updatedAt }`. `Row` =
+`{ id, collectionId, keyValue, values, complete, gaps, createdByUserRef,
+originChatRef, sourceDocumentRef, createdAt, updatedAt }`. Every value is
+checked against its column's type (`400` with the column named); a row whose
+key exists is updated. All gated through the collection's assistant
+(`not_found` when not yours). See [Collections](../features/collections.md).
+
 ## Tasks
 
 | Method | Path | Access | Body | Returns |

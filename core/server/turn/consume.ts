@@ -40,6 +40,8 @@ import {
   getAssistantNames,
   getAssistantPromptIdentity,
 } from "@/features/assistants/server/service";
+import { buildCollectionsBlock } from "@/features/collections/format";
+import { getVisibleCollections } from "@/features/collections/server/service";
 import { buildStandingTasksBlock } from "@/features/tasks/format";
 import { getActiveTasksForChat } from "@/features/tasks/server/service";
 import {
@@ -283,7 +285,7 @@ async function buildEventDeps(
     );
   }
 
-  const [policy, selfCorrection, taskSets, timezone] = await Promise.all([
+  const [policy, selfCorrection, taskSets, timezone, collections] = await Promise.all([
     getBotPolicy(),
     getLatestSelfCorrectionPrompt().catch(() => null),
     getActiveTasksForChat(event.assistantId, event.source, chatId, senderId).catch(() => ({
@@ -291,6 +293,13 @@ async function buildEventDeps(
       message: [],
     })),
     getTimezone().catch(() => "UTC"),
+    // What structured data the assistant keeps, as this sender may see it:
+    // private collections only with the source's owner stamp.
+    getVisibleCollections({
+      kind: "chat",
+      assistantId: event.assistantId,
+      ownerRights: event.sender.isOwner,
+    }).catch(() => []),
   ]);
 
   const markActed = () => ctx.markers.mark(event.correlationId);
@@ -411,6 +420,7 @@ async function buildEventDeps(
     personalityPrompt,
     selfCorrection,
     standingTasks: buildStandingTasksBlock(taskSets.prompt),
+    collections: buildCollectionsBlock(collections, { ownerRights: event.sender.isOwner }),
     timeContext: buildTimeContext(ctx.now?.() ?? new Date(), timezone),
     requiredLanguage: resolveRequiredLanguage(event.chat.language ?? null),
     // Typing renders source-side from the lifecycle events: `accepted` when

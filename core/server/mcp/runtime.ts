@@ -5,6 +5,12 @@ import {
   registerAgentsMcpTools,
 } from "@/features/agents/server/mcp-tools";
 import {
+  COLLECTIONS_TOOL_NAMES,
+  collectionsScopeFacts,
+  collectionsToolOffered,
+  registerCollectionsMcpTools,
+} from "@/features/collections/server/mcp-tools";
+import {
   DOCUMENTS_TOOL_NAMES,
   registerDocumentsMcpTools,
 } from "@/features/documents/server/mcp-tools";
@@ -34,7 +40,12 @@ import {
   webChatToolOffered,
   WEB_CHAT_TOOL_NAMES,
 } from "@/features/web-chat/server/mcp-tools";
-import { BotMcpRegistry, type McpToolRegistrar, type ToolOfferPredicate } from "./registry";
+import {
+  BotMcpRegistry,
+  type McpToolRegistrar,
+  type ToolOfferPredicate,
+  type ToolScopeFacts,
+} from "./registry";
 
 /**
  * Process-wide MCP registry. Tools are registered once and the in-process
@@ -76,6 +87,8 @@ const REGISTRARS: {
   toolNames: string[];
   /** When present, gates which turns the feature's tools are offered on. */
   offered?: ToolOfferPredicate;
+  /** When present, the turn facts the predicate reads that need a database read. */
+  scopeFacts?: ToolScopeFacts;
 }[] = [
   { feature: "history", registrar: registerHistoryMcpTools, toolNames: HISTORY_TOOL_NAMES },
   {
@@ -89,6 +102,13 @@ const REGISTRARS: {
     toolNames: KNOWN_USERS_TOOL_NAMES,
   },
   { feature: "tasks", registrar: registerTasksMcpTools, toolNames: TASKS_TOOL_NAMES },
+  {
+    feature: "collections",
+    registrar: registerCollectionsMcpTools,
+    toolNames: COLLECTIONS_TOOL_NAMES,
+    offered: collectionsToolOffered,
+    scopeFacts: collectionsScopeFacts,
+  },
   { feature: "memory", registrar: registerMemoryMcpTools, toolNames: MEMORY_TOOL_NAMES },
   {
     feature: "randomness",
@@ -117,8 +137,8 @@ export function expectedToolNames(): string[] {
 /** Build the registry, register every feature's tools, and connect. */
 async function build(): Promise<BotMcpRegistry> {
   const registry = new BotMcpRegistry();
-  for (const { feature, registrar, toolNames, offered } of REGISTRARS) {
-    registry.registerTools(feature, registrar, toolNames, offered);
+  for (const { feature, registrar, toolNames, offered, scopeFacts } of REGISTRARS) {
+    registry.registerTools(feature, registrar, toolNames, offered, scopeFacts);
   }
   await registry.finishRegistration();
   return registry;

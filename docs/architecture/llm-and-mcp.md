@@ -578,6 +578,28 @@ bookkeeping is the same whichever source a task fires on.
 | --- | --- | --- |
 | `read_document` | `document_id`, `offset?`, `limit?`, `sheet?` | Read a text-like file sent in this conversation, in windows: rows with a header for CSV/TSV/XLSX, a character range for JSON/TXT/MD, always with the total and `has_more`. Only this conversation's documents; see [Documents](../features/documents.md) |
 
+### Collections — `mcp-tools-collections`
+
+Offered per assistant by data presence — `collections_create` always, the
+rest once the assistant has a collection (the fact is resolved once per
+toolset by the feature's scope-facts resolver, run by the registry's
+`resolveScope`). A stable fact of the turn, not message content, so the
+"no toolset routing" decision stands. Rights are judged in the service:
+private collections are invisible without owner rights, every write needs
+them. See [Collections](../features/collections.md).
+
+| Tool | Input | Purpose |
+| --- | --- | --- |
+| `collections_create` | `name`, `description?`, `visibility?`, `fill_instruction?`, `presentation_instruction?`, `columns[]` | Create a collection from a confirmed proposal |
+| `collections_update` | `collection_id`, any of the above | Change texts, visibility or the whole column list |
+| `collections_delete` | `collection_id` | Delete with every row |
+| `collection_import` | `document_id`, `collection_id` \| `proposal`, `mapping?`, `sheet?` | Import a document of this conversation in one call; counts and per-row skip reasons back |
+| `rows_add` | `collection_id`, `values` | Add an item, or update the one with that key |
+| `rows_update` | `collection_id`, `row_id` \| `key`, `values` | Change some columns of one item |
+| `rows_delete` | `collection_id`, `row_id` \| `key` | Delete one item |
+| `rows_get` | `collection_id`, `row_id` \| `key` | One item in full, with its gaps |
+| `rows_query` | `collection_id`, `query?`, `filters?`, `gaps?`, `sort?`, `direction?`, `offset?`, `limit?` | Typed filters, the gaps switch, a sort, free text (semantic with an embedding model), paging |
+
 ### Agents — `mcp-tools-agents`
 
 | Tool | Input | Purpose |

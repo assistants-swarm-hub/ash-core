@@ -29,6 +29,9 @@ import type { JobProgress } from "@/server/jobs/progress";
 import { publishEvent } from "@/server/realtime/hub";
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 
+import { buildCollectionsBlock } from "@/features/collections/format";
+import { getVisibleCollections } from "@/features/collections/server/service";
+
 import { buildStandingTasksBlock } from "../format";
 import { computeNextTriggerRun } from "../schedule";
 import { isPromptTask, MAX_ONE_SHOT_ATTEMPTS } from "../types";
@@ -108,19 +111,25 @@ async function loadChatScopedFireDeps(
   assistantId: string,
   source: SourceId,
   chatId: string,
+  /** The task creator's owner stamp — what the fire's tool calls act with, and what the block shows. */
+  ownerRights: boolean,
   db: StoreDb,
 ) {
-  const [storedLanguage, chatContext, standingTasks] = await Promise.all([
+  const [storedLanguage, chatContext, standingTasks, collections] = await Promise.all([
     getChatLanguage(source, chatId, db).catch(() => null),
     getChatContext(source, chatId, db).catch(() => null),
     getActiveTasksForChat(assistantId, source, chatId, null, db)
       .then(({ prompt }) => buildStandingTasksBlock(prompt))
+      .catch(() => null),
+    getVisibleCollections({ kind: "chat", assistantId, ownerRights }, db)
+      .then((list) => buildCollectionsBlock(list, { ownerRights }))
       .catch(() => null),
   ]);
   return {
     requiredLanguage: resolveRequiredLanguage(storedLanguage),
     chatContext,
     standingTasks,
+    collections,
   };
 }
 
@@ -153,7 +162,7 @@ export async function runDueTasks(deps: DueRunDeps): Promise<{ fired: number; fa
     // A due row always has a chat (the DB check pins global scope to prompt
     // kinds, which never carry a next_run_at) — narrow it once here.
     const [scoped, personalityPrompt] = await Promise.all([
-      loadChatScopedFireDeps(task.assistantId, task.chatSource!, task.chatId!, db),
+      loadChatScopedFireDeps(task.assistantId, task.chatSource!, task.chatId!, task.createdByOwner, db),
       deps.personaFor(task.assistantId).catch(() => null),
     ]);
     const result = await fireTask(task, {
@@ -297,7 +306,7 @@ export async function manualFireTask(
   }
   // A timed task always has a chat (the DB scope check); narrow once.
   const [scoped, personalityPrompt] = await Promise.all([
-    loadChatScopedFireDeps(task.assistantId, task.chatSource!, task.chatId!, db),
+    loadChatScopedFireDeps(task.assistantId, task.chatSource!, task.chatId!, task.createdByOwner, db),
     live.personaFor(task.assistantId).catch(() => null),
   ]);
   return fireTask(

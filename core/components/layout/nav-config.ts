@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   Bot,
+  Table2,
   Brain,
   Bug,
   CalendarClock,
@@ -73,6 +74,7 @@ const SHELL_NAV_GROUPS: NavGroup[] = [
     label: "Bot",
     items: [
       { href: "/assistants", label: "Assistants", icon: Bot, adminOnly: false },
+      { href: "/collections", label: "Collections", icon: Table2, adminOnly: false },
       { href: "/memory", label: "Memory", icon: Brain },
       { href: "/tools", label: "Tools", icon: Wrench, adminOnly: false },
       { href: "/self-improvement", label: "Self-improvement", icon: Sparkles },

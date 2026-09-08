@@ -62,6 +62,12 @@ export interface FireDeps {
    */
   standingTasks?: string | null;
   /**
+   * The assistant's collections as the task's creator may see them, as a
+   * composed prompt block — a fill-the-gaps fire reads its "rows with gaps"
+   * count here (user decision, 2026-09-08). Null/absent → no block.
+   */
+  collections?: string | null;
+  /**
    * The reply language required for this task's chat (operator-configured, or
    * the default). Injected as a strict directive before the task directive so
    * anything the fire sends is in the chat's language. Null/absent → none.
@@ -200,6 +206,7 @@ export async function fireTask(
         content: buildSystemPrompt({
           personalityPrompt: deps.personalityPrompt,
           standingTasks: deps.standingTasks,
+          collections: deps.collections,
         }),
       },
       // The chat identity context right after the system prompt, mirroring the
@@ -220,6 +227,7 @@ export async function fireTask(
       message: "fire prompt composed",
       data: {
         standingTasksApplied: Boolean(deps.standingTasks?.trim()),
+        collectionsApplied: Boolean(deps.collections?.trim()),
         chatContextApplied: Boolean(chatContext),
       },
     });

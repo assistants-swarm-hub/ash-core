@@ -17,6 +17,7 @@ relative to `core/` unless they start with `core/` or `packages/`.
 | Accounts, roles, identity links | `auth`, `accounts` | `/accounts`, `/profile`, `/login`, `/setup` | [accounts.md](accounts.md) |
 | Web chat | `mcp-tools-web-chat` | `/chat` | [web-chat.md](web-chat.md) |
 | Tasks (standing rules + timed jobs) | `tasks`, `mcp-tools-tasks` | `/tasks` | [tasks.md](tasks.md) |
+| Collections (an assistant's structured data) | `collections`, `mcp-tools-collections` | `/collections` | [collections.md](collections.md) |
 | History | `history`, `history-summaries`, `history-index`, `mcp-tools-history` | `/history`, `/search` | [history.md](history.md) |
 | Memory | `memory`, `memory-extraction`, `mcp-tools-memory` | `/memory` | [memory.md](memory.md) |
 | Vision | `vision`, `vision-backfill` | `/vision` | [vision.md](vision.md) |
