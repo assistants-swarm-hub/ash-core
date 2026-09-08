@@ -27,30 +27,34 @@ needs — bot tokens included — it fetches from the core at registration.
 
 ### Dump
 
-With the Compose stack up (credentials default to `bot`/`bot`/`bot`):
+The store is the `core` database (user and password default to `bot`). Set
+`POSTGRES_DB=core` in the Compose `.env` so the bundled Postgres creates it on
+first start and its healthcheck and the default `DATABASE_URL` name it too — the
+compose file's own fallback is still `bot`. With the stack up:
 
 ```bash
-docker compose exec -T db pg_dump -U bot -d bot > backup.sql
+docker compose exec -T db pg_dump -U bot -d core > backup.sql
 ```
 
 For a custom-format dump (compressed, restorable selectively):
 
 ```bash
-docker compose exec -T db pg_dump -U bot -d bot -Fc > backup.dump
+docker compose exec -T db pg_dump -U bot -d core -Fc > backup.dump
 ```
 
 ### Restore
 
-Into a fresh database:
+Into a fresh `core` database (the container creates it on first start when
+`POSTGRES_DB=core` is set):
 
 ```bash
-docker compose exec -T db psql -U bot -d bot < backup.sql
+docker compose exec -T db psql -U bot -d core < backup.sql
 ```
 
 From a custom-format dump:
 
 ```bash
-docker compose exec -T db pg_restore -U bot -d bot --clean --if-exists < backup.dump
+docker compose exec -T db pg_restore -U bot -d core --clean --if-exists < backup.dump
 ```
 
 The restored database must have the `vector` and `pg_trgm` extensions available — the
@@ -123,7 +127,7 @@ A minimal, honest setup:
 
 ```bash
 # nightly, before the daily jobs run time
-docker compose exec -T db pg_dump -U bot -d bot -Fc > "/backups/db-$(date +%F).dump"
+docker compose exec -T db pg_dump -U bot -d core -Fc > "/backups/db-$(date +%F).dump"
 tar czf "/backups/traces-$(date +%F).tar.gz" -C /srv/assistants-swarm-hub/data traces
 ```
 
@@ -136,7 +140,8 @@ tar czf "/backups/traces-$(date +%F).tar.gz" -C /srv/assistants-swarm-hub/data t
 
 ## Disaster recovery
 
-1. Bring up a fresh stack (`docker compose up -d`) with the same `INTERNAL_API_TOKEN`.
+1. Bring up a fresh stack (`docker compose up -d`) with the same `INTERNAL_API_TOKEN`
+   and the same `POSTGRES_DB`, so the database the dump names exists.
    Do **not** visit `/setup` yet.
 2. Restore the database dump.
 3. Unpack the trace archive into `./data/traces`, ensuring the container user can
