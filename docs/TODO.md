@@ -1271,8 +1271,7 @@ Decisions (user, 2026-09-08):
   intact, add no weaker branch", the do-not for casual chat and stable
   facts — and adds the new must-call: any job that has to act through
   tools (record, remember, schedule, update a collection) or would take
-  many steps or minutes. Stored task instructions naming `browse_web` are
-  reworded by the operator; nothing aliases the old name.
+  many steps or minutes. Nothing aliases the old name.
 - **The agent is the assistant.** The run row carries the full turn binding
   (source, chat, thread, assistant, sender, owner rights, correlation) and
   the runner wraps the loop in `runWithToolContext` with `deliveryKind:
