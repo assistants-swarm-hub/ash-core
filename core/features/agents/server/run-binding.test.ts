@@ -5,8 +5,8 @@ import { runTurnBinding, shouldPostReport } from "./run-binding";
 
 /**
  * The two pure decisions the runner takes about a run: which turn it acts in
- * (a chat-started run is the assistant, bound exactly as its starting turn was)
- * and whether its outcome is posted (a quiet run stays quiet unless it failed
+ * (the assistant's, bound exactly as its starting turn was) and whether its
+ * outcome is posted (a quiet run stays quiet unless it failed
  * or fetched a file).
  */
 
@@ -58,21 +58,16 @@ describe("runTurnBinding", () => {
 
   it("speaks unprompted and silently: a send turn whose notes carry no ping", () => {
     const binding = runTurnBinding(run());
-    expect(binding?.deliveryKind).toBe("send");
-    expect(binding?.silentDelivery).toBe(true);
+    expect(binding.deliveryKind).toBe("send");
+    expect(binding.silentDelivery).toBe(true);
   });
 
   it("falls back to the run id as the correlation when the turn stamped none", () => {
-    expect(runTurnBinding(run({ correlationId: null }))?.correlationId).toBe("run-1");
+    expect(runTurnBinding(run({ correlationId: null })).correlationId).toBe("run-1");
   });
 
   it("binds no user when the run has no sender", () => {
-    expect(runTurnBinding(run({ createdByUserRef: null }))?.userId).toBeNull();
-  });
-
-  it("gives a dashboard run no turn: no chat, or no assistant", () => {
-    expect(runTurnBinding(run({ chatRef: null }))).toBeNull();
-    expect(runTurnBinding(run({ assistantId: null }))).toBeNull();
+    expect(runTurnBinding(run({ createdByUserRef: null })).userId).toBeNull();
   });
 });
 

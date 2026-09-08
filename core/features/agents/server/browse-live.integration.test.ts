@@ -15,8 +15,8 @@ import type { BrowserToolContext } from "./tools";
 
 /**
  * Opt-in **real** browse: the configured LLM drives a **real** headless Chromium
- * over a live public page, with no transport anywhere (this is exactly the
- * dashboard-run path — a run with no chat). Skipped unless `LLM_LIVE=1`.
+ * over a live public page, with no transport anywhere. Skipped unless
+ * `LLM_LIVE=1`.
  *
  * Unlike the tool-selection suite, the browser tools here really execute. It
  * proves the whole loop end to end: the model navigates, reads the snapshot,
@@ -95,16 +95,24 @@ describe.skipIf(!LLM_LIVE)("browser agent — real browse (live)", () => {
   );
 
   it(
-    "records a live activity feed through the real runner (dashboard run)",
+    "records a live activity feed through the real runner (quiet run)",
     async () => {
       const runtime = await getLlmRuntime();
       if (!runtime) throw new Error("LLM is not configured in DB settings.");
       const db = getStoreDb();
 
-      // A dashboard run has no chat — nothing is sent to a chat; the report and
-      // the activity feed land on the run row, which is exactly what the UI reads.
+      // No transport is registered here, so the run is quiet: nothing is posted
+      // to the chat; the report and the activity feed land on the run row,
+      // which is exactly what the UI reads. The assistant id is synthetic — a
+      // missing assistant composes no persona and the run still works.
       const run = await enqueueAgentRun(
-        { goal: "Open https://example.com and tell me its main heading.", chatRef: null, isOwner: true },
+        {
+          goal: "Open https://example.com and tell me its main heading.",
+          chatRef: "acme:chat:1",
+          assistantId: "live-test",
+          isOwner: true,
+          quiet: true,
+        },
         db,
       );
       startAgentRunner(db);

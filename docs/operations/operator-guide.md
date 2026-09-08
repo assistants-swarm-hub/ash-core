@@ -399,8 +399,9 @@ the bot cannot discuss a rule it has no way to carry out).
 
 ## Agents (`/agents`)
 
-Lists runs and lets you start one. A dashboard-started run has no chat to deliver to —
-its report is read here — and is treated as your own, so downloads are enabled.
+Lists every run an assistant has started from a chat, naming the assistant it acts
+as and marking quiet runs. Nothing starts a run from here: a run is an assistant
+working on a goal its own chat turn handed it (user decision, 2026-09-08).
 
 The run view shows the goal, status, the step-by-step activity feed (tool, action,
 outcome), the downloads with sizes and whether each was attached to the chat, the

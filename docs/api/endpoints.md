@@ -460,14 +460,12 @@ are (an unreachable source is an outage on the page, never "no feedback yet").
 | Method | Path | Access | Body | Returns |
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/agents` | admin | — | `{ runs: BrowserAgentRun[] }` |
-| `POST` | `/api/agents` | admin | `{ goal }` (4–4000 chars) | The queued `BrowserAgentRun` — **201** |
 | `GET` | `/api/agents/{id}` | admin | — | `BrowserAgentRunDetail` |
 | `GET` | `/api/agents/{id}/screenshot/{seq}` | admin | — | `image/jpeg`, `Cache-Control: private, max-age=3600` |
 | `POST` | `/api/agents/ytdlp/run` | admin | — | The yt-dlp updater's job info immediately (fire-and-forget) |
 
-A dashboard-started run has `chatRef: null` and delivers nothing — its report is read
-on the page. It is treated as the **operator's own**, so `isOwner` is true and the
-download tools are enabled.
+There is no `POST`: a run is only ever started by an assistant's chat turn through
+the `start_agent` tool (user decision, 2026-09-08).
 
 `BrowserAgentRunDetail` adds `activity` (the ordered step feed), `screenshotSeqs`,
 and `live` (`{ currentAction, progress }` while running, `null` once settled).

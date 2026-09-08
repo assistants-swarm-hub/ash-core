@@ -34,6 +34,9 @@ export { START_AGENT_TOOL };
 
 export const AGENTS_TOOL_NAMES = [START_AGENT_TOOL];
 
+const NO_ASSISTANT =
+  "This turn has no assistant to act as, so no background agent was started. Nothing was done.";
+
 const START_AGENT_DESCRIPTION =
   "Start a background agent: a copy of yourself that works on a goal on its own, with your usual " +
   "tools AND a REAL browser. It can SEARCH the web, open and read any page, follow links, click, " +
@@ -112,6 +115,16 @@ export function registerAgentsMcpTools(server: McpServer): void {
     },
     async ({ goal, context, quiet }) => {
       const ctx = getToolContext();
+      // A run is the assistant working in the background; a turn that names
+      // no assistant (a stale binding, a test) has nobody to be, so it is
+      // refused rather than guessed — the same rule the task tools follow.
+      if (!ctx.assistantId) {
+        return {
+          content: [{ type: "text" as const, text: NO_ASSISTANT }],
+          structuredContent: { ok: false },
+          isError: true as const,
+        };
+      }
       // Owner status gates the download tools for the whole run; resolve it
       // now. It is resolved from the turn's *authority* — the sender normally,
       // but the author of the standing task when a task drove this turn, so an
@@ -146,7 +159,7 @@ export function registerAgentsMcpTools(server: McpServer): void {
         createdByUserRef: ctx.userId ? scopedRef(ctx.source, "user", ctx.userId) : null,
         // The whole turn binding rides on the run, so the agent's tool calls
         // bind exactly as this turn's do.
-        assistantId: ctx.assistantId ?? null,
+        assistantId: ctx.assistantId,
         isOwner,
         senderIsOwner,
         authorityIsOwner,

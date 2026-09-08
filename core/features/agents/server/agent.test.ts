@@ -179,7 +179,7 @@ describe("composeAgentTools", () => {
     expect((await composed.callTool("memory_save", {})).text).toBe("assistant:memory_save");
   });
 
-  it("holds the browser tools only, and refuses the rest, without an assistant", async () => {
+  it("holds the browser tools only, and refuses the rest, when nothing else is registered", async () => {
     const composed = composeAgentTools(browser, null);
     expect(composed.tools.map((t) => t.function.name)).toEqual(["browser_navigate", "browser_read"]);
     expect(await composed.callTool("memory_save", {})).toMatchObject({ isError: true });
@@ -198,7 +198,7 @@ function browserContext(overrides: Partial<BrowserToolContext> = {}): BrowserToo
 describe("buildAgentSystemPrompt", () => {
   const persona = "You are Scout.\n\nYou are terse and precise.";
 
-  it("puts the persona first when the run acts as an assistant", () => {
+  it("puts the persona first", () => {
     const prompt = buildAgentSystemPrompt(browserContext(), null, {
       persona,
       withAssistantTools: true,
@@ -209,7 +209,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).not.toContain("web-browsing agent working in the background for a chat bot");
   });
 
-  it("stays the browser-only helper for a run with no assistant", () => {
+  it("falls back to a persona-less prompt when the assistant is gone", () => {
     const prompt = buildAgentSystemPrompt(browserContext(), null, {
       persona: null,
       withAssistantTools: false,

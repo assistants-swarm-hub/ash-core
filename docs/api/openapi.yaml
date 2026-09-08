@@ -2485,36 +2485,6 @@ paths:
                             items: { $ref: "#/components/schemas/BrowserAgentRun" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
-    post:
-      tags: [agents]
-      x-access: admin
-      summary: Queue a dashboard-started run
-      description: |
-        A dashboard run has no chat to deliver to - the report is stored on the run
-        row. It is treated as the operator's own, so `isOwner` is true and the
-        download tools are enabled.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [goal]
-              properties:
-                goal: { type: string, minLength: 4, maxLength: 4000 }
-      responses:
-        "201":
-          description: The queued run
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/ApiOk"
-                  - properties:
-                      data: { $ref: "#/components/schemas/BrowserAgentRun" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "422": { $ref: "#/components/responses/ValidationError" }
 
   /api/agents/{id}:
     parameters:
@@ -5002,8 +4972,8 @@ components:
       properties:
         id: { type: string }
         chatRef:
-          type: [string, "null"]
-          description: Null for a dashboard-started run, which delivers nothing.
+          type: string
+          description: Scoped ref of the chat the run acts in and reports to.
         threadId: { type: [string, "null"], description: "Source-local sub-thread (a forum topic) to deliver into, verbatim; null for the chat root." }
         createdByUserRef: { type: [string, "null"] }
         isOwner:
@@ -5021,7 +4991,7 @@ components:
           items: { type: string }
           description: >-
             The triggering message's http(s) URLs, extracted in code - verbatim,
-            never re-typed by a model. Empty for a dashboard run.
+            never re-typed by a model. Empty for a message without links.
         goal: { type: string }
         status:
           type: string
@@ -5043,8 +5013,8 @@ components:
                 description: >-
                   True when the file itself reached the chat, in which case the server
                   copy was removed. False means it is still in the downloads folder:
-                  too large to attach, delivery failed, or a dashboard-started run with
-                  no chat. Runs recorded before 2026-07-29 always read false.
+                  too large to attach, or the delivery failed. Runs recorded before
+                  2026-07-29 always read false.
               discarded:
                 type: boolean
                 description: >-

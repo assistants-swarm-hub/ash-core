@@ -249,11 +249,9 @@ function RunDetail({ run }: { run: AgentRun }) {
  * whole re-renders on the `agents` SSE topic, so status/step counts advance
  * without a manual reload; this component only owns the expand state.
  */
-/** Who a run acts as, for the list: the assistant by name, or a dashboard run. */
+/** Who a run acts as, for the list: the assistant by name. */
 function runActor(run: AgentRun, assistantNames: Record<string, string>): string {
-  const actor = run.assistantId
-    ? `as ${assistantNames[run.assistantId] ?? "a deleted assistant"}`
-    : "dashboard run — browser tools only";
+  const actor = `as ${assistantNames[run.assistantId] ?? "a deleted assistant"}`;
   return run.quiet ? `${actor} · quiet` : actor;
 }
 
@@ -276,7 +274,7 @@ export function RunsList({
       <EmptyState
         icon={Globe}
         title="No runs yet"
-        description="Start a browser-only run above, or ask an assistant in a chat to look something up or do a job for you."
+        description="Ask an assistant in a chat to look something up or do a job for you; its runs appear here."
       />
     );
   }

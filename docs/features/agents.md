@@ -86,8 +86,7 @@ and `restricted`; the download tools check the run's flags, never an owner id. T
 a standing chat rule ("rule creator beats message source"). A run is marked
 **`restricted`** when a rule drove it in a group chat — the owner's own message
 included — or when the rule lent the sender rights they did not hold; only the
-owner's direct requests, their own DM rules, and dashboard runs stay
-unrestricted. A restricted run is fenced two ways (user decisions, 2026-08-01,
+owner's direct requests and their own DM rules stay unrestricted. A restricted run is fenced two ways (user decisions, 2026-08-01,
 after a rule-driven run downloaded an unrelated music video and stranded it on
 the server's disk):
 
@@ -161,10 +160,11 @@ a file was downloaded**: a failure is the one thing the chat must hear, and a
 file is a deliverable, not chatter (`shouldPostReport`). The "on it"
 acknowledgement is removed on settle either way.
 
-**A dashboard-started run** has neither a chat nor an assistant, so it holds
-the browser tools only, composes no persona, and delivers nothing — the report
-is stored on the row and read on the page. It is the operator's way to
-exercise the browser half directly.
+**Every run is a chat turn's.** There is no other way to start one: the
+dashboard-started, browser-only run — no chat, no assistant, a helper that
+only browsed — was removed with the browser agent (user decision,
+2026-09-08). A persona resolves to null only when the assistant was deleted
+while the run was queued; the run then works under a persona-less prompt.
 
 The loop itself is deliberately **unbounded** (recorded decision): no round cap,
 no wall-clock cap. Only the loop's stall guard ends a run that stops progressing
@@ -389,7 +389,6 @@ file-then-recap flow repeated the same filename twice and spammed the chat):
   | Over 50 MB, owner-started run — announced by name only | `false` | kept |
   | Over 50 MB, restricted run (rule-driven in a group, or rights lent to a non-owner) — **discarded** (`discarded: true`); the report says the file was too large to deliver and is sent without a ping | `false` | removed |
   | Send failed | `false` | kept |
-  | Dashboard-started run (no chat exists) | `false` | kept |
 
   A staged file's disk copy survives until the send actually succeeds — a crash or
   failed send leaves it in the downloads folder, never nowhere. A failed unlink is
@@ -402,8 +401,8 @@ file-then-recap flow repeated the same filename twice and spammed the chat):
   rather than a container path.
 
   The flag replaced an older `inline` one, which recorded whether a file was *small
-  enough* to attach — a different question, and one that made a dashboard run's
-  downloads read as "attached to chat" when nothing had been sent anywhere. Runs
+  enough* to attach — a different question, and one that made an undelivered
+  download read as "attached to chat" when nothing had been sent anywhere. Runs
   recorded before the change have no `deliveredToChat` and normalize to `false`,
   which is accurate for them: back then every download stayed on disk.
 - The report-bearing message (combined or text) is mirrored into history.
@@ -416,8 +415,6 @@ file-then-recap flow repeated the same filename twice and spammed the chat):
   delivered deletes it on arrival. The tracking is in-memory (`server/ack.ts`,
   the same `globalThis` pattern as the enqueue signal); a restart mid-run merely
   leaves one acknowledgement standing.
-- A **dashboard-started run has no `chatRef`** and delivers nothing; its report is
-  stored on the run row and read on the page.
 
 ### The size limit
 
@@ -507,27 +504,24 @@ buys nothing. The runner writes it; the run-detail API reads it (same process).
 | `agent_run_screenshots` | JPEG `bytea` keyed `(run_id, seq)`, served by an auth-gated route — never in trace JSON |
 
 Migration `0017` renamed the browser-agent tables and the settings role columns
-in place; `0018` added the binding, context and quiet columns. Rows from before
-carry no assistant and so read as browser-only runs, which is what they were.
+in place; `0018` added the binding, context and quiet columns; `0019` made
+`chat_ref` and `assistant_id` NOT NULL and dropped the rows that had neither —
+the dashboard-started runs and the browser agent's pre-binding history, records
+of a feature that no longer exists.
 
 ## Dashboard
 
-`/agents` lists runs and lets the operator start a browser-only one directly.
-Each row names who the run acts as — the assistant by name, or "dashboard run —
-browser tools only" — and marks quiet runs. The run view shows the goal, the
-context the starting turn passed, status, the activity feed (tool, action,
-outcome per step — the assistant's tools next to the browser's), the download
-list, the screenshots, live progress while running, and the final report. Live-updates on
-the `agents` topic.
-
-The **start-a-run form** exists so the operator can exercise the browser half
-directly. A run started there has no chat and no assistant, so it browses and
-reports here; the whole agent — persona and toolset — is only what a chat turn
-starts.
+`/agents` lists every run an assistant has started from a chat. Each row names
+the assistant the run acts as and marks quiet runs. The run view shows the
+goal, the context the starting turn passed, status, the activity feed (tool,
+action, outcome per step — the assistant's tools next to the browser's), the
+download list, the screenshots, live progress while running, and the final
+report. Live-updates on the `agents` topic. Nothing starts a run from the
+page (user decision, 2026-09-08).
 
 ## API
 
-`GET /api/agents` (list), `POST /api/agents` (enqueue a dashboard run, 201),
+`GET /api/agents` (list),
 `GET /api/agents/{id}` (detail with screenshot sequence numbers and live state),
 `GET /api/agents/{id}/screenshot/{seq}` (JPEG bytes).
 
@@ -627,7 +621,7 @@ ownership; the prompt — persona first, the tool-effect and no-double-send
 rules, the quiet line, the download rules by rights; the goal message with
 context and links),
 `server/run-binding.test.ts` (the rebuilt turn: send, silent, correlation
-fallback, no turn for a dashboard run; the quiet-report decision),
+fallback; the quiet-report decision),
 `server/mcp-tools.test.ts` (the download-rights gate, the whole binding stamped
 on the run, context and quiet, the pinned description),
 `server/tools.test.ts` (the media tool's owner gate and mode default),

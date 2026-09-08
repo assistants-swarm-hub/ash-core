@@ -64,7 +64,7 @@ export interface BrowserToolContext {
   /**
    * URLs a restricted run may download from (the triggering message's links,
    * extracted in code — matched exactly or by site, see `urls.ts`), or null for
-   * an unrestricted run (the owner's direct request, or a dashboard run). A
+   * an unrestricted run (the owner's direct request). A
    * rule authorizes downloading only the links that triggered it, so a download
    * of anything else is refused (user decision, 2026-08-01).
    */
@@ -520,7 +520,7 @@ export function summarizeResult(result: McpToolCallResult): string {
  * The downloads folder is a fallback, not an archive (user decision, 2026-07-29):
  * a file the user already has in the chat does not also need to sit on the server
  * filling the disk. What stays is what nobody received — too large to attach, a
- * delivery that failed, or a dashboard-started run with no chat at all; a staged
+ * delivery that failed; a staged
  * file's disk copy is removed by the runner once the chat actually has it.
  */
 async function finishDownload(

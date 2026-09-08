@@ -10,7 +10,6 @@ import {
   getYtDlpJobInfo,
   type YtDlpJobInfo,
 } from "@/features/agents/server/ytdlp-scheduler";
-import { NewRunForm } from "@/features/agents/ui/NewRunForm";
 import { RunsList } from "@/features/agents/ui/RunsList";
 import { YtDlpJobCard } from "@/features/agents/ui/YtDlpJobCard";
 import type { AgentRun } from "@/features/agents/types";
@@ -20,11 +19,10 @@ import { featureDebugHref } from "@/lib/features";
 export const dynamic = "force-dynamic";
 
 /**
- * Agents dashboard page. Server Component: lists runs and lets the operator
- * start a browser-only one directly. A chat-started run is an assistant working
- * in the background with its tools and a real browser, reporting to its chat; a
- * dashboard-started run has no chat and no assistant, so its report is read
- * here. Live-updates on the `agents` SSE topic.
+ * Agents dashboard page. Server Component: lists the runs assistants have
+ * started from their chats — each an assistant working in the background with
+ * its tools and a real browser, reporting to its chat. Nothing starts a run
+ * from here (user decision, 2026-09-08). Live-updates on the `agents` SSE topic.
  */
 export default async function AgentsPage() {
   let runs: AgentRun[] | null = null;
@@ -52,7 +50,7 @@ export default async function AgentsPage() {
     <>
       <PageHeader
         title="Agents"
-        description="Background agent runs. An assistant hands a goal to a copy of itself that holds its tools and a real browser, then reports back to the chat. A run started here has no assistant and browses only."
+        description="Background agent runs. An assistant hands a goal to a copy of itself that holds its tools and a real browser, then reports back to the chat."
         actions={
           <div className="flex items-center gap-2">
             <LiveIndicator topic="agents" />
@@ -87,10 +85,7 @@ export default async function AgentsPage() {
       {ytdlp ? <YtDlpJobCard initial={ytdlp} /> : null}
 
       {runs ? (
-        <div className="space-y-6">
-          <NewRunForm />
-          <RunsList runs={runs} assistantNames={assistantNames} />
-        </div>
+        <RunsList runs={runs} assistantNames={assistantNames} />
       ) : (
         <EmptyState
           icon={Database}

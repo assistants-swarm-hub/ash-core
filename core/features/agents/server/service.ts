@@ -20,10 +20,10 @@ import {
  */
 
 /**
- * Input to enqueue a run. A chat-started run carries the whole turn binding
- * (assistant, sender, owner rights, correlation) so the agent acts as that
- * assistant in that chat; a dashboard-started run has neither a chat nor an
- * assistant and holds the browser tools only.
+ * Input to enqueue a run: the goal and the whole turn binding (chat,
+ * assistant, sender, owner rights, correlation), so the agent acts as that
+ * assistant in that chat. Every run is a chat turn's — there is no other way
+ * to start one (user decision, 2026-09-08).
  */
 export interface EnqueueAgentRunInput {
   goal: string;
@@ -31,11 +31,11 @@ export interface EnqueueAgentRunInput {
   context?: string | null;
   /** Post the final report only when the goal failed (default false). */
   quiet?: boolean;
-  chatRef: string | null;
+  chatRef: string;
   threadId?: string | null;
   createdByUserRef?: string | null;
-  /** The assistant the run acts as, or null (dashboard). */
-  assistantId?: string | null;
+  /** The assistant the run acts as. */
+  assistantId: string;
   isOwner: boolean;
   /** The sender's own owner rights (default false). */
   senderIsOwner?: boolean;
@@ -63,7 +63,7 @@ export async function enqueueAgentRun(
     chatRef: input.chatRef,
     threadId: input.threadId ?? null,
     createdByUserRef: input.createdByUserRef ?? null,
-    assistantId: input.assistantId ?? null,
+    assistantId: input.assistantId,
     isOwner: input.isOwner,
     senderIsOwner: input.senderIsOwner ?? false,
     authorityIsOwner: input.authorityIsOwner ?? false,

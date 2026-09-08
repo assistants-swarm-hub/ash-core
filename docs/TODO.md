@@ -1287,10 +1287,11 @@ came from. The collections entry above builds on it.
   renames in place (hand-written, snapshot verified with `drizzle-kit
   generate` → no drift); `0018` adds the binding columns. Both applied to
   the dev store.
-- Dashboard: the runs list names who a run acts as and marks quiet runs; the
-  detail shows the context. A dashboard-started run stays browser-only (no
-  chat, no assistant) — the sub-decision this entry left open, taken that way
-  and documented.
+- Dashboard: the runs list names the assistant a run acts as and marks quiet
+  runs; the detail shows the context. The dashboard-started run is gone
+  (user decision, 2026-09-08: "remove it") — no form, no `POST /api/agents`,
+  `chat_ref` and `assistant_id` NOT NULL (`0019`, dropping the rows that had
+  neither). Every run is a chat turn's.
 
 **Proof (2026-09-08):** typecheck clean; lint 0 problems; unit — core 1169
 passed / 26 skipped, SDK 26, contracts 20, service 3; integration (agents,

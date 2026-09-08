@@ -1378,31 +1378,30 @@ interface AgentRunStepJson {
  * runner picks up `queued` rows oldest-first, flips them `running`, and
  * settles them `done`/`failed` with the final report.
  *
- * A chat-started run carries the whole turn binding (`assistant_id`, the
- * sender, owner rights, the correlation), so the run's tool calls bind exactly
- * as a turn's do. `chat_ref` and `assistant_id` are null for dashboard-started
- * runs: there is no chat to deliver to and no assistant to be, so such a run
- * holds the browser tools only and its report is only stored here. `is_owner`
- * is resolved at enqueue time and gates the download tools for the whole run
- * (recorded decision: anyone can start a run; downloads are owner-only). Ids
- * are app-generated UUIDs.
+ * Every run is a chat turn's and carries the whole turn binding (`chat_ref`,
+ * `assistant_id`, the sender, owner rights, the correlation), so the run's
+ * tool calls bind exactly as a turn's do; nothing else starts a run (user
+ * decision, 2026-09-08 — the dashboard-started, browser-only run was removed
+ * and its rows dropped in `0019`). `is_owner` is resolved at enqueue time and
+ * gates the download tools for the whole run (recorded decision: anyone can
+ * start a run; downloads are owner-only). Ids are app-generated UUIDs.
  */
 export const agentRuns = pgTable(
   "agent_runs",
   {
     id: text("id").primaryKey(),
-    /** Scoped ref of the chat the run reports back to, or null for a dashboard-started run. */
-    chatRef: text("chat_ref"),
+    /** Scoped ref of the chat the run acts in and reports back to. */
+    chatRef: text("chat_ref").notNull(),
     /** Forum-topic thread to deliver into, or null (chat root) — the source's own id, verbatim. */
     threadId: text("thread_id"),
-    /** Scoped ref of whoever asked for the run, or null (dashboard). */
+    /** Scoped ref of whoever asked for the run, or null (no sender identity). */
     createdByUserRef: text("created_by_user_ref"),
     /**
      * The assistant the run acts as (a plain column, like a web thread's:
      * the run outlives nothing and answers as the base prompt if the id is
-     * gone), or null for a dashboard-started run.
+     * gone).
      */
-    assistantId: text("assistant_id"),
+    assistantId: text("assistant_id").notNull(),
     /** Whether the run carries owner rights — gates the download tools. */
     isOwner: boolean("is_owner").notNull().default(false),
     /** The sender's own owner rights, as the source stamped the turn. */

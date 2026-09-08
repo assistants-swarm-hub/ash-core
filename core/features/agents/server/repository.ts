@@ -27,10 +27,10 @@ import { getLiveState } from "./live-state";
 
 /** Columns an enqueue sets. */
 export interface InsertAgentRun {
-  chatRef: string | null;
+  chatRef: string;
   threadId: string | null;
   createdByUserRef: string | null;
-  assistantId: string | null;
+  assistantId: string;
   isOwner: boolean;
   senderIsOwner: boolean;
   authorityIsOwner: boolean;

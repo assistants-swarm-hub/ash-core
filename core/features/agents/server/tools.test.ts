@@ -32,7 +32,7 @@ let delivered: BrowserDownloadRecord[];
 
 /**
  * `outcome` stands in for what the runner reports back: "staged" when the file
- * will ride to the chat with the final report, "kept" for a dashboard run or an
+ * will ride to the chat with the final report, "kept" for an
  * over-limit file (the downloads folder keeps the copy), "discarded" for an
  * restricted run's over-limit file (deleted — the audience cannot reach the disk).
  */
@@ -119,7 +119,7 @@ describe("browser_download_media", () => {
   });
 
   it("keeps the server copy when the file cannot ride to the chat", async () => {
-    // A dashboard-started run has no chat; an over-limit file looks the same here.
+    // An over-limit file on an owner's run: announced by name, kept on disk.
     const ctx = makeContext(true, "kept");
 
     const result = await call(ctx, { url: "https://x.com/watch?v=1", mode: "audio" });

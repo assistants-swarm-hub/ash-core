@@ -15,12 +15,10 @@ import type { RunOutcomeVerdict } from "./outcome";
  */
 
 /**
- * The turn a chat-started run acts in, rebuilt from the row — the binding
- * `start_agent` stamped at enqueue. Null for a dashboard run (no chat, no
- * assistant), which then holds the browser tools only.
+ * The turn a run acts in, rebuilt from the row — the binding `start_agent`
+ * stamped at enqueue. Every run has one: a run is only ever a chat turn's.
  */
-export function runTurnBinding(run: AgentRun): McpToolContext | null {
-  if (!run.chatRef || !run.assistantId) return null;
+export function runTurnBinding(run: AgentRun): McpToolContext {
   const chat = parseScopedRef(run.chatRef);
   const user = run.createdByUserRef ? tryParseScopedRef(run.createdByUserRef) : null;
   return {

@@ -33,7 +33,11 @@ const OWNER = "1";
 const OTHER = "77";
 
 type ToolArgs = { goal: string; context?: string; quiet?: boolean };
-type ToolResult = { content: { type: "text"; text: string }[]; structuredContent: unknown };
+type ToolResult = {
+  content: { type: "text"; text: string }[];
+  structuredContent: unknown;
+  isError?: boolean;
+};
 
 /** Register the tool on a fake server and hand back its handler and description. */
 function handler() {
@@ -68,9 +72,23 @@ async function enqueuedFrom(
   args: ToolArgs = { goal: "Download the video at https://example.com/clip" },
 ) {
   const { run } = handler();
-  await runWithToolContext({ source: "acme", chatId: GROUP, ...ctx }, () => run(args));
+  await runWithToolContext({ source: "acme", chatId: GROUP, assistantId: "asst-0", ...ctx }, () =>
+    run(args),
+  );
   return vi.mocked(service.enqueueAgentRun).mock.calls[0][0];
 }
+
+describe(`${START_AGENT_TOOL} without an assistant`, () => {
+  it("refuses a turn that names no assistant, and enqueues nothing", async () => {
+    const { run } = handler();
+    const result = await runWithToolContext({ source: "acme", chatId: GROUP, userId: OWNER }, () =>
+      run({ goal: "Download the video at https://example.com/clip" }),
+    );
+    expect(result).toMatchObject({ structuredContent: { ok: false } });
+    expect(result.content[0].text).toMatch(/no assistant/);
+    expect(service.enqueueAgentRun).not.toHaveBeenCalled();
+  });
+});
 
 describe(`${START_AGENT_TOOL} download rights`, () => {
   it("grants them to the owner's own request, unrestricted", async () => {
@@ -176,8 +194,9 @@ describe(`${START_AGENT_TOOL} turn binding`, () => {
 
   it("tells a quiet run's turn that only a failure will be reported", async () => {
     const { run } = handler();
-    const result = await runWithToolContext({ source: "acme", chatId: GROUP, userId: OWNER }, () =>
-      run({ goal: "Fill the gaps in the watchlist", quiet: true }),
+    const result = await runWithToolContext(
+      { source: "acme", chatId: GROUP, assistantId: "asst-0", userId: OWNER },
+      () => run({ goal: "Fill the gaps in the watchlist", quiet: true }),
     );
     expect(result.content[0].text).toMatch(/quiet/);
     expect(result.content[0].text).toMatch(/only if the goal fails/);
@@ -227,7 +246,13 @@ describe(`${START_AGENT_TOOL} acknowledgement wiring`, () => {
     const { run } = handler();
 
     await runWithToolContext(
-      { source: "acme", chatId: GROUP, userId: OWNER, onAgentRunEnqueued: (id) => runIds.push(id) },
+      {
+        source: "acme",
+        chatId: GROUP,
+        assistantId: "asst-0",
+        userId: OWNER,
+        onAgentRunEnqueued: (id) => runIds.push(id),
+      },
       () => run({ goal: "Download the video at https://example.com/clip" }),
     );
 

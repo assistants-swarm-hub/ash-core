@@ -840,7 +840,7 @@ report.
 | Column | Type | Notes |
 | --- | --- | --- |
 | `id` | text PK | |
-| `chat_ref` | text | Scoped ref of the chat the run reports back to, or null for a dashboard-started run (the report is only stored here) |
+| `chat_ref` | text NOT NULL | Scoped ref of the chat the run acts in and reports back to — every run is a chat turn's (user decision, 2026-09-08) |
 | `thread_id` | text | Forum-topic thread to deliver into, or null — the platform's own id, verbatim |
 | `created_by_user_ref` | text | Scoped ref of whoever asked for the run, or null (dashboard) |
 | `is_owner` | boolean NOT NULL, default `false` | Resolved at enqueue time; gates the download tools for the whole run |

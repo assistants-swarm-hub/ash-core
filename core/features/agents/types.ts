@@ -25,9 +25,8 @@ export interface BrowserDownloadRecord {
   sizeBytes: number;
   /**
    * True when the file itself reached the chat — in which case the server copy was
-   * removed. False means it is still in the downloads folder, for one of three
-   * reasons: too large to attach, delivery failed, or a dashboard-started run with
-   * no chat to send to.
+   * removed. False means it is still in the downloads folder: too large to attach,
+   * or the delivery failed.
    *
    * Runs recorded before 2026-07-29 carry the older `inline` flag instead and so
    * read as false here — correct for them, since back then every file was kept.
@@ -96,18 +95,17 @@ export interface EngineStat {
 /** A agent run as returned to clients (no secrets — all fields are safe). */
 export interface AgentRun {
   id: string;
-  /** Chat the run reports to, or null for a dashboard-started run. */
-  /** Scoped ref of the chat the run reports to (`acme:chat:42`), or null (dashboard). */
-  chatRef: string | null;
+  /** Scoped ref of the chat the run acts in and reports to (`acme:chat:42`). */
+  chatRef: string;
   /** Source-local forum-topic thread, or null (chat root) — the platform's own id. */
   threadId: string | null;
   createdByUserRef: string | null;
   /**
    * The assistant the run acts as — persona composed, its toolset offered,
-   * its tool calls bound as a turn's — or null for a dashboard-started run,
-   * which holds the browser tools only.
+   * its tool calls bound as a turn's. Every run has one: a run is only ever
+   * started by a chat turn (user decision, 2026-09-08).
    */
-  assistantId: string | null;
+  assistantId: string;
   /** Whether the run carries owner rights (download tools enabled). */
   isOwner: boolean;
   /** The sender's own owner rights, as the source stamped the starting turn. */
@@ -127,8 +125,7 @@ export interface AgentRun {
   restricted: boolean;
   /**
    * The http(s) URLs of the triggering chat message, extracted in code —
-   * verbatim, never re-typed by a model. Empty for a dashboard run or a
-   * message without links.
+   * verbatim, never re-typed by a model. Empty for a message without links.
    */
   sourceUrls: string[];
   goal: string;

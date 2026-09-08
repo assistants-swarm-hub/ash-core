@@ -15,12 +15,11 @@ import { BROWSER_AGENT_TOOLS, makeBrowserToolDispatcher, type BrowserToolContext
 
 /**
  * The agent proper: one goal, run to completion in one session by the agent
- * role's model over the shared tool loop. A chat-started run is the assistant
- * working in the background — its persona composed in, its whole toolset
- * offered next to the browser primitives (user decision, 2026-09-08); a
- * dashboard-started run has no assistant and holds the browser tools only.
- * Deliberately **unbounded** (recorded decision): no round or wall-clock cap —
- * only the loop's stall guard ends a run that stops progressing, and its forced
+ * role's model over the shared tool loop. A run is the assistant working in
+ * the background — its persona composed in, its whole toolset offered next to
+ * the browser primitives (user decision, 2026-09-08). Deliberately
+ * **unbounded** (recorded decision): no round or wall-clock cap — only the
+ * loop's stall guard ends a run that stops progressing, and its forced
  * tools-free final round then salvages a report from what was gathered.
  */
 
@@ -137,10 +136,10 @@ export interface AgentToolset {
  * Compose a run's toolset: the browser primitives, then the assistant's own
  * toolset — everything a chat turn of that assistant is offered, delivery
  * tool included — minus `start_agent` itself (a run does not spawn runs) and
- * minus any name the browser set already owns. Absent assistant tools (a
- * dashboard run) leave the browser set alone. Dispatch follows ownership:
- * a browser name goes to the browser dispatcher, anything else to the
- * assistant's toolset.
+ * minus any name the browser set already owns. Absent assistant tools (no
+ * tool registered at all — tests) leave the browser set alone. Dispatch
+ * follows ownership: a browser name goes to the browser dispatcher, anything
+ * else to the assistant's toolset.
  */
 export function composeAgentTools(
   browser: AgentToolset,
@@ -163,8 +162,8 @@ export function composeAgentTools(
 /** What shapes the agent's system prompt beyond the browser rules. */
 export interface AgentPromptOptions {
   /**
-   * The assistant's persona block (identity line + persona), composed when the
-   * run acts as an assistant; null for a dashboard run, which has none.
+   * The assistant's persona block (identity line + persona); null only when
+   * the assistant no longer exists.
    */
   persona: string | null;
   /** Whether the run holds the assistant's toolset next to the browser. */
@@ -292,10 +291,10 @@ export interface RunAgentParams {
   toolContext: BrowserToolContext;
   /**
    * The assistant's own toolset, offered next to the browser tools and called
-   * inside the run's bound turn context; null for a run with no assistant.
+   * inside the run's bound turn context; null when nothing is registered.
    */
   assistantTools?: Toolset | null;
-  /** The assistant's persona block, or null for a run with no assistant. */
+  /** The assistant's persona block, or null when the assistant is gone. */
   persona?: string | null;
   /** Reply language required for the destination chat, or null for the default. */
   requiredLanguage: string | null;

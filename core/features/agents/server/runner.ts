@@ -9,7 +9,7 @@ import {
   getBotPolicy,
   getAgentLlmRuntime,
 } from "@/features/settings/server/service";
-import { parseScopedRef } from "@assistants-swarm-hub/contracts";
+import { WEB_CHAT_SOURCE, parseScopedRef } from "@assistants-swarm-hub/contracts";
 
 import { getAssistantPersona } from "@/features/assistants/server/service";
 import { getChatLanguage } from "@/features/known-groups/server/service";
@@ -59,13 +59,12 @@ import {
  * signal via `signal.ts`, and a crash-safety sweep at boot fails any run left
  * `running` by a previous process.
  *
- * A chat-started run is the assistant working in the background: the runner
- * binds the turn the run came from (assistant, chat, sender, owner rights,
- * correlation — `deliveryKind: "send"`, sends silent) around the agent loop,
- * so every tool call reads and writes as that turn would, and offers the
- * assistant's toolset next to the browser (user decision, 2026-09-08). A
- * dashboard-started run has neither a chat nor an assistant: browser tools
- * only, no persona, nothing delivered — the report is only stored on the row.
+ * A run is the assistant working in the background: the runner binds the
+ * turn the run came from (assistant, chat, sender, owner rights, correlation
+ * — `deliveryKind: "send"`, sends silent) around the agent loop, so every
+ * tool call reads and writes as that turn would, and offers the assistant's
+ * toolset next to the browser (user decision, 2026-09-08). Every run is a
+ * chat turn's; nothing else starts one.
  *
  * Delivery: each downloaded file is staged and posted with the agent's final
  * report as one message; the report is mirrored into history. A quiet run
@@ -103,7 +102,7 @@ async function deliverText(
   text: string,
   opts: { silent?: boolean } = {},
 ): Promise<string | null> {
-  if (!run.chatRef || !text.trim()) return null;
+  if (!text.trim()) return null;
   // Sent whole — the report is already concise, and a run recap rarely
   // exceeds one message.
   const { sourceMessageId } = await requireOutbound(run.chatRef).sendMessage(
@@ -143,7 +142,6 @@ async function sendStagedFile(
   staged: StagedFile,
   caption: string,
 ): Promise<string | null> {
-  if (!run.chatRef) return null;
   try {
     const { sourceMessageId } = await requireOutbound(run.chatRef).sendFile(chatIdOf(run.chatRef), {
       buffer: staged.file.buffer,
@@ -185,7 +183,6 @@ async function deliverRunOutcome(
   staged: StagedFile[],
   downloads: BrowserDownloadRecord[],
 ): Promise<{ content: string; sourceMessageId: string; hasMedia: boolean } | null> {
-  if (!run.chatRef) return null;
   if (staged.length === 1) {
     const others = downloads.filter((d) => d !== staged[0].record && !d.deliveredToChat);
     const caption = formatRunReport(report, others);
@@ -296,8 +293,8 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
     feature: FEATURE.id,
     action: "run",
     trigger: {
-      kind: run.chatRef ? "transport" : "dashboard",
-      actor: run.chatRef ?? "dashboard",
+      kind: parseScopedRef(run.chatRef).source === WEB_CHAT_SOURCE ? "chat" : "transport",
+      actor: run.chatRef,
       correlationId: run.id,
     },
     inputSummary: run.goal,
@@ -324,20 +321,16 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
 
     const [downloadLimitBytes, storedLanguage] = await Promise.all([
       getBrowserDownloadLimitBytes(),
-      run.chatRef
-        ? getChatLanguage(parseScopedRef(run.chatRef).source, chatIdOf(run.chatRef)).catch(
-            () => null,
-          )
-        : Promise.resolve(null),
+      getChatLanguage(parseScopedRef(run.chatRef).source, chatIdOf(run.chatRef)).catch(
+        () => null,
+      ),
     ]);
-    // Persona is deliberately not composed into the agent prompt: the agent
-    // reports facts, it does not converse in character.
 
     const toolContext: BrowserToolContext = {
       session,
       isOwner: run.isOwner,
       // A rule lends the owner's rights only for the links that triggered it;
-      // an owner-started (or dashboard) run downloads without a URL fence.
+      // an owner-started run downloads without a URL fence.
       allowedDownloadUrls: run.restricted ? run.sourceUrls : null,
       // The core sets no platform ceiling (user decision, 2026-09-02): a file
       // is attachable up to the operator's own download limit, and the
@@ -381,18 +374,18 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
       },
       onDownload: async (record, file) => {
         let outcome: DownloadOutcome = "kept";
-        if (run.chatRef && file) {
+        if (file) {
           // Held for the end of the run: the file goes out together with the
           // report as one combined message instead of two.
           staged.push({ record, file });
           outcome = "staged";
-        } else if (run.chatRef && run.restricted) {
+        } else if (run.restricted) {
           // Attach or fail (user decision, 2026-08-01): a restricted run's
           // audience cannot reach the server's disk, so a file the chat cannot
           // take is deleted by the dispatcher, not archived. No announcement —
           // the final report carries the failure.
           outcome = "discarded";
-        } else if (run.chatRef) {
+        } else {
           // Owner's run, too large to attach — announce it by name as it lands
           // (silent); the recap points at the downloads folder.
           await deliverText(run, formatDownloadLine(record), { silent: true }).catch((err: unknown) => {
@@ -423,20 +416,19 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
       apiKey: runtime.apiKey,
       backend: runtime.backend,
     };
-    // A chat-started run acts as its assistant: its persona composed in, its
-    // toolset offered next to the browser, every tool call bound to the turn
-    // the run came from. Each non-browser call is recorded on the activity
-    // feed like a browser action (the call's own trace is the registry's).
+    // The run acts as its assistant: its persona composed in, its toolset
+    // offered next to the browser, every tool call bound to the turn the run
+    // came from. Each non-browser call is recorded on the activity feed like
+    // a browser action (the call's own trace is the registry's). A persona
+    // resolves to null only when the assistant was deleted mid-flight.
     const binding = runTurnBinding(run);
-    const persona = binding ? await getAssistantPersona(binding.assistantId!).catch(() => null) : null;
-    const assistantToolset = binding
-      ? await getToolset({
-          delivery: "send",
-          source: binding.source,
-          assistantId: binding.assistantId,
-          db,
-        }).catch(() => null)
-      : null;
+    const persona = await getAssistantPersona(run.assistantId).catch(() => null);
+    const assistantToolset = await getToolset({
+      delivery: "send",
+      source: binding.source,
+      assistantId: binding.assistantId,
+      db,
+    }).catch(() => null);
     const assistantTools: Toolset | null = assistantToolset
       ? {
           tools: assistantToolset.tools,
@@ -466,7 +458,7 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
       : null;
     await trace.event({
       type: "step",
-      message: binding ? "acting as the assistant" : "dashboard run: browser tools only",
+      message: "acting as the assistant",
       data: {
         assistantId: run.assistantId,
         personaComposed: persona !== null,
@@ -494,7 +486,7 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
           label: "agent",
         },
       });
-    const result = binding ? await runWithToolContext(binding, execute) : await execute();
+    const result = await runWithToolContext(binding, execute);
 
     const report = result.report || "I browsed but couldn't find anything useful.";
 
@@ -510,28 +502,26 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
     // owning source mirrors what it delivers (caption or text), so there is
     // nothing to record here beyond the trace. A failed goal delivers the
     // same way: the report IS the honest failure message.
-    if (run.chatRef) {
-      if (shouldPostReport(run, verdict, staged.length)) {
-        const delivered = await deliverRunOutcome(run, report, staged, downloads);
-        if (delivered != null) {
-          await trace.event({
-            type: "output",
-            level: "success",
-            message: delivered.hasMedia ? "send report with file" : "send report",
-            data: { content: delivered.content, sourceMessageId: delivered.sourceMessageId },
-          });
-        }
-      } else {
+    if (shouldPostReport(run, verdict, staged.length)) {
+      const delivered = await deliverRunOutcome(run, report, staged, downloads);
+      if (delivered != null) {
         await trace.event({
-          type: "step",
-          message: "quiet run: report stored, not posted",
-          data: { report },
+          type: "output",
+          level: "success",
+          message: delivered.hasMedia ? "send report with file" : "send report",
+          data: { content: delivered.content, sourceMessageId: delivered.sourceMessageId },
         });
       }
-      // The run has spoken for itself (or was asked not to) — the silent
-      // "on it" ack can go.
-      await removeRunAck(run.id);
+    } else {
+      await trace.event({
+        type: "step",
+        message: "quiet run: report stored, not posted",
+        data: { report },
+      });
     }
+    // The run has spoken for itself (or was asked not to) — the silent
+    // "on it" ack can go.
+    await removeRunAck(run.id);
 
     if (verdict.goalFailed) {
       await settleAgentRun(db, run.id, {
@@ -562,10 +552,8 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     // A file the run did download must still reach the chat, failure or not —
     // delivered before the settle so the persisted records say what happened.
-    if (run.chatRef) {
-      for (const one of staged) {
-        await sendStagedFile(run, one, formatDownloadLine({ ...one.record, deliveredToChat: true }));
-      }
+    for (const one of staged) {
+      await sendStagedFile(run, one, formatDownloadLine({ ...one.record, deliveredToChat: true }));
     }
     await settleAgentRun(db, run.id, {
       status: "failed",
@@ -573,10 +561,10 @@ async function runOne(run: AgentRun, db: StoreDb): Promise<void> {
       downloads,
     }).catch(() => undefined);
     // Tell the chat the run failed, so a user is never left waiting on a promise.
-    if (run.chatRef) {
-      await deliverText(run, "I hit a problem while browsing and had to stop.").catch(() => undefined);
-      await removeRunAck(run.id);
-    }
+    await deliverText(run, "I hit a problem while working on this and had to stop.").catch(
+      () => undefined,
+    );
+    await removeRunAck(run.id);
     await trace.fail(err);
   } finally {
     clearLiveState(run.id);

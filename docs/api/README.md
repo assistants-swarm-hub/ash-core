@@ -45,7 +45,7 @@ Every JSON success response is wrapped:
 ```
 
 Status is `200` unless noted. The create routes that answer `201`:
-`POST /api/accounts`, `POST /api/assistants`, `POST /api/agents`,
+`POST /api/accounts`, `POST /api/assistants`,
 `POST /api/person-links`, `POST /api/tasks`, `POST /api/tool-connections`,
 `POST /api/transports/{id}/connections`. (`POST /api/backends` and
 `POST /api/chat/threads` answer `200`.) The exceptions, which are not wrapped
