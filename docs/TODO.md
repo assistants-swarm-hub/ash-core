@@ -710,13 +710,12 @@ Any core edit for a new source id is a bug.
        private workspace package, and typecheck for a consumer. That is the
        position every transport author is in, and where this package's two real
        failures showed up.
-     - *Compose may not name an image nobody published.* `verify` now resolves
-       every `image:` pin in `docker-compose.yml` (via
-       `scripts/pin-compose-version.mjs --list`, new) and inspects each in its
-       registry, exempting only the one this release is about to push. A
-       transport's pin is released from another repository entirely, so nothing
-       here could keep it honest before; an operator met a stale one as a pull
-       failure on their own server.
+     - *Transport pins are not checked here* (removed 2026-09-08). `verify`
+       used to resolve every `image:` pin in compose against the registry,
+       which made the core's release wait on a transport's — a dependency in
+       the wrong direction, and a deadlock the moment both move together (the
+       transport installs the SDK the core's run publishes; run #21 failed
+       exactly so). A transport pin is the transport repository's to keep.
    - **A forced dispatch still overwrites an image** (deliberate: it is the
      escape hatch for replacing a bad build) but cannot overwrite an npm
      version, which no registry allows — so a forced SDK run re-verifies and
@@ -724,9 +723,7 @@ Any core edit for a new source id is a bug.
    - **Proof.** All three workflows parse with duplicate-key checking. The
      pieces that could be run locally were: `imagetools inspect --format
      '{{.Manifest.Digest}}'` against a real image, the matrix JSON the plan job
-     builds, the compose-pin sweep against the live registries (it correctly
-     exempts `ash-core:1.48.1` as this release's own and confirms the other
-     three), and the SDK's whole published-package verification against the
+     builds, and the SDK's whole published-package verification against the
      real 3.0.0 — which caught a bug in the check itself: `require('<pkg>/
      package.json')` throws `ERR_PACKAGE_PATH_NOT_EXPORTED`, because the
      package's exports map exposes only `.`, so the manifest is read by path.
