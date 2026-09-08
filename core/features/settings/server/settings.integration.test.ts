@@ -20,7 +20,7 @@ import {
   getAudioRuntime,
   getBackgroundRuntime,
   getBotPolicy,
-  getBrowserLlmRuntime,
+  getAgentLlmRuntime,
   getClassifierRuntime,
   getDailyJobsRunTime,
   getEmbeddingRuntime,
@@ -32,7 +32,7 @@ import {
   getWebSearchApiKey,
   testAudio,
   testBackground,
-  testBrowser,
+  testAgent,
   testChat,
   testClassifier,
   testEmbeddings,
@@ -155,8 +155,8 @@ describe("getSettings", () => {
       classifierModel: null,
       backgroundBackendId: null,
       backgroundModel: null,
-      browserBackendId: null,
-      browserModel: null,
+      agentBackendId: null,
+      agentModel: null,
       webSearchConfigured: false,
       maintenanceModeEnabled: false,
       // Documented default (user decision, 2026-08-24).
@@ -273,7 +273,7 @@ describe("updateSettings", () => {
         audioBackendId: otherId,
         audioModel: "whisper-1",
         visionModel: "gemma-vision",
-        browserBackendId: otherId,
+        agentBackendId: otherId,
         speechModel: "kokoro",
         speechVoice: "alloy",
         imageModel: "sdxl",
@@ -286,8 +286,8 @@ describe("updateSettings", () => {
     expect(set.audioModel).toBe("whisper-1");
     expect(set.visionBackendId).toBeNull();
     expect(set.visionModel).toBe("gemma-vision");
-    expect(set.browserBackendId).toBe(otherId);
-    expect(set.browserModel).toBeNull();
+    expect(set.agentBackendId).toBe(otherId);
+    expect(set.agentModel).toBeNull();
     expect(set.speechVoice).toBe("alloy");
     expect(set.imageModel).toBe("sdxl");
   });
@@ -398,7 +398,7 @@ describe("role runtimes", () => {
 
   it("vision and browser fall back to the chat backend and model per unset half", async () => {
     expect(await getVisionRuntime(ctx.db)).toBeNull();
-    expect(await getBrowserLlmRuntime(ctx.db)).toBeNull();
+    expect(await getAgentLlmRuntime(ctx.db)).toBeNull();
 
     const chatId = await seedBackend(ctx, {
       name: "Main",
@@ -415,7 +415,7 @@ describe("role runtimes", () => {
       model: "gemma",
       backend: "ollama",
     });
-    expect(await getBrowserLlmRuntime(ctx.db)).toMatchObject({ model: "gemma" });
+    expect(await getAgentLlmRuntime(ctx.db)).toMatchObject({ model: "gemma" });
 
     // Model overridden, backend inherited.
     await updateSettings({ visionModel: "gemma-vision" }, trigger, ctx.db);
@@ -426,8 +426,8 @@ describe("role runtimes", () => {
 
     // Backend overridden too.
     const gpuId = await seedBackend(ctx, { name: "GPU", baseUrl: "https://gpu.example/v1" });
-    await updateSettings({ browserBackendId: gpuId, browserModel: "qwen-long" }, trigger, ctx.db);
-    expect(await getBrowserLlmRuntime(ctx.db)).toMatchObject({
+    await updateSettings({ agentBackendId: gpuId, agentModel: "qwen-long" }, trigger, ctx.db);
+    expect(await getAgentLlmRuntime(ctx.db)).toMatchObject({
       baseUrl: "https://gpu.example/v1",
       model: "qwen-long",
     });
@@ -817,7 +817,7 @@ describe("connection probes", () => {
     await expect(testVision({}, trigger, ctx.db)).rejects.toThrow(/vision model/i);
   });
 
-  it("testBrowser runs a real tool round through the chat-model fallback", async () => {
+  it("testAgent runs a real tool round through the chat-model fallback", async () => {
     const chatId = await seedBackend(ctx, {
       name: "Main",
       baseUrl: "https://llm.example/v1",
@@ -832,7 +832,7 @@ describe("connection probes", () => {
       return completion("ready", "gemma");
     });
 
-    const probe = await testBrowser({}, trigger, ctx.db);
+    const probe = await testAgent({}, trigger, ctx.db);
     expect(probe.model).toBe("gemma");
     expect(partText(probe, "output", "Tool call")).toMatch(/probe_echo was called/);
     expect(partText(probe, "output", "Answer")).toBe("ready");
@@ -844,19 +844,19 @@ describe("connection probes", () => {
     expect(input.tools).toHaveLength(1);
   });
 
-  it("testBrowser reports a model that answers without calling the tool", async () => {
+  it("testAgent reports a model that answers without calling the tool", async () => {
     const chatId = await seedBackend(ctx, { name: "Main", baseUrl: "https://llm.example/v1" });
     await updateSettings({ chatBackendId: chatId, model: "gemma" }, trigger, ctx.db);
     // No tool call: the connection works, the model just did not use the tool.
     chatCompletionWithToolsMock.mockResolvedValue(completion("ready", "gemma"));
 
-    const probe = await testBrowser({}, trigger, ctx.db);
+    const probe = await testAgent({}, trigger, ctx.db);
     expect(probe.model).toBe("gemma");
     expect(partText(probe, "output", "Tool call")).toMatch(/none/i);
   });
 
-  it("testBrowser rejects cleanly when nothing resolves", async () => {
-    await expect(testBrowser({}, trigger, ctx.db)).rejects.toThrow(/browser-agent model/i);
+  it("testAgent rejects cleanly when nothing resolves", async () => {
+    await expect(testAgent({}, trigger, ctx.db)).rejects.toThrow(/agent model/i);
   });
 
   it("testClassifier runs the real addressing check and reports the parsed verdict", async () => {

@@ -10,7 +10,7 @@ import path from "node:path";
  * | --- | --- |
  * | `data/pg` | The bundled Postgres cluster (Compose bind mount; the app never touches it) |
  * | `data/traces` | Monthly trace NDJSON logs |
- * | `data/downloads` | Files the browser agent fetched |
+ * | `data/downloads` | Files agents fetched |
  * | `data/bin` | Self-updating tool binaries (the current yt-dlp) |
  *
  * These used to be three env vars (`TRACES_DIR`, `DOWNLOADS_DIR`, plus
@@ -35,7 +35,7 @@ export function tracesDir(): string {
 }
 
 /**
- * Browser-agent downloads. The only copy of a file too large to attach to the
+ * Agent downloads. The only copy of a file too large to attach to the
  * chat, which is why Compose bind-mounts it to the host.
  */
 export function downloadsDir(): string {

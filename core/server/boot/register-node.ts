@@ -5,13 +5,13 @@ import {
   stopAnalyticsScheduler,
 } from "@/features/analytics/server/scheduler";
 import {
-  startBrowserAgentRunner,
-  stopBrowserAgentRunner,
-} from "@/features/browser-agent/server/runner";
+  startAgentRunner,
+  stopAgentRunner,
+} from "@/features/agents/server/runner";
 import {
   startYtDlpUpdater,
   stopYtDlpUpdater,
-} from "@/features/browser-agent/server/ytdlp-scheduler";
+} from "@/features/agents/server/ytdlp-scheduler";
 import {
   startMessageIndexing,
   stopMessageIndexing,
@@ -69,7 +69,7 @@ export function registerNode(): void {
     stopSummaryScheduler();
     stopMemoryScheduler();
     stopAnalyticsScheduler();
-    stopBrowserAgentRunner();
+    stopAgentRunner();
     stopYtDlpUpdater();
     // Flush any settled traces still buffered in memory before the process exits,
     // so a graceful restart doesn't lose the last window of debug history.
@@ -177,11 +177,11 @@ export function registerNode(): void {
   // charts don't wait for it; nothing due, or no LLM configured, is a no-op.
   startAnalyticsScheduler();
 
-  // Start the browser-agent runner: sweep any run left `running` by a previous
+  // Start the agent runner: sweep any run left `running` by a previous
   // process (a crash/redeploy mid-run) to `failed`, then drain the queued runs.
   // New runs are picked up immediately via the enqueue signal; a run with no LLM
   // configured settles as a failure rather than hanging.
-  startBrowserAgentRunner();
+  startAgentRunner();
 
   // Start the daily yt-dlp update check, plus one immediate check when this
   // container has no self-updated copy yet. yt-dlp tracks sites that change on

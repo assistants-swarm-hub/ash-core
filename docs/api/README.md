@@ -45,7 +45,7 @@ Every JSON success response is wrapped:
 ```
 
 Status is `200` unless noted. The create routes that answer `201`:
-`POST /api/accounts`, `POST /api/assistants`, `POST /api/browser`,
+`POST /api/accounts`, `POST /api/assistants`, `POST /api/agents`,
 `POST /api/person-links`, `POST /api/tasks`, `POST /api/tool-connections`,
 `POST /api/transports/{id}/connections`. (`POST /api/backends` and
 `POST /api/chat/threads` answer `200`.) The exceptions, which are not wrapped
@@ -56,7 +56,7 @@ because the body *is* the artifact:
 | `GET /api/health` | A bare status object (orchestrators read it) |
 | `GET /api/traces/bundle`, `GET /api/traces/{id}/bundle` | A pretty-printed JSON attachment |
 | `GET /api/history/export` | A CSV attachment |
-| `GET /api/browser/{id}/screenshot/{seq}` | `image/jpeg` bytes |
+| `GET /api/agents/{id}/screenshot/{seq}` | `image/jpeg` bytes |
 | `GET /api/chat/media/{id}` | The stored image bytes, in the stored mime type (`image/jpeg` when none was recorded) |
 | `GET /api/events` | `text/event-stream` |
 | `/api/internal/transports/*` | Bare JSON objects |
@@ -224,7 +224,7 @@ Each background job exposes one. Two flavours:
 | Behavior | Endpoints |
 | --- | --- |
 | Awaited — triggers, waits, and returns refreshed job info | `POST /api/analytics/insights/run`, `POST /api/analytics/insights/regenerate`, `POST /api/tasks/run` |
-| Fire-and-forget — returns the snapshot immediately, progress arrives over SSE | `POST /api/history/summaries/run`, `POST`/`DELETE /api/history/search-index`, `POST /api/memory/run`, `POST /api/self-improvement/run`, `POST /api/browser/ytdlp/run`, `POST /api/vision/backfill` |
+| Fire-and-forget — returns the snapshot immediately, progress arrives over SSE | `POST /api/history/summaries/run`, `POST`/`DELETE /api/history/search-index`, `POST /api/memory/run`, `POST /api/self-improvement/run`, `POST /api/agents/ytdlp/run`, `POST /api/vision/backfill` |
 
 A `GET` on the same path (where one exists) returns the job info without triggering
 anything. `POST /api/tasks/{id}/fire` is not a job run: it fires one timed task

@@ -33,7 +33,7 @@ import {
  * media, message search, chat summaries and feedbacks (conversation-derived
  * content is source-owned — the conversation store; the core's features write it
  * through the owning app's API — user decision, 2026-08-22), analytics
- * rollups and browser-agent runs (start fresh; their tables join this
+ * rollups and agent runs (start fresh; their tables join this
  * schema when their feature is rewired), search-engine stats (self-healing
  * scoreboard, starts fresh). Traces stay in the file-backed store, not the
  * database.
@@ -213,12 +213,12 @@ export const settings = pgTable(
     }),
     /** Model for the offline jobs (summaries, memory, insights, reflection). */
     backgroundModel: text("background_model"),
-    /** Browser-agent LLM backend; null → chat backend. */
-    browserBackendId: text("browser_backend_id").references(() => backends.id, {
+    /** Agent role LLM backend; null → chat backend. */
+    agentBackendId: text("agent_backend_id").references(() => backends.id, {
       onDelete: "restrict",
     }),
-    /** Browser-agent model id; null → the chat model. */
-    browserModel: text("browser_model"),
+    /** Agent role model id; null → the chat model. */
+    agentModel: text("agent_model"),
     /** Maintenance mode: only the owner can trigger LLM replies. */
     maintenanceModeEnabled: boolean("maintenance_mode_enabled").notNull().default(false),
     /**
@@ -233,7 +233,7 @@ export const settings = pgTable(
     timezone: text("timezone").notNull().default("UTC"),
     /** Local wall-clock `HH:MM` at which the daily background jobs run. */
     dailyJobsRunTime: text("daily_jobs_run_time").notNull().default("04:00"),
-    /** Hard ceiling (GB) on a single browser-agent download. */
+    /** Hard ceiling (GB) on a single agent download. */
     browserDownloadLimitGb: integer("browser_download_limit_gb").notNull().default(10),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1328,16 +1328,16 @@ export type AssistantTransportInsert = typeof assistantTransports.$inferInsert;
 
 /* ------------------------------------------------------------------
  * Joined at the Phase 10 cutover (fresh start, v1 rows not migrated):
- * browser-agent runs + screenshots, the analytics insight rollups, and
+ * agent runs + screenshots, the analytics insight rollups, and
  * the search-engine scoreboard - shapes carried over from v1 verbatim.
  * ------------------------------------------------------------------ */
 
 /**
- * One download completed by a browser-agent run, as stored on the run row.
- * Structural twin of `BrowserDownloadRecord` in `features/browser-agent/types.ts`
+ * One download completed by a agent run, as stored on the run row.
+ * Structural twin of `BrowserDownloadRecord` in `features/agents/types.ts`
  * (jsonb columns cannot import feature types without inverting the dependency).
  */
-interface BrowserAgentDownloadJson {
+interface AgentRunDownloadJson {
   /** The page the file came from (the link the agent was on). */
   sourceUrl: string;
   filename: string;
@@ -1357,10 +1357,10 @@ interface BrowserAgentDownloadJson {
 
 /**
  * One completed action in a run's activity feed (structural twin of
- * `BrowserRunStep` in `features/browser-agent/types.ts`, minus `seq`, which is
+ * `AgentRunStep` in `features/agents/types.ts`, minus `seq`, which is
  * derived from array order on read).
  */
-interface BrowserAgentStepJson {
+interface AgentRunStepJson {
   tool: string;
   action: string;
   url: string | null;
@@ -1371,19 +1371,24 @@ interface BrowserAgentStepJson {
 
 
 /**
- * One browser-agent run: a self-contained browsing goal the chat model queued via
- * the `browse_web` tool (or the operator queued from the dashboard), executed in
- * the background by a sub-agent LLM driving the generic browser toolset. The
- * queue is this table — the runner picks up `queued` rows oldest-first, flips
- * them `running`, and settles them `done`/`failed` with the final report.
+ * One background agent run: a self-contained goal the assistant handed to a
+ * copy of itself through the `start_agent` tool (or the operator queued from
+ * the dashboard), executed in the background by the agent role's model holding
+ * the assistant's toolset plus a real browser. The queue is this table — the
+ * runner picks up `queued` rows oldest-first, flips them `running`, and
+ * settles them `done`/`failed` with the final report.
  *
- * `chat_ref` is null for dashboard-started runs: there is no chat to deliver to,
- * so the report is only stored here. `is_owner` is resolved at enqueue time and
- * gates the download tool for the whole run (recorded decision: anyone can start
- * a run; downloads are owner-only). Ids are app-generated UUIDs.
+ * A chat-started run carries the whole turn binding (`assistant_id`, the
+ * sender, owner rights, the correlation), so the run's tool calls bind exactly
+ * as a turn's do. `chat_ref` and `assistant_id` are null for dashboard-started
+ * runs: there is no chat to deliver to and no assistant to be, so such a run
+ * holds the browser tools only and its report is only stored here. `is_owner`
+ * is resolved at enqueue time and gates the download tools for the whole run
+ * (recorded decision: anyone can start a run; downloads are owner-only). Ids
+ * are app-generated UUIDs.
  */
-export const browserAgentRuns = pgTable(
-  "browser_agent_runs",
+export const agentRuns = pgTable(
+  "agent_runs",
   {
     id: text("id").primaryKey(),
     /** Scoped ref of the chat the run reports back to, or null for a dashboard-started run. */
@@ -1392,8 +1397,20 @@ export const browserAgentRuns = pgTable(
     threadId: text("thread_id"),
     /** Scoped ref of whoever asked for the run, or null (dashboard). */
     createdByUserRef: text("created_by_user_ref"),
+    /**
+     * The assistant the run acts as (a plain column, like a web thread's:
+     * the run outlives nothing and answers as the base prompt if the id is
+     * gone), or null for a dashboard-started run.
+     */
+    assistantId: text("assistant_id"),
     /** Whether the run carries owner rights — gates the download tools. */
     isOwner: boolean("is_owner").notNull().default(false),
+    /** The sender's own owner rights, as the source stamped the turn. */
+    senderIsOwner: boolean("sender_is_owner").notNull().default(false),
+    /** Owner permissions lent by the standing task that drove the turn. */
+    authorityIsOwner: boolean("authority_is_owner").notNull().default(false),
+    /** The starting turn's trace correlation, so the run's tool traces join it. */
+    correlationId: text("correlation_id"),
     /**
      * True when a standing chat rule drove the run in a group chat (whoever
      * sent the message), or lent the sender rights they did not hold: downloads
@@ -1406,8 +1423,12 @@ export const browserAgentRuns = pgTable(
       .$type<string[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
-    /** The self-contained browsing goal the agent works toward. */
+    /** The self-contained goal the agent works toward. */
     goal: text("goal").notNull(),
+    /** Facts the starting turn gathered for the agent (a run sees no transcript). */
+    context: text("context"),
+    /** Post the final report only when the goal failed (batch runs from fires). */
+    quiet: boolean("quiet").notNull().default(false),
     /** `queued` | `running` | `done` | `failed`. */
     status: text("status").notNull().default("queued"),
     /** The agent's final report (delivered to the chat when one is bound). */
@@ -1418,12 +1439,12 @@ export const browserAgentRuns = pgTable(
     steps: integer("steps").notNull().default(0),
     /** Ordered activity feed — one entry per completed action (live during a run). */
     activity: jsonb("activity")
-      .$type<BrowserAgentStepJson[]>()
+      .$type<AgentRunStepJson[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
-    /** Files downloaded during the run (see {@link BrowserAgentDownloadJson}). */
+    /** Files downloaded during the run (see {@link AgentRunDownloadJson}). */
     downloads: jsonb("downloads")
-      .$type<BrowserAgentDownloadJson[]>()
+      .$type<AgentRunDownloadJson[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
     /** Trace id of the run's execution trace, for Debug drill-down. */
@@ -1436,31 +1457,31 @@ export const browserAgentRuns = pgTable(
   },
   (t) => [
     // The runner scans for queued rows oldest-first.
-    index("browser_agent_runs_status_idx").on(t.status, t.createdAt),
-    index("browser_agent_runs_chat_idx").on(t.chatRef),
+    index("agent_runs_status_idx").on(t.status, t.createdAt),
+    index("agent_runs_chat_idx").on(t.chatRef),
     check(
-      "browser_agent_runs_status_check",
+      "agent_runs_status_check",
       sql`${t.status} in ('queued', 'running', 'done', 'failed')`,
     ),
   ],
 );
 
-export type BrowserAgentRunRow = typeof browserAgentRuns.$inferSelect;
-export type BrowserAgentRunInsert = typeof browserAgentRuns.$inferInsert;
+export type AgentRunRow = typeof agentRuns.$inferSelect;
+export type AgentRunInsert = typeof agentRuns.$inferInsert;
 
 /**
- * Screenshots captured during a browser-agent run, in capture order. The bytes
+ * Screenshots captured during a agent run, in capture order. The bytes
  * are stored here (JPEG) and served to the dashboard run view; trace events carry
  * only the `(run, seq)` reference — the same "no base64 in trace JSON" convention
  * vision media follows. Rows vanish with their run.
  */
-export const browserRunScreenshots = pgTable(
-  "browser_run_screenshots",
+export const agentRunScreenshots = pgTable(
+  "agent_run_screenshots",
   {
     /** Owning run. */
     runId: text("run_id")
       .notNull()
-      .references(() => browserAgentRuns.id, { onDelete: "cascade" }),
+      .references(() => agentRuns.id, { onDelete: "cascade" }),
     /** Capture order within the run, starting at 0. */
     seq: integer("seq").notNull(),
     /** Page URL at capture time. */
@@ -1474,8 +1495,8 @@ export const browserRunScreenshots = pgTable(
   (t) => [primaryKey({ columns: [t.runId, t.seq] })],
 );
 
-export type BrowserRunScreenshotRow = typeof browserRunScreenshots.$inferSelect;
-export type BrowserRunScreenshotInsert = typeof browserRunScreenshots.$inferInsert;
+export type AgentRunScreenshotRow = typeof agentRunScreenshots.$inferSelect;
+export type AgentRunScreenshotInsert = typeof agentRunScreenshots.$inferInsert;
 
 /**
  * One chat's LLM-derived analytics insight for one **hour** — the base grain of the

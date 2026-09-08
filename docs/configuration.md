@@ -140,7 +140,7 @@ and fed by the selected backend's live `/v1/models` listing.
 | Speech (TTS) | `speechBackendId` | `speechModel` (+ `speechVoice`) | Voice replies off (text only) |
 | Audio (STT) | `audioBackendId` | `audioModel` (+ `audioTranscriptionMode`) | Voice messages transcribed by the chat model via `input_audio` (main by default) |
 | Vision | `visionBackendId` | `visionModel` | The chat model describes media (main by default) |
-| Browser agent | `browserBackendId` | `browserModel` | Browsing thinks on the chat model (main by default) |
+| Background agent | `agentBackendId` | `agentModel` | Background agents think on the chat model (main by default) |
 | Classifiers | `classifierBackendId` | `classifierModel` | The per-message checks run on the chat model (main by default) |
 | Background jobs | `backgroundBackendId` | `backgroundModel` | The nightly jobs run on the chat model (main by default) |
 
@@ -224,7 +224,7 @@ transport at registration and on every change.
 | --- | --- | --- |
 | `timezone` | IANA name | `UTC`. Governs every rendered timestamp, task wall-clock times, the daily-job run time, and analytics period boundaries |
 | `dailyJobsRunTime` | `HH:MM` | `04:00`. The local time in `timezone` that **all** daily jobs run at |
-| `browserDownloadLimitGb` | int 1–100 | `10`. Hard ceiling on a single browser-agent download, for every download tool. A disk guard — it never lowers the quality the agent fetches |
+| `browserDownloadLimitGb` | int 1–100 | `10`. Hard ceiling on a single agent download, for every download tool. A disk guard — it never lowers the quality the agent fetches |
 | `assistantLoopGuardTurns` | int 0–10 | `3`. In a chat with several assistants, how many assistant-authored messages in a row are allowed before the assistants fall silent until a person speaks (user decision, 2026-08-24) |
 
 The chat-attach ceiling is not a setting: what a chat can take is the
@@ -235,7 +235,7 @@ transport's to decide (user decision, 2026-08-01 — the old
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `tavilyApiKey` | secret | The browsing agent's search fallback, used only when no search engine loads in the browser. Unset, a run whose engines are all blocked reports the search as failed |
+| `tavilyApiKey` | secret | The agent's search fallback, used only when no search engine loads in the browser. Unset, a run whose engines are all blocked reports the search as failed |
 
 ## Configuration that is not a setting
 
@@ -267,7 +267,7 @@ Nothing in this system reports "configured" from the presence of a variable.
   Configuration presence, trace-storage health and download-storage health are
   reported in the body but are deliberately *not* readiness gates: restart-looping
   on an unwritable trace volume would drop the settled traces still buffered in
-  RAM, and an unwritable downloads mount breaks only the browser agent's
+  RAM, and an unwritable downloads mount breaks only the agents'
   downloads.
 - **Connection probes** (`POST /api/backends/test`, and the nine role probes)
   each make a real call and are recorded as traces (`backends` / `settings`

@@ -78,6 +78,7 @@ function turnMeta(scope: ToolScope): TurnToolMeta | null {
     // facts about the turn: the model picks the words and nothing else.
     deliveryKind: ctx.deliveryKind ?? null,
     replyToSourceMessageId: ctx.replyToSourceMessageId ?? null,
+    ...(ctx.silentDelivery ? { silentDelivery: true } : {}),
   };
 }
 

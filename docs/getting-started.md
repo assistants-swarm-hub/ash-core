@@ -12,9 +12,9 @@ does, and whichever transports you run registering with it.
 | Node.js ≥ 24 | Enforced by `package.json` `engines`; the runtime targets Node 24 |
 | Postgres with `pgvector` | Semantic recall over history summaries and memories stores `vector(1024)` columns; the search index uses `pg_trgm` |
 | Redis | The queue every incoming message travels on and the bus the core and its transports talk over. Without it the core boots but processes no messages |
-| `ffmpeg` on `PATH` | Audio transcoding for voice both ways and HLS/DASH muxing for the browser agent (in the core); a transport needs its own for video frame sampling |
-| `yt-dlp` on `PATH` | The browser agent's `browser_download_media` tool. Optional — without it that one tool reports it is not installed. The app also keeps a self-updated copy in `data/bin` and prefers it |
-| Chromium (via Playwright) | The browser agent drives a headless browser |
+| `ffmpeg` on `PATH` | Audio transcoding for voice both ways and HLS/DASH muxing for agent runs (in the core); a transport needs its own for video frame sampling |
+| `yt-dlp` on `PATH` | The agents' `browser_download_media` tool. Optional — without it that one tool reports it is not installed. The app also keeps a self-updated copy in `data/bin` and prefers it |
+| Chromium (via Playwright) | Agent runs drive a headless browser |
 | Docker | For `npm run test:integration` (Testcontainers) and for the Compose stack. Also the easiest way to get Postgres and Redis for local development |
 | A bot token for your platform | Entered per assistant in the dashboard, not in env |
 | An OpenAI-compatible LLM endpoint | Anything serving `/v1/chat/completions` and `/v1/models` — Ollama, llama.cpp, vLLM, LocalAI, or a hosted API. Anthropic, Google and Z.ai are supported natively as backend types |
@@ -80,7 +80,7 @@ Playwright is a declared dependency but its browser binaries are not installed b
 npx playwright install chromium
 ```
 
-Without it, the browser agent (the assistants' only web access) fails with a clear
+Without it, the background agent (the assistants' only web access) fails with a clear
 launch error; nothing else is affected. To point at an already-installed browser
 instead, set `CHROMIUM_EXECUTABLE_PATH` (this is what the Docker image does).
 
@@ -161,7 +161,7 @@ a backend and model, and each role card has a real probe button:
 | Images | An endpoint serving `/v1/images/generations` | The `image_generate` tool |
 | Speech | An endpoint serving `/v1/audio/speech` | Voice replies |
 | Audio (STT) | An endpoint serving `/v1/audio/transcriptions` | Voice-message transcription (falls back to the audio-capable chat model when unset) |
-| Vision, browser agent, classifiers, background jobs | A chat backend and model | Dedicated models for those workloads; each runs on the chat model until set |
+| Vision, background agents, classifiers, background jobs | A chat backend and model | Dedicated models for those workloads; each runs on the chat model until set |
 | Web search fallback | A Tavily API key (Settings → Integrations) | Searching when no engine loads in the browser |
 
 ## Scripts

@@ -447,6 +447,21 @@ describe("connection toolset", () => {
     });
   });
 
+  it("carries the silent-delivery flag only on a turn that set it", async () => {
+    await ready();
+    const toolset = await resolveConnectionToolset({ source: "acme", assistantId: "a1" }, db);
+    const metaOf = (silentDelivery: boolean | undefined) =>
+      runWithToolContext(
+        { source: "acme", chatId: "-100200", assistantId: "a1", deliveryKind: "send", silentDelivery },
+        () => toolset.callTool("weather__forecast", { city: "Riga" }),
+      ).then((result) => JSON.parse(result.text.split(" :: ")[1]));
+
+    // A background agent's turn: its notes go out without a ping.
+    expect(await metaOf(true)).toMatchObject({ deliveryKind: "send", silentDelivery: true });
+    // Every other turn's meta is byte-for-byte what it was — no key at all.
+    expect(await metaOf(undefined)).not.toHaveProperty("silentDelivery");
+  });
+
   it("turns an unreachable server and an unknown name into tool errors", async () => {
     await ready();
     const toolset = await resolveConnectionToolset({ source: "acme" }, db);

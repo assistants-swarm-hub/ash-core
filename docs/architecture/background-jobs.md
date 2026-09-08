@@ -90,8 +90,8 @@ so nothing makes them due), which is why
 `DELETE /api/history/search-index` exists: it empties the index and re-arms a
 rebuild, the recovery path after configuring embeddings.
 
-The **browser-agent runner** is a ninth piece of background machinery but not a
-scheduler: it is a queue pump over the `browser_agent_runs` table, woken by an
+The **agent runner** is a ninth piece of background machinery but not a
+scheduler: it is a queue pump over the `agent_runs` table, woken by an
 enqueue signal rather than a clock. At boot it sweeps any run left `running` by a
 previous process to `failed`.
 
@@ -102,7 +102,7 @@ The yt-dlp updater is the odd one out: it needs neither an LLM nor the database,
 and it is the only job that exists to prevent a *silent* failure rather than to
 produce anything. A stale yt-dlp does not warn — it just answers every media page
 with an extraction error. See
-[Browser agent](../features/browser-agent.md#keeping-yt-dlp-current).
+[Agents](../features/agents.md#keeping-yt-dlp-current).
 
 ### Why the expensive jobs run at night
 
@@ -171,7 +171,7 @@ place that knows all eight jobs: it calls each feature's `getXJobInfo` getter an
 normalizes the two different status shapes (idle vs interval, plus each job's own
 backlog and pause state) into a single `JobView` the board renders uniformly.
 That coupling deliberately mirrors `server/boot/register-node.ts`, which is
-likewise the single place that *starts* all eight (plus the browser-agent
+likewise the single place that *starts* all eight (plus the agent
 runner, which is a queue drain rather than a scheduled job).
 
 Each card shows: an activity badge, next/last run, the last result, the backlog,
@@ -194,7 +194,7 @@ or progress change refreshes it with no manual reload.
 | Flavour | Endpoints | Behavior |
 | --- | --- | --- |
 | Awaited | `/api/analytics/insights/run`, `/api/tasks/run`, `/api/vision/backfill` | Triggers the run (or forces the next tick) and returns the refreshed job info |
-| Fire-and-forget | `/api/history/summaries/run`, `/api/memory/run`, `/api/self-improvement/run`, `/api/browser/ytdlp/run` | Returns the job snapshot **immediately** and progress arrives live over SSE, because a backlog can take many LLM passes (or, for yt-dlp, a ~40 MB download) |
+| Fire-and-forget | `/api/history/summaries/run`, `/api/memory/run`, `/api/self-improvement/run`, `/api/agents/ytdlp/run` | Returns the job snapshot **immediately** and progress arrives live over SSE, because a backlog can take many LLM passes (or, for yt-dlp, a ~40 MB download) |
 
 Forcing a run does not skip the job's own gating: an unchanged day is still
 skipped, a scored hour is still final, and maintenance mode still pauses task

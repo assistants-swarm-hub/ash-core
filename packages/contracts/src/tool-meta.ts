@@ -43,6 +43,12 @@ export const turnToolMetaSchema = z.object({
    * core-hosted delivery tools had, now spanning two processes.
    */
   deliveryKind: z.enum(["reply", "send"]).nullable().optional(),
+  /**
+   * True when the turn's sends must go out without a notification ping — a
+   * background agent's mid-run notes (its final report is posted for it, with
+   * a ping). Absent or false on every other turn.
+   */
+  silentDelivery: z.boolean().optional(),
 });
 
 export type TurnToolMeta = z.infer<typeof turnToolMetaSchema>;

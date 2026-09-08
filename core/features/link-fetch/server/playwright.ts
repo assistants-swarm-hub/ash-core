@@ -8,7 +8,7 @@ import { hostResolvesPublic } from "./resolve-safety";
 /**
  * Shared headless Chromium plus the guarded browser context every page load in
  * this app goes through — today the browser agent's per-run sessions
- * (`features/browser-agent/server/session.ts`), which is the only way the bot
+ * (`features/agents/server/session.ts`), which is the only way the bot
  * reads the web. The browser is expensive to launch (~1s), so a single instance is
  * kept alive on a `globalThis` singleton — the same pattern the bot manager and
  * MCP registry use — so it survives Next bundle re-evaluation and dev hot-reload

@@ -1250,77 +1250,59 @@ Proposed shape (verify against the contract's rules):
 - Tests: contract schema, ingest, the read tool's slicing per format, and
   each transport's normalizer in its own repository.
 
-## `start_agent`: a background copy of the assistant (`todo`, 2026-09-08)
+## `start_agent`: a background copy of the assistant (`done`, 2026-09-08 — prune after the next release)
 
-Replaces `browse_web` (user decision, 2026-09-08, reworking the first
-version of this entry, which had overloaded `browse_web` with the
-assistant's toolset). Today `browse_web` inserts a run and the runner
-starts a second, browser-only model loop: its own "web-browsing agent"
-prompt, the browser role's model, the static browser tool list, no turn
-context, no persona, and a text report the runner posts. Such a run can
-read a page but cannot record anything anywhere.
+Shipped and documented in `docs/features/agents.md`; this entry stays until
+the release that carries it is out, then goes. Replaces `browse_web` (user
+decision, 2026-09-08, reworking the first version of this entry, which had
+overloaded `browse_web` with the assistant's toolset): one explicit background
+tool, and the agent a run spawns is the assistant — persona composed, its
+whole toolset next to the browser, every tool call bound to the turn the run
+came from. The collections entry above builds on it.
 
-Decisions (user, 2026-09-08):
+**What landed (all in one commit, code + migrations + tests + docs):**
 
-- **One explicit background tool, `start_agent`, replaces `browse_web`.**
-  Input: `goal` (self-contained), optional `context` (facts gathered from
-  the conversation, like a Task's), optional `quiet`. Output: an
-  acknowledgement with the run id. The description inherits everything
-  `browse_web`'s earned in production — the must-call cases (a shared link,
-  a lookup, a download, a live value, a multi-step job), "keep the request
-  intact, add no weaker branch", the do-not for casual chat and stable
-  facts — and adds the new must-call: any job that has to act through
-  tools (record, remember, schedule, update a collection) or would take
-  many steps or minutes. Nothing aliases the old name.
-- **The agent is the assistant.** The run row carries the full turn binding
-  (source, chat, thread, assistant, sender, owner rights, correlation) and
-  the runner wraps the loop in `runWithToolContext` with `deliveryKind:
-  "send"`. Toolset = the browser tools + `getToolset({ delivery: "send" })`
-  for that assistant, minus `start_agent` (no nesting). Persona composed
-  into the agent prompt; the browser rules (navigate first when given a
-  URL, refs from the latest page state, the download and no-substitute
-  rules) stay as directives.
-- **It may speak mid-run, silently.** The agent holds the chat's
-  `send_message`; every message it sends during the run goes out
-  **silent** — no notification ping, mirrored into history, kept (these
-  are progress notes, not acknowledgements, so the settle does not delete
-  them). The runner still posts the **final report** with a ping, combined
-  with staged files as today; `quiet: true` posts the final report only
-  when the outcome check says the goal failed (batches started from
-  fires). The silent flag rides the tool call's `_meta` turn binding so
-  the transports' delivery tools honour it — an additive contract field, a
-  minor SDK release.
-- **The browser role becomes the agent role** in Settings
-  (`agent_backend_id`, `agent_model`; chat model by default) — one role for
-  background agents.
-- **Goal plus context, no transcript.** A run sees what the caller wrote,
-  plus the triggering message's URLs appended verbatim by code, as today.
+- `start_agent({ goal, context?, quiet? })` in `features/agents/server/mcp-tools.ts`,
+  description inheriting `browse_web`'s must-call cases plus the act-on-it
+  case; the whole turn binding stamped on the run (`assistant_id`,
+  `sender_is_owner`, `authority_is_owner`, `correlation_id`, `context`,
+  `quiet`). No alias for the old name.
+- The runner rebuilds the turn (`server/run-binding.ts`) and wraps the loop in
+  `runWithToolContext` with `deliveryKind: "send"` and `silentDelivery: true`;
+  the toolset is browser primitives + `getToolset({ delivery: "send" })` minus
+  `start_agent` (`composeAgentTools`); persona composed first in the agent
+  prompt; non-browser tool calls recorded on the activity feed; a quiet run
+  posts its report only on failure or with a staged file (`shouldPostReport`).
+- `silentDelivery` on the turn meta (`packages/contracts/src/tool-meta.ts`,
+  additive) and the SDK's delivery tools pass it as `silent`; the realtime
+  topic `browser` is `agents`. Both ride the still-unpublished SDK 4.0.0;
+  the transports honour the silent flag once they bump to it — until then a
+  run's mid-run sends on a transport still ping. Wire files regenerated.
+- The rename, everywhere: `features/browser-agent` → `features/agents`,
+  feature ids `agents` / `mcp-tools-agents`, `/agents` and `/api/agents`,
+  tables `agent_runs` / `agent_run_screenshots`, the browser role → the
+  agent role (`agent_backend_id`, `agent_model`, Settings label, status card,
+  `test-agent` probe), call kinds `agent-turn` / `agent-report` (the retired
+  ids stay labelled in Analytics for old month files). Migration `0017`
+  renames in place (hand-written, snapshot verified with `drizzle-kit
+  generate` → no drift); `0018` adds the binding columns. Both applied to
+  the dev store.
+- Dashboard: the runs list names who a run acts as and marks quiet runs; the
+  detail shows the context. A dashboard-started run stays browser-only (no
+  chat, no assistant) — the sub-decision this entry left open, taken that way
+  and documented.
 
-Consequences (to implement):
+**Proof (2026-09-08):** typecheck clean; lint 0 problems; unit — core 1169
+passed / 26 skipped, SDK 26, contracts 20, service 3; integration (agents,
+tool-connections, settings, status) 89 passed / 14 skipped (the live-gated
+ones); `npm run build` ok.
 
-- `browser_agent_runs` → `agent_runs` (+ `context`, `quiet`, the turn
-  binding columns); the runner keeps its operating model — queue = table,
-  one run at a time, advisory lock, crash sweep, the transient "on it"
-  acknowledgement deleted on settle, staged files delivered with the
-  report.
-- `/browser-agent` → `/agents`: the runs list shows the assistant and the
-  chat; "start a run" from the dashboard picks an assistant. A
-  dashboard-started run has no chat: chat-bound tools (delivery, tasks)
-  answer "no chat", and the report stays on the run row.
-- Feature id `browser-agent` → `agents` for the runs and the runner; the
-  tool-call trace id follows. Old traces keep their id; the Debug facet
-  lists both.
-- A restricted run (rule-driven in a group, or rights lent to a non-owner)
-  keeps the URL fence for downloads; every other tool gates on the bound
-  owner flags exactly as in a turn.
-- The reply toolset changes once (`browse_web` out, `start_agent` in); the
-  agent's toolset is stable per assistant.
-- Tests: the description pinned (the must-call cases), toolset composition
-  inside a run (no `start_agent`, `send_message` present, browser tools
-  present), the context binding, the persona composed, silent mid-run
-  sends and the pinged final report, quiet both ways, restricted gates, a
-  dashboard run without a chat, and the live suite with a goal that records
-  through a tool.
+**Not exercised live (needs the dev bots and LLM):** a chat-started run that
+records through a tool, the fill-gaps loop end to end, the silent send on a
+transport (after the SDK bump), the live suites
+(`tool-selection.integration.test.ts`, `browse-live`). The agent role's
+model now sees a far larger toolset than the browser agent did — watch the
+first real runs for tool-call quality and pick the role's model accordingly.
 
 ## The honesty gate cannot judge a retrospective turn (`todo` — observing, 2026-08-15)
 
@@ -1762,7 +1744,7 @@ platform has released since); what is left is the live half.
 - **Reasoning-channel re-emission** (2026-08-07) — the photo-reply retry is one
   extra round, not a cure. If the model re-emits into the reasoning channel a
   second time the turn still fails; watch whether it does.
-- **Browser-agent failure verdict** (2026-08-12) — a real failed run (an
+- **Agent failure verdict** (2026-08-12) — a real failed run (an
   impossible download) should settle `failed` carrying the quoted reason, and a
   yt-dlp failure away from the big media platforms should show retry and
   fallback attempts in the run activity before any failure report.
@@ -1779,7 +1761,7 @@ platform has released since); what is left is the live half.
   minutes with the bot running: status should flip to error with
   `reconnecting automatically`, log one line, and the bot should be back
   within ~15s.
-- **Browser-agent chat delivery** (2026-08-01) — send a media video link through
+- **Agent chat delivery** (2026-08-01) — send a media video link through
   the bot: the ack should arrive without a ping and vanish when the video posts,
   and the video should play inline carrying the reply.
 - **Classifier token cap** (2026-08-01) — confirm addressing-check traces parse

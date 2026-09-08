@@ -23,7 +23,7 @@ relative to `core/` unless they start with `core/` or `packages/`.
 | Voice | `voice` | `/vision` | [voice.md](voice.md) |
 | Image generation | `mcp-tools-image-gen` | `/tools`, `/vision` | [image-generation.md](image-generation.md) |
 | Randomness (`roll_chance`) | `mcp-tools-randomness` | `/tools` | [randomness.md](randomness.md) |
-| Browser agent (all web access) | `browser-agent`, `mcp-tools-browser-agent`, `ytdlp-updater` | `/browser` | [browser-agent.md](browser-agent.md) |
+| Agents (background work, all web access) | `agents`, `mcp-tools-agents`, `ytdlp-updater` | `/agents` | [agents.md](agents.md) |
 | Self-improvement | `user-feedback`, `self-improvement` | `/self-improvement` | [self-improvement.md](self-improvement.md) |
 | Analytics | `analytics`, `analytics-insights` | `/analytics` | [analytics.md](analytics.md) |
 | Users, groups and person links | `known-users`, `known-groups`, `person-links`, `mcp-tools-known-users` | `/users`, `/groups` | [known-users-and-groups.md](known-users-and-groups.md) |

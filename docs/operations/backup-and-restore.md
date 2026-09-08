@@ -11,7 +11,7 @@ between the transport and the core.
 | Everything relational — accounts, assistants and their bot connections, the conversation mirror, summaries, memory, person links, feedback, tasks, settings, the backends catalog, tool connections, web-chat threads, browser runs, media bytes while pending | Postgres | `pg_dump` | Total: the bot forgets everything and loses its configuration |
 | Queued transport events and inbound turns not yet consumed by the core | `data/redis` (the Redis append-only file) | Nothing automatic | Only what was queued at that moment. Safe to lose **only** if you accept dropping the messages the transport had forwarded but the core had not yet answered |
 | Trace archive — **complete** LLM request/response bodies and every system prompt | `data/traces/traces-YYYY-MM.ndjson` | Nothing automatic | Analytics token/model history and all debug history for past months |
-| Browser-agent downloads | `data/downloads` | Nothing automatic (but it **is** a mounted host directory, so it survives container replacement) | Files the agent fetched. A file too large to attach to the chat exists only here |
+| Agent downloads | `data/downloads` | Nothing automatic (but it **is** a mounted host directory, so it survives container replacement) | Files the agent fetched. A file too large to attach to the chat exists only here |
 | Running (unsettled) traces | RAM | — | Dropped on any crash. By design |
 | Settled-but-unflushed traces | RAM, ≤60s | — | Graceful shutdown flushes first |
 | Live job progress, browser live state, poller state | RAM | — | Transient by design; the transport rebuilds its pollers from the core's desired state at boot |

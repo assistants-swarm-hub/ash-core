@@ -10,7 +10,7 @@ Most types speak the OpenAI wire shape; two do not:
 
 - **`anthropic`** — the native Anthropic API (`x-api-key` auth, native
   `/v1/models` listing), serving the chat-shaped roles only (chat, vision,
-  browser agent, classifiers, background); embeddings, images, speech and
+  background agents, classifiers, background); embeddings, images, speech and
   transcription-mode audio refuse it with a named error. Its adapter also
   delivers the prompt's interleaved system turns the way the native API accepts
   them on every model: the leading run becomes the top-level `system` field, and
@@ -30,7 +30,7 @@ save. Detect recognizes `api.z.ai` by hostname, which is the only way to tell it
 apart from any other OpenAI-compatible host.
 
 The settings roles (chat,
-embeddings, images, speech, audio, vision, browser agent) reference backends by
+embeddings, images, speech, audio, vision, background agents) reference backends by
 id instead of carrying their own URL/key copies — one server, entered once,
 picked everywhere.
 

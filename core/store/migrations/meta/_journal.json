@@ -120,6 +120,20 @@
       "when": 1788439883344,
       "tag": "0016_thread_ids_as_text",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788889933477,
+      "tag": "0017_the_browser_agent_becomes_the_agent",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788890107859,
+      "tag": "0018_agent_runs_carry_the_turn",
+      "breakpoints": true
     }
   ]
 }

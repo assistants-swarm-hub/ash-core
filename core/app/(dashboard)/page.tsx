@@ -339,7 +339,7 @@ async function SystemStatusSection() {
         label: "Downloads",
         tone: "warn",
         value: "Not writable",
-        hint: `${status.downloads.detail} — browser-agent downloads will fail`,
+        hint: `${status.downloads.detail} — agent downloads will fail`,
       };
 
   // The optional endpoints, one card each.

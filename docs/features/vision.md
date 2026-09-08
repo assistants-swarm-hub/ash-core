@@ -46,7 +46,7 @@ replied-to message that was never stored reads as unavailable — the core canno
 re-download it, only the transport could. The conditional attach this replaces
 400'd wholesale on a text-only chat provider (Z.ai `glm-4.7-flash`:
 `messages.content.type is invalid`, trace `f37d84b9…`). The only requests that
-carry images are the describe pass itself and the browser agent's own loop.
+carry images are the describe pass itself and an agent run's own loop.
 
 ## Detection
 

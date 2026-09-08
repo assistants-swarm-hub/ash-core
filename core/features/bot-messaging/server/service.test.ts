@@ -1277,7 +1277,7 @@ describe("handleIncomingMessage — standing tasks", () => {
    */
   const actsOnTheRule = () =>
     vi.fn().mockImplementation(async (messages, trace, onToolCall) => {
-      await onToolCall?.({ name: "browse_web", args: {}, result: { text: "queued" }, ok: true });
+      await onToolCall?.({ name: "start_agent", args: {}, result: { text: "queued" }, ok: true });
       const result = { content: "hi back", model: "m", latencyMs: 5 };
       await recordExchange(trace, messages, result);
       return result;
@@ -1466,7 +1466,7 @@ describe("handleIncomingMessage — standing tasks", () => {
  * happens only through a tool call — so an answer with zero calls cannot be true
  * however confident it sounds. Live incident (2026-08-03, trace `ec543b22…`): a
  * social-media link matched the chat's download rule, the model reasoned its way
- * to `browse_web`, then emitted "downloaded the video from x.com" with an
+ * to `start_agent`, then emitted "downloaded the video from x.com" with an
  * invented author handle and no call. The chat believed it.
  *
  * The check here is mechanical on purpose — a directive was injected, and
@@ -1502,7 +1502,7 @@ describe("handleIncomingMessage — a rule turn that called no tool", () => {
         return result;
       })
       .mockImplementation(async (messages, trace, onToolCall) => {
-        await onToolCall?.({ name: "browse_web", args: {}, result: { text: "queued" }, ok: true });
+        await onToolCall?.({ name: "start_agent", args: {}, result: { text: "queued" }, ok: true });
         const result = { content: "on it", model: "m", latencyMs: 5 };
         await recordExchange(trace, messages, result);
         return result;

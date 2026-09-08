@@ -11,7 +11,7 @@ import type { WebSearchPayload, WebSearchResult, WebSearchSource } from "../type
 /**
  * Tavily-backed web search — the browsing agent's LAST-RESORT search fallback,
  * used only when no search engine will render results in the real browser (see
- * `features/browser-agent/server/search.ts`). There is no web-search MCP tool: the
+ * `features/agents/server/search.ts`). There is no web-search MCP tool: the
  * bot searches by browsing (user decision, 2026-07-26), and this API path exists
  * so a blocked/captcha'd browser still returns something.
  *

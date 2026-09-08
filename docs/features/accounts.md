@@ -144,7 +144,7 @@ owner. The ingest stamps the verdict on every inbound event as
 `sender.isOwner`, per receiving assistant; the web chat does the same for a
 thread's account. Everything owner-gated reads that stamp and compares no user
 ids of its own: maintenance mode, the chat-side task gates and
-`created_by_owner`, the browser agent's download tools, and the
+`created_by_owner`, an agent run's download tools, and the
 `senderIsOwner` a hosted tool receives in its turn binding.
 
 ## Ownership scoping

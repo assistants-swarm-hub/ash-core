@@ -106,6 +106,9 @@ export function registerDeliveryTools(server: McpServer, deps: DeliveryToolDeps)
       direct: await connection.isDirectChat(turn.chatId).catch(() => false),
       replyToSourceMessageId: replyTo,
       threadId: turn.threadId ?? null,
+      // A background agent's mid-run notes go out without a ping; the
+      // binding says so, the model never does.
+      silent: turn.silentDelivery === true,
     });
   };
 

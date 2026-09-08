@@ -41,7 +41,7 @@ import { RoleSection, type RoleSectionLabels } from "./RoleSection";
  *
  * The LLM configuration is per **role** — Chat (the main model every reply runs
  * on, which must support thinking and tool calls), Embeddings, Images, Speech,
- * Audio (STT), Vision, Browser agent, Classifiers (the per-message checks) and
+ * Audio (STT), Vision, Background agent, Classifiers (the per-message checks) and
  * Background jobs (the nightly passes) — and every role picks a backend from
  * the shared catalog (managed on the Backends page) plus a model through a
  * searchable select fed by that backend's live model list. A role without its
@@ -182,7 +182,7 @@ export function SettingsForm({
   const spc = useRoleConfig({ backendId: initial.speechBackendId, model: initial.speechModel });
   const aud = useRoleConfig({ backendId: initial.audioBackendId, model: initial.audioModel });
   const vis = useRoleConfig({ backendId: initial.visionBackendId, model: initial.visionModel });
-  const brw = useRoleConfig({ backendId: initial.browserBackendId, model: initial.browserModel });
+  const brw = useRoleConfig({ backendId: initial.agentBackendId, model: initial.agentModel });
   const cls = useRoleConfig({
     backendId: initial.classifierBackendId,
     model: initial.classifierModel,
@@ -236,7 +236,7 @@ export function SettingsForm({
   const speechProbe = useProbe<ProbeReport>("/api/settings/test-speech");
   const audioProbe = useProbe<ProbeReport>("/api/settings/test-audio");
   const visionProbe = useProbe<ProbeReport>("/api/settings/test-vision");
-  const browserProbe = useProbe<ProbeReport>("/api/settings/test-browser");
+  const agentProbe = useProbe<ProbeReport>("/api/settings/test-agent");
   const classifierProbe = useProbe<ProbeReport>("/api/settings/test-classifier");
   const backgroundProbe = useProbe<ProbeReport>("/api/settings/test-background");
 
@@ -296,8 +296,8 @@ export function SettingsForm({
       { role: vis, backendKey: "visionBackendId", modelKey: "visionModel", label: "vision model", listed: true },
       {
         role: brw,
-        backendKey: "browserBackendId",
-        modelKey: "browserModel",
+        backendKey: "agentBackendId",
+        modelKey: "agentModel",
         label: "browser model",
         listed: true,
       },
@@ -404,7 +404,7 @@ export function SettingsForm({
       spc.applySaved({ backendId: data.speechBackendId, model: data.speechModel });
       aud.applySaved({ backendId: data.audioBackendId, model: data.audioModel });
       vis.applySaved({ backendId: data.visionBackendId, model: data.visionModel });
-      brw.applySaved({ backendId: data.browserBackendId, model: data.browserModel });
+      brw.applySaved({ backendId: data.agentBackendId, model: data.agentModel });
       cls.applySaved({ backendId: data.classifierBackendId, model: data.classifierModel });
       bgd.applySaved({ backendId: data.backgroundBackendId, model: data.backgroundModel });
       setSpeechVoice(data.speechVoice ?? "");
@@ -653,25 +653,25 @@ export function SettingsForm({
     },
   });
 
-  const browserBlock = roleBlock({
-    id: "browser",
-    label: "Browser agent",
+  const agentBlock = roleBlock({
+    id: "agent",
+    label: "Background agent",
     role: brw,
     fallsBackToChat: true,
     labels: {
       intro:
-        "The browser agent drives a real browser to research pages and download files when a chat asks for it. By default it thinks on the chat backend and model; give it its own here — for example a larger-context model — without touching replies.",
-      backendHint: "The host serving the browsing agent's chat completions.",
-      modelLabel: "Browser agent model",
+        "A background agent is the assistant working on a goal on its own: it holds the assistant's tools plus a real browser, so it can research, download, and record what it finds. By default it thinks on the chat backend and model; give it its own here — for example a larger-context model that handles a big toolset — without touching replies.",
+      backendHint: "The host serving the background agent's chat completions.",
+      modelLabel: "Agent model",
       modelHint:
-        "The model that plans browser actions — it must support tool calls, which is what the test below checks. Empty: the chat model is used.",
+        "The model that runs background agents — it must support tool calls, which is what the test below checks. Empty: the chat model is used.",
       modelPlaceholder: "Use the chat model",
-      testLabel: "Test browser model",
+      testLabel: "Test agent model",
     },
     probe: {
-      state: browserProbe.state,
-      reset: browserProbe.reset,
-      run: () => void browserProbe.run(roleProbeBody(brw)),
+      state: agentProbe.state,
+      reset: agentProbe.reset,
+      run: () => void agentProbe.run(roleProbeBody(brw)),
     },
   });
 
@@ -863,7 +863,7 @@ export function SettingsForm({
     speechBlock,
     audioBlock,
     visionBlock,
-    browserBlock,
+    agentBlock,
     classifierBlock,
     backgroundBlock,
   ];

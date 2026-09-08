@@ -235,24 +235,24 @@ export const FEATURES = {
     relatedIdsKey: "memory",
     path: "/memory",
   },
-  "browser-agent": {
-    id: "browser-agent",
-    label: "Browser agent",
+  "agents": {
+    id: "agents",
+    label: "Agents",
     group: "automation",
-    realtimeTopic: "browser",
-    relatedIdsKey: "browser_agent_runs",
-    path: "/browser",
+    realtimeTopic: "agents",
+    relatedIdsKey: "agent_runs",
+    path: "/agents",
   },
-  // Split from `browser-agent` for the same reason `history-summaries` is split
-  // from `history`: the nightly yt-dlp check is maintenance *of* the browser
-  // agent, not a browsing run, and "did the downloader's binary stay current"
+  // Split from `agents` for the same reason `history-summaries` is split
+  // from `history`: the nightly yt-dlp check is maintenance *of* the agents'
+  // browser, not an agent run, and "did the downloader's binary stay current"
   // must be filterable without wading through every run.
   "ytdlp-updater": {
     id: "ytdlp-updater",
     label: "yt-dlp updater",
     group: "automation",
-    realtimeTopic: "browser",
-    path: "/browser",
+    realtimeTopic: "agents",
+    path: "/agents",
   },
   analytics: {
     id: "analytics",
@@ -333,9 +333,9 @@ export const FEATURES = {
     group: "tools",
     path: "/tools",
   },
-  "mcp-tools-browser-agent": {
-    id: "mcp-tools-browser-agent",
-    label: "Browser agent tool",
+  "mcp-tools-agents": {
+    id: "mcp-tools-agents",
+    label: "Agent tool",
     group: "tools",
     path: "/tools",
   },

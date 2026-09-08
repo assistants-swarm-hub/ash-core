@@ -9,14 +9,14 @@ opens a web page in this app goes through here.
 
 > **No tool of its own.** This module used to own the `read_web_page` MCP tool
 > (priority 6). That tool was **removed on 2026-07-26** (user decision) along with
-> `search_web`: the [browser agent](browser-agent.md) is now the bot's only
+> `search_web`: the [background agent](agents.md) is now the bot's only
 > web-facing tool, and it reads pages far better than a one-shot fetch could. The
 > read path (`fetch-link.ts`, `format.ts`, `types.ts`, `fetchPageWithPlaywright`)
 > was deleted with it; the directory name stays because it is where this
 > infrastructure lives.
 
-Its consumers today are `features/browser-agent/server/session.ts` (one guarded
-context per run) and the browser agent's `download.ts` (URL checks for direct
+Its consumers today are `features/agents/server/session.ts` (one guarded
+context per run) and the agents' `download.ts` (URL checks for direct
 downloads).
 
 ## The browser
@@ -25,7 +25,7 @@ downloads).
 
 - **A single instance** on a `globalThis` singleton — launching costs ~1s, and a
   module-local copy would leak a Chromium process per Next bundle / hot reload. Every
-  browser-agent run opens a context on this one browser rather than launching its own.
+  agent run opens a context on this one browser rather than launching its own.
 - **Per-consumer context** (`newGuardedContext`): isolated cookies and a fixed
   user-agent, closed when the run settles. The browser outlives the context, never the
   other way round.
@@ -51,12 +51,12 @@ the image is Alpine/musl), so the distro Chromium is installed and pointed at vi
 The context's user-agent identifies the bot honestly, and **that is not what search
 engines object to**: swapping it for a Chrome string was measured (2026-07-26) and
 made things worse — DuckDuckGo went from a useless shell to a hard `418` block. See
-the [engine cascade](browser-agent.md#search--the-engine-cascade), which is built to
+the [engine cascade](agents.md#search--the-engine-cascade), which is built to
 survive engines refusing us.
 
 ## SSRF defense
 
-The model supplies URLs (the browser agent's navigate and download tools), so this is
+The model supplies URLs (an agent run's navigate and download tools), so this is
 the sharpest edge in the app. Two halves, detailed in
 [Security](../architecture/security.md#ssrf-defense):
 
@@ -83,5 +83,5 @@ None of its own. It needs a working Chromium — installed by the Docker image, 
 ## Tests
 
 Unit: `url-safety.test.ts`, `server/resolve-safety.test.ts`.
-The browser itself is exercised by the browser agent's gated live suites
+The browser itself is exercised by the agents' gated live suites
 (`BROWSER_LIVE=1`).

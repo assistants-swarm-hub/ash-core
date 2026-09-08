@@ -67,7 +67,7 @@ tags:
   - name: vision
   - name: tasks
   - name: self-improvement
-  - name: browser-agent
+  - name: agents
   - name: analytics
   - name: traces
   - name: internal
@@ -1196,15 +1196,15 @@ paths:
         "422": { $ref: "#/components/responses/ValidationError" }
         "503": { $ref: "#/components/responses/ServiceUnavailable" }
 
-  /api/settings/test-browser:
+  /api/settings/test-agent:
     post:
       tags: [settings]
       x-access: admin
-      summary: Probe the browser-agent role
+      summary: Probe the agent role
       description: |
         Runs one real tool round: the model is offered a single trivial tool and
         asked to use it. A model listing cannot say whether a model supports tool
-        calling, which is all the browser agent does. Resolves through the
+        calling, which is all a background agent needs from its model. Resolves through the
         browser runtime, including its fallback to the chat model. A model that
         answers without calling the tool is reported, not an error.
       requestBody:
@@ -2461,12 +2461,12 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  # ---------------------------- browser agent ---------------------
-  /api/browser:
+  # ---------------------------- agents ----------------------------
+  /api/agents:
     get:
-      tags: [browser-agent]
+      tags: [agents]
       x-access: admin
-      summary: List browser-agent runs
+      summary: List agent runs
       responses:
         "200":
           description: Runs
@@ -2486,7 +2486,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
-      tags: [browser-agent]
+      tags: [agents]
       x-access: admin
       summary: Queue a dashboard-started run
       description: |
@@ -2516,14 +2516,14 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
-  /api/browser/{id}:
+  /api/agents/{id}:
     parameters:
       - name: id
         in: path
         required: true
         schema: { type: string }
     get:
-      tags: [browser-agent]
+      tags: [agents]
       x-access: admin
       summary: One run with its activity feed, screenshots and live state
       responses:
@@ -2540,7 +2540,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/browser/{id}/screenshot/{seq}:
+  /api/agents/{id}/screenshot/{seq}:
     parameters:
       - name: id
         in: path
@@ -2552,7 +2552,7 @@ paths:
         description: Capture-order sequence number, from `screenshotSeqs`.
         schema: { type: integer, minimum: 0 }
     get:
-      tags: [browser-agent]
+      tags: [agents]
       x-access: admin
       summary: One screenshot's JPEG bytes
       description: The bytes live in Postgres, never in trace JSON. Auth-gated like every other route.
@@ -2570,9 +2570,9 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/browser/ytdlp/run:
+  /api/agents/ytdlp/run:
     post:
-      tags: [browser-agent]
+      tags: [agents]
       x-access: admin
       summary: Check for a newer yt-dlp now
       description: >
@@ -3534,7 +3534,7 @@ components:
     DownloadStorageHealth:
       type: object
       description: |
-        A real probe of the browser-agent download write path: a file is created in the
+        A real probe of the agent download write path: a file is created in the
         downloads directory and removed again. Not an `access(W_OK)` guess.
       required: [ok, detail]
       properties:
@@ -3900,8 +3900,8 @@ components:
           classifierModel,
           backgroundBackendId,
           backgroundModel,
-          browserBackendId,
-          browserModel,
+          agentBackendId,
+          agentModel,
           webSearchConfigured,
           maintenanceModeEnabled,
           assistantLoopGuardTurns,
@@ -3937,13 +3937,13 @@ components:
         backgroundModel:
           type: [string, "null"]
           description: Null -> the offline jobs (history summaries, memory, analytics insights, self-improvement reflection) run on the chat model.
-        browserBackendId: { type: [string, "null"] }
-        browserModel:
+        agentBackendId: { type: [string, "null"] }
+        agentModel:
           type: [string, "null"]
-          description: Null -> the browser agent thinks on the chat model.
+          description: Null -> background agents think on the chat model.
         webSearchConfigured:
           type: boolean
-          description: Whether a Tavily key is stored, enabling the browsing agent's search fallback.
+          description: Whether a Tavily key is stored, enabling the agent's search fallback.
         maintenanceModeEnabled: { type: boolean }
         assistantLoopGuardTurns:
           type: integer
@@ -3979,8 +3979,8 @@ components:
         classifierModel: { type: [string, "null"], maxLength: 200 }
         backgroundBackendId: { type: [string, "null"], maxLength: 100 }
         backgroundModel: { type: [string, "null"], maxLength: 200 }
-        browserBackendId: { type: [string, "null"], maxLength: 100 }
-        browserModel: { type: [string, "null"], maxLength: 200 }
+        agentBackendId: { type: [string, "null"], maxLength: 100 }
+        agentModel: { type: [string, "null"], maxLength: 200 }
         tavilyApiKey: { type: [string, "null"], maxLength: 500 }
         maintenanceModeEnabled: { type: boolean }
         assistantLoopGuardTurns:
@@ -3994,7 +3994,7 @@ components:
           type: integer
           minimum: 1
           maximum: 100
-          description: Hard ceiling on a single browser-agent download, for every download tool.
+          description: Hard ceiling on a single agent download, for every download tool.
 
     RoleProbeInput:
       type: object
@@ -4976,7 +4976,7 @@ components:
           type: [string, "null"]
           description: Why the feedback listing is missing, when it is - an unreachable source is an outage, never "no feedback yet".
 
-    # -- browser agent --
+    # -- agents --
     BrowserAgentRun:
       type: object
       required:
@@ -5168,7 +5168,7 @@ components:
             `reply-tool-turn`, `reply-final`, `vision-describe`,
             `voice-transcribe`, `history-summarize`, `memory-extract`,
             `memory-consolidate`, `insight-hour`, `insight-rollup`,
-            `browser-agent-turn`, `browser-agent-report`, `task-fire`,
+            `agent-turn`, `agent-report`, `task-fire`,
             `self-improve-analyze`, `self-improve-reflect` (plus the retired
             `chat-rule-match` and `scheduled-task-fire` from pre-merge traces).
         calls: { type: integer, description: Provider rounds counted. }

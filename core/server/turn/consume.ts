@@ -58,7 +58,7 @@ import { VOICE_TURN_NOTE, VOICE_UNAVAILABLE_NOTE } from "@/features/voice/format
 import { synthesizeVoiceReply } from "@/features/voice/server/speak";
 import { pokeVisionBackfill } from "@/features/vision/server/backfill-scheduler";
 import { pokeMessageIndexing } from "@/features/history/server/index-scheduler";
-import { registerRunAck } from "@/features/browser-agent/server/ack";
+import { registerRunAck } from "@/features/agents/server/ack";
 import { resolveRequiredLanguage } from "@/lib/language";
 import {
   HONESTY_GATE_MAX_TOKENS,
@@ -207,8 +207,8 @@ interface TurnPlan {
   isVoice: boolean;
   /** Sink `image_generate` fills; delivered after the turn (v1 order). */
   generatedImages: string[];
-  /** Runs `browse_web` enqueued this turn — replies become silent acks. */
-  enqueuedBrowserRuns: string[];
+  /** Runs `start_agent` enqueued this turn — replies become silent acks. */
+  enqueuedAgentRuns: string[];
   /**
    * The event's assistant, resolved once from the store that owns it: the
    * display name (the spoken-summons identity — addressing and the analyzer
@@ -327,13 +327,13 @@ async function buildEventDeps(
 
   /**
    * Register a delivered reply as the acknowledgement of this turn's
-   * browsing run(s), for the runner to delete once the run reports (v1
-   * `registerBrowserRunAck`, delete via the source's API). When the run beat
+   * agent run(s), for the runner to delete once the run reports (v1
+   * `registerAgentRunAck`, delete via the source's API). When the run beat
    * the reply, the ack is stale on arrival: delete it now, best-effort —
    * the source soft-deletes its mirror row with the message.
    */
-  const registerBrowserRunAck = async (sourceMessageId: string) => {
-    const runId = turn.enqueuedBrowserRuns[turn.enqueuedBrowserRuns.length - 1];
+  const registerAgentRunAck = async (sourceMessageId: string) => {
+    const runId = turn.enqueuedAgentRuns[turn.enqueuedAgentRuns.length - 1];
     if (!runId) return;
     if (registerRunAck(runId, event.chat.ref, sourceMessageId) !== "settled") return;
     await turn.outbound?.deleteMessage(chatId, sourceMessageId).catch(() => undefined);
@@ -342,14 +342,14 @@ async function buildEventDeps(
   /**
    * Deliver one reply chunk. The ordinary path publishes the reply-delivery
    * event (the source sends + mirrors; the id stays unknown here). A turn
-   * that enqueued a browsing run needs the delivered id — its reply is a
+   * that enqueued a agent run needs the delivered id — its reply is a
    * transient acknowledgement registered for deletion — so it sends through
    * the source's API instead, silent, when the API is configured.
    */
   const sendTextReply = async (text: string): Promise<{ sourceMessageId: string | null }> => {
     // The send is an action the moment it leaves this process — mark first.
     await markActed();
-    const silent = turn.enqueuedBrowserRuns.length > 0;
+    const silent = turn.enqueuedAgentRuns.length > 0;
     if (silent && turn.outbound) {
       const sent = await turn.outbound.sendMessage(chatId, {
         text,
@@ -357,7 +357,7 @@ async function buildEventDeps(
         threadId,
         silent: true,
       });
-      await registerBrowserRunAck(sent.sourceMessageId);
+      await registerAgentRunAck(sent.sourceMessageId);
       return { sourceMessageId: sent.sourceMessageId };
     }
     await ctx.publish(await deliveryEvent(text, silent));
@@ -376,7 +376,7 @@ async function buildEventDeps(
     senderIsOwner: event.sender.isOwner,
     tasks: taskSets,
     collectImage: (base64) => turn.generatedImages.push(base64),
-    onBrowserRunEnqueued: (runId) => turn.enqueuedBrowserRuns.push(runId),
+    onAgentRunEnqueued: (runId) => turn.enqueuedAgentRuns.push(runId),
     // A task-opened turn answers the message that opened it; the source app's
     // delivery tool attaches it there (Phase 5), so the core only says which
     // message that is.
@@ -749,7 +749,7 @@ export async function processInboundEvent(
     outbound,
     isVoice,
     generatedImages: [],
-    enqueuedBrowserRuns: [],
+    enqueuedAgentRuns: [],
     assistantIdentity,
     voices,
   };

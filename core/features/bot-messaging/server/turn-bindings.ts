@@ -15,7 +15,7 @@ import type { Task } from "@/features/tasks/types";
 import { recordTaskDeliveries } from "@/features/tasks/server/service";
 import { getUserLabels } from "@/features/known-users/server/service";
 import { getToolset } from "@/features/mcp-tools/server/service";
-import { extractMessageUrls } from "@/features/browser-agent/urls";
+import { extractMessageUrls } from "@/features/agents/urls";
 import { ApiError } from "@/lib/api-error";
 import { FEATURES } from "@/lib/features";
 import { runClassifier, type ClassifierBudget } from "@/server/llm/classifier";
@@ -95,8 +95,8 @@ export interface TurnBindingsInput {
   tasks: { prompt: Task[]; message: Task[] };
   /** Sink the `image_generate` tool fills; delivered after the reply. */
   collectImage: (base64: string) => void;
-  /** Runs `browse_web` enqueued this turn (ack handling is the caller's). */
-  onBrowserRunEnqueued: (runId: string) => void;
+  /** Runs `start_agent` enqueued this turn (ack handling is the caller's). */
+  onAgentRunEnqueued: (runId: string) => void;
   /**
    * The message this turn is answering, so a task-opened turn's reply lands
    * under it. Travels to the source app with the delivery call; the model
@@ -205,7 +205,7 @@ export function createTurnBindings(input: TurnBindingsInput): TurnBindings {
           senderIsOwner,
           // Permissions only, and only when a standing task drove this turn.
           authorityIsOwner: taskAuthorityIsOwner,
-          // Hard data extracted in code — `browse_web` takes links from here,
+          // Hard data extracted in code — `start_agent` takes links from here,
           // never from the goal text (the model has corrupted re-typed URLs).
           messageUrls: extractMessageUrls(messageText),
           threadId: threadId ?? undefined,
@@ -224,7 +224,7 @@ export function createTurnBindings(input: TurnBindingsInput): TurnBindings {
                 },
               }
             : {}),
-          onBrowserRunEnqueued: input.onBrowserRunEnqueued,
+          onAgentRunEnqueued: input.onAgentRunEnqueued,
         },
         () =>
           chatCompletionWithTools(conn, {

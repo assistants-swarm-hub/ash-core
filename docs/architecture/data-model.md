@@ -79,7 +79,7 @@ memory_entries · user_memories · general_memories       (user_ref / origin_cha
 communication_preferences · self_corrections · addressing_exclusions
 chat_summary_days · memory_extraction_days              (per-day job markers, chat_ref)
 turn_actions                                            (correlation_id)
-browser_agent_runs ──► browser_run_screenshots
+agent_runs ──► agent_run_screenshots
 chat_hour_insights ··rolls up··► period_insights
 search_engine_stats
 ```
@@ -268,12 +268,12 @@ repository always reads and writes the one row. See
 | `vision_backend_id`, `vision_model` | text | Same shape; null halves fall back to the chat backend/model |
 | `classifier_backend_id`, `classifier_model` | text | Same shape; the per-message checks (addressing, honesty, rules) |
 | `background_backend_id`, `background_model` | text | Same shape; the offline jobs (summaries, memory, insights, reflection) |
-| `browser_backend_id`, `browser_model` | text | Same shape; the browser agent |
+| `agent_backend_id`, `agent_model` | text | Same shape; the background agents |
 | `maintenance_mode_enabled` | boolean NOT NULL, default `false` | Only the owner can trigger LLM replies |
 | `assistant_loop_guard_turns` | integer NOT NULL, default `3` | Bot-to-bot loop guard (user decision, 2026-08-24): assistant-authored turns a chat may hold in a row before every assistant there falls silent until a human speaks. Deterministic; `0` stops assistants answering each other at all |
 | `timezone` | text NOT NULL, default `UTC` | IANA name; the operator timezone |
 | `daily_jobs_run_time` | text NOT NULL, default `04:00` | Local `HH:MM` the daily background jobs run at |
-| `browser_download_limit_gb` | integer NOT NULL, default `10` | Hard ceiling on a single browser-agent download |
+| `browser_download_limit_gb` | integer NOT NULL, default `10` | Hard ceiling on a single agent download |
 | `updated_at` | timestamptz NOT NULL | |
 
 Gone from this table, deliberately: the bot token (now
@@ -810,10 +810,10 @@ Unique `period_insights_key_idx (granularity, bucket, chat_ref)`.
 
 ### `search_engine_stats`
 
-Scoreboard for the browser agent's search sources — a **live standing, not a
+Scoreboard for the agent's search sources — a **live standing, not a
 history**: the cascade sorts itself by these counts, so a blocked engine sinks
 and a recovering one climbs back. Counts are halved once their total passes a
-cap (`features/browser-agent/server/engine-stats.ts`) so the ranking keeps
+cap (`features/agents/server/engine-stats.ts`) so the ranking keeps
 reacting. The per-search story lives in the run's activity feed and trace.
 
 | Column | Type | Notes |
@@ -826,12 +826,12 @@ reacting. The per-search story lives in the run's activity feed and trace.
 
 ---
 
-## Browser agent
+## Agents
 
-See [Browser agent](../features/browser-agent.md). Joined at the Phase 10
+See [Agents](../features/agents.md). Joined at the Phase 10
 cutover as a fresh start.
 
-### `browser_agent_runs`
+### `agent_runs`
 
 The run row **is** the queue: the runner picks up `queued` rows oldest first,
 flips them `running`, and settles them `done` / `failed` with the final
@@ -859,7 +859,7 @@ report.
 Indexes: `browser_agent_runs_status_idx (status, created_at)` — the runner's
 queued scan — and `browser_agent_runs_chat_idx (chat_ref)`.
 
-### `browser_run_screenshots`
+### `agent_run_screenshots`
 
 Screenshots captured during a run, in capture order. Served to the dashboard
 run view; trace events carry only the `(run, seq)` reference — the same "no
@@ -867,7 +867,7 @@ base64 in trace JSON" convention vision media follows.
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `run_id` | text NOT NULL → `browser_agent_runs.id` CASCADE | |
+| `run_id` | text NOT NULL → `agent_runs.id` CASCADE | |
 | `seq` | integer NOT NULL | Capture order within the run, from 0 |
 | `url`, `title` | text | Page URL and title at capture time |
 | `data` | bytea NOT NULL | JPEG bytes of the viewport |
@@ -965,7 +965,7 @@ the two jobs fail, re-run and backfill independently.
   `assistants-swarm-hub:events`. It is required, but holds no durable domain data
   beyond queued jobs; Compose runs it with AOF persistence under
   `./data/redis`.
-- **Browser-agent downloads** (`data/downloads`) and the self-updating tool
+- **Agent downloads** (`data/downloads`) and the self-updating tool
   binaries (`data/bin`) — `server/paths.ts`.
 - **Live state.** Transport connection status and turn progress are
   published on the bus, not stored; the tables hold desired state
@@ -981,7 +981,7 @@ cutover (the v1 chain is history). `0000` creates the core store and the
 `vector` extension; `0001` adds `turn_actions`; `0004`/`0005` the tool
 connections; `0006` the web chat; `0007` the conversation store and
 `pg_trgm`; `0008`–`0012` accounts, ownership, link codes and the `web_users`
-drop; `0013` the browser agent, analytics and search-engine tables.
+drop; `0013` the browser agent (since renamed to the agent), analytics and search-engine tables.
 
 ```bash
 npm run db:generate   # emit SQL from store/schema.ts into store/migrations/

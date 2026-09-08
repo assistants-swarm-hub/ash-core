@@ -59,7 +59,7 @@ describe("getSystemStatus", () => {
       "speech",
       "audio",
       "vision",
-      "browser",
+      "agent",
       "classifier",
       "background",
     ]);
@@ -85,7 +85,7 @@ describe("getSystemStatus", () => {
     const byId = new Map(status.endpoints.map((endpoint) => [endpoint.id, endpoint]));
     // Voice transcription, media description and browsing all run on the chat
     // model when they have no model of their own — the feature is on.
-    for (const id of ["audio", "vision", "browser", "classifier", "background"] as const) {
+    for (const id of ["audio", "vision", "agent", "classifier", "background"] as const) {
       expect(byId.get(id)?.state).toBe("inherited");
       expect(byId.get(id)?.detail).toMatch(/chat model/i);
     }

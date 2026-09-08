@@ -99,7 +99,7 @@ you can see and back up the data with ordinary tools:
 | `./data/pg` | `/var/lib/postgresql/data` | The database |
 | `./data/redis` | `/data` | The Redis append-only file: every queued transport event and inbound turn not yet consumed |
 | `./data/traces` | `/app/core/data/traces` | Monthly trace NDJSON logs |
-| `./data/downloads` | `/app/core/data/downloads` | Browser-agent downloads |
+| `./data/downloads` | `/app/core/data/downloads` | Agent downloads |
 
 All four are mounted, and all four hold the only copy of what they contain. Two of
 them matter for non-obvious reasons:
@@ -108,7 +108,7 @@ them matter for non-obvious reasons:
   between the two apps. An inbound update that a transport has forwarded
   but the core has not yet consumed exists only in that AOF; drop the directory and
   those messages are gone.
-- The **downloads** mount: a file the browser agent fetched that was **too large to
+- The **downloads** mount: a file an agent fetched that was **too large to
   attach to the chat** exists nowhere else, so an unmounted container path would
   silently lose it on the next image replacement.
 
@@ -202,8 +202,8 @@ Deliberate choices worth knowing before you change them:
 | Native deps installed **inside** the image | Host `node_modules` must never be copied in — they are built for the wrong platform |
 | One manifest per workspace package the core depends on, copied before the install | The workspace install needs every manifest; the `deps` stage copies `core/package.json` plus `packages/{bus,contracts,db,media,service,ui}/package.json` |
 | `output: "standalone"` | The runner ships only traced runtime deps (`.next/standalone`), not a full `node_modules`; traced from the monorepo root, so the output mirrors the workspace layout |
-| `ffmpeg` from apk | Vision samples video frames with it, voice transcodes both ways, and the browser agent muxes streams with it (user decision: system ffmpeg over a bundled/WASM build) |
-| `yt-dlp` from **upstream**, not apk | The browser agent's media downloader; a media site's player has no file URL to fetch (user decision, 2026-07-29). The apk package is frozen per Alpine release while these sites change on purpose, so the image pins upstream's self-contained `musllinux` build (checksum-verified, no python3) and the app's daily updater keeps a newer copy in `/app/core/data/bin` (user decision, 2026-08-01) |
+| `ffmpeg` from apk | Vision samples video frames with it, voice transcodes both ways, and agent runs mux streams with it (user decision: system ffmpeg over a bundled/WASM build) |
+| `yt-dlp` from **upstream**, not apk | The agents' media downloader; a media site's player has no file URL to fetch (user decision, 2026-07-29). The apk package is frozen per Alpine release while these sites change on purpose, so the image pins upstream's self-contained `musllinux` build (checksum-verified, no python3) and the app's daily updater keeps a newer copy in `/app/core/data/bin` (user decision, 2026-08-01) |
 | `chromium` + `nss`/`freetype`/`harfbuzz`/fonts from apk | Playwright's own download is a glibc build that will not run on Alpine (musl). `CHROMIUM_EXECUTABLE_PATH` points at the distro browser |
 | `playwright` and `playwright-core` copied **whole** over the traced copies | They are `serverExternalPackages`, so Next's file tracer copies only statically resolvable JS and misses runtime data files like `playwright-core/browsers.json` |
 | `sharp` needs no apk package | It ships its own musl libvips binary via npm |
@@ -278,7 +278,7 @@ During the overlap window two core processes may briefly co-exist. That is handl
 
 - Background jobs take **Postgres advisory locks**, so a job never
   double-processes. A lock miss is a benign skip.
-- The browser-agent runner sweeps any run left `running` by the previous process to
+- The agent runner sweeps any run left `running` by the previous process to
   `failed` at boot.
 - The trace store flushes buffered traces on graceful shutdown, so at most one flush
   interval (60s) of settled traces is at risk on a hard kill.

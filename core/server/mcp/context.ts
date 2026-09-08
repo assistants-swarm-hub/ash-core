@@ -61,7 +61,7 @@ export interface McpToolContext {
   authorityIsOwner?: boolean;
   /**
    * The http(s) URLs of the triggering message, extracted in code. Hard data the
-   * model must not be trusted to re-type: `browse_web` carries them onto the run
+   * model must not be trusted to re-type: `start_agent` carries them onto the run
    * verbatim, where they anchor the agent's prompt and bound a restricted run's
    * downloads. Absent when the turn has no message text (e.g. a task fire).
    */
@@ -86,13 +86,13 @@ export interface McpToolContext {
    */
   collectImage?: (base64: string) => void;
   /**
-   * Notifies the turn that `browse_web` enqueued a background browsing run.
+   * Notifies the turn that `start_agent` enqueued a background agent run.
    * The reply pipeline uses it to treat this turn's reply as a transient
    * acknowledgement: delivered silently, and deleted once the run posts its own
    * report (user decision, 2026-08-01). Absent when the turn has no reply to
    * treat that way (e.g. a task fire).
    */
-  onBrowserRunEnqueued?: (runId: string) => void;
+  onAgentRunEnqueued?: (runId: string) => void;
   /**
    * The message this turn is answering, when it is answering one. Travels to
    * the source app with a delivery tool call, which is how a reply lands under
@@ -123,6 +123,12 @@ export interface McpToolContext {
    * `send` — a timed fire, speaking into the chat unprompted.
    */
   deliveryKind?: "reply" | "send";
+  /**
+   * True when this turn's sends go out without a notification ping. Set on a
+   * background agent run: its mid-run notes must not buzz the chat, while the
+   * final report the runner posts for it does. Absent on every other turn.
+   */
+  silentDelivery?: boolean;
 }
 
 const STORE_KEY = Symbol.for("assistants-swarm-hub.mcp.tool-context");

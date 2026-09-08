@@ -11,7 +11,7 @@ import type { StoreDb } from "@/server/store/db";
  * takes a {@link StoreDb} so it runs against the pool or a test instance.
  *
  * LLM configuration is per **role** — chat, embedding, audio (STT), vision,
- * speech (TTS), image generation, browser agent, classifiers, background jobs.
+ * speech (TTS), image generation, background agents, classifiers, background jobs.
  * Each role stores a backend id
  * (referencing the `backends` catalog; null means "use the chat backend") and a
  * model id. Endpoint URLs and keys live on the backend rows, not here.
@@ -58,10 +58,10 @@ export interface SettingsRecord {
   backgroundBackendId: string | null;
   /** Background-jobs model id; null → the chat model runs the offline jobs. */
   backgroundModel: string | null;
-  /** Browser-agent backend id; null → the chat backend. */
-  browserBackendId: string | null;
-  /** Browser-agent model id; null → the chat model drives browsing. */
-  browserModel: string | null;
+  /** Agent role backend id; null → the chat backend. */
+  agentBackendId: string | null;
+  /** Agent role model id; null → the chat model runs background agents. */
+  agentModel: string | null;
   tavilyApiKey: string | null;
   maintenanceModeEnabled: boolean;
   /** Bot-to-bot loop guard (consecutive assistant turns before silence). */
@@ -70,7 +70,7 @@ export interface SettingsRecord {
   timezone: string;
   /** Local `HH:MM` (in `timezone`) every daily background job runs at. */
   dailyJobsRunTime: string;
-  /** Hard ceiling (GB) on any single browser-agent download, for every tool. */
+  /** Hard ceiling (GB) on any single agent download, for every tool. */
   browserDownloadLimitGb: number;
   updatedAt: string | null;
 }
@@ -95,8 +95,8 @@ export interface SettingsPatch {
   classifierModel?: string | null;
   backgroundBackendId?: string | null;
   backgroundModel?: string | null;
-  browserBackendId?: string | null;
-  browserModel?: string | null;
+  agentBackendId?: string | null;
+  agentModel?: string | null;
   tavilyApiKey?: string | null;
   maintenanceModeEnabled?: boolean;
   assistantLoopGuardTurns?: number;
@@ -143,8 +143,8 @@ function mapRow(row: SettingsRow): SettingsRecord {
     classifierModel: row.classifierModel,
     backgroundBackendId: row.backgroundBackendId,
     backgroundModel: row.backgroundModel,
-    browserBackendId: row.browserBackendId,
-    browserModel: row.browserModel,
+    agentBackendId: row.agentBackendId,
+    agentModel: row.agentModel,
     tavilyApiKey: row.tavilyApiKey,
     maintenanceModeEnabled: row.maintenanceModeEnabled,
     assistantLoopGuardTurns: row.assistantLoopGuardTurns,

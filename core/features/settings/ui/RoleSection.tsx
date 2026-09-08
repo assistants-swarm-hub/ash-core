@@ -25,7 +25,7 @@ export interface RoleSectionLabels {
 
 /**
  * One role's configuration section (embeddings, images, speech, audio, vision,
- * browser agent — and chat, which differs only by having no inherit option):
+ * background agent — and chat, which differs only by having no inherit option):
  * the backend select over the shared catalog, the searchable model combobox
  * fed from that backend's model list, and the optional probe row. One shell for
  * every tab so the seven cannot drift apart.

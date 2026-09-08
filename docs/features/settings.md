@@ -55,7 +55,7 @@ searchable combobox fed by that backend's live `/v1/models` listing.
 | **Speech** (TTS) | Voice replies off |
 | **Audio** (STT) | Voice transcribed by the chat model via `input_audio` (main by default) |
 | **Vision** | The chat model describes media (main by default) |
-| **Browser agent** | Browsing thinks on the chat model (main by default) |
+| **Background agent** | Background agents think on the chat model (main by default) |
 | **Classifiers** | The per-message checks run on the chat model (main by default) |
 | **Background jobs** | The nightly jobs run on the chat model (main by default) |
 
@@ -142,7 +142,7 @@ Every "Test …" button performs the role's actual work and reports the exchange
 what was sent, what came back — not a green tick. Each is recorded as a trace.
 Probe inputs are `{ backendId?, model? }`; omitted fields fall back to what is
 stored, and resolution goes through the same runtime resolver the feature uses,
-including the chat-model fallback for audio, vision and the browser agent.
+including the chat-model fallback for audio, vision and the background agent.
 
 | Probe | Sends | Receives |
 | --- | --- | --- |
@@ -152,7 +152,7 @@ including the chat-model fallback for audio, vision and the browser agent.
 | `test-speech` | A phrase and the configured voice | The synthesized audio, playable |
 | `test-audio` | A fraction of a second of generated silence | The transcript |
 | `test-vision` | A generated PNG | The model's description of it |
-| `test-browser` | A prompt and one trivial tool | Whether the tool was called, and the answer |
+| `test-agent` | A prompt and one trivial tool | Whether the tool was called, and the answer |
 | `test-classifier` | The real addressing check over a synthetic message | The raw answer and the verdict parsed from it |
 | `test-background` | The real summarizer over a short synthetic transcript | The topics parsed from the answer, and the raw answer |
 
@@ -172,7 +172,7 @@ The reason each is a real call rather than a model listing:
 - **Audio**: whisper-class servers often serve `/v1/audio/transcriptions`
   without `/v1/models` at all.
 - **Vision**: a listing cannot reveal a missing image-input modality.
-- **Browser agent**: a listing cannot reveal missing tool-call support, and
+- **Background agent**: a listing cannot reveal missing tool-call support, and
   browsing is nothing but tool calls. A model that answers without calling the
   tool is reported, not failed — the connection demonstrably works, and how
   strictly a model obeys is the operator's judgement.
@@ -230,7 +230,7 @@ resolved runtime:
 | Embedding/image/speech paths | Their role runtime (`getEmbeddingRuntime` …), chat-backend fallback applied |
 | Voice path | `getAudioRuntime()` (STT), chat-model `input_audio` fallback when null |
 | Vision describer | `getVisionRuntime()` — chat backend/model unless overridden |
-| Browser agent | `getBrowserLlmRuntime()` — chat backend/model unless overridden |
+| Background agent | `getAgentLlmRuntime()` — chat backend/model unless overridden |
 | Addressing / rule match / honesty gate | `getClassifierRuntime()` — chat backend/model unless overridden |
 | Summaries, memory, insights, reflection | `getBackgroundRuntime()` — chat backend/model unless overridden |
 | Transports | Nothing — bot tokens are per-assistant connection rows, handed to the transport as desired state (`server/transports/service.ts`) |

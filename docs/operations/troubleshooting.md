@@ -227,7 +227,7 @@ than as an opaque Postgres rejection inside a nightly job.
 | Row status is `unavailable` | The file could not be downloaded from the platform — the token, or the platform's file retention |
 | GIF/video rows fail | `ffmpeg` is missing. Both Docker images install it; locally it must be on `PATH` |
 
-## The browser agent fails to launch
+## The agent's browser fails to launch
 
 Chromium is missing. Locally:
 
@@ -279,7 +279,7 @@ configurable, so it would mean editing `docker-compose.yml`. The same applies to
 
 | Symptom | Cause / fix |
 | --- | --- |
-| "needs yt-dlp, which is not installed on the server" | No yt-dlp in `data/bin` and none on `PATH`. Hit **Run now** on the yt-dlp updater card (Browser agent page, or the Jobs board) to install one; locally you can also just install yt-dlp yourself. Only `browser_download_media` needs it — the rest of the run works |
+| "needs yt-dlp, which is not installed on the server" | No yt-dlp in `data/bin` and none on `PATH`. Hit **Run now** on the yt-dlp updater card (Agentsr agent page, or the Jobs board) to install one; locally you can also just install yt-dlp yourself. Only `browser_download_media` needs it — the rest of the run works |
 | One page fails with yt-dlp's own `ERROR:` line | That is the site's answer: private video, sign-in wall, region block, or an unsupported site. Nothing to fix here |
 | **Every** media page fails to extract | A stale yt-dlp — these sites change on purpose. Check the version on the updater card and hit **Run now**; if it says "already current", upstream has not shipped a fix yet |
 | The updater card says "could not reach GitHub" | The daily check needs outbound HTTPS to `api.github.com` and `github.com`. The previous binary keeps working and the next nightly run retries; nothing is lost |
@@ -314,9 +314,9 @@ them. Fix the write path first; the probe re-checks and the banner clears.
 Related: `/api/health` deliberately does **not** fail readiness on this, precisely so
 an orchestrator does not restart-loop the container and destroy the buffered traces.
 
-## Every browser-agent download fails
+## Every agent download fails
 
-Overview → **Downloads** says "Not writable", the `/browser` page shows a warning
+Overview → **Downloads** says "Not writable", the `/agents` page shows a warning
 banner, and `GET /api/health` reports `checks.downloadStorage.ok: false`. The boot log
 also carries a line, because the runner probes the path at startup.
 

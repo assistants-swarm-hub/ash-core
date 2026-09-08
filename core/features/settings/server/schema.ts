@@ -6,7 +6,7 @@ import { z } from "zod";
  * Handlers, and the dashboard form.
  *
  * LLM configuration is per **role** (chat, embedding, audio, vision, speech,
- * image generation, browser agent, classifiers, background jobs): each role
+ * image generation, background agents, classifiers, background jobs): each role
  * picks a backend from the catalog (`features/backends`) by id — null meaning
  * "use the chat backend" —
  * and a model. Endpoint URLs and API keys live on the backend rows.
@@ -75,10 +75,10 @@ export const settingsSchema = z.object({
   backgroundBackendId: backendId.nullable(),
   /** Selected background-jobs model id, or null → the offline jobs run on the chat model. */
   backgroundModel: model.nullable(),
-  /** Browser-agent backend id, or null to use the chat backend. */
-  browserBackendId: backendId.nullable(),
-  /** Selected browser-agent model id, or null → browsing runs on the chat model. */
-  browserModel: model.nullable(),
+  /** Agent role backend id, or null to use the chat backend. */
+  agentBackendId: backendId.nullable(),
+  /** Selected agent model id, or null → agent runs on the chat model. */
+  agentModel: model.nullable(),
   /** Whether a Tavily API key is stored, enabling the browsing agent's search fallback (value never exposed). */
   webSearchConfigured: z.boolean(),
   /** Whether maintenance mode is on. */
@@ -89,7 +89,7 @@ export const settingsSchema = z.object({
   timezone: z.string(),
   /** Local `HH:MM` (in `timezone`) every daily background job runs at. */
   dailyJobsRunTime: z.string(),
-  /** Hard ceiling (GB) on any single browser-agent download, for every tool. */
+  /** Hard ceiling (GB) on any single agent download, for every tool. */
   browserDownloadLimitGb: z.number().int(),
   /** Last write time, or null if never configured. */
   updatedAt: z.string().datetime().nullable(),
@@ -123,8 +123,8 @@ export const updateSettingsSchema = z
     classifierModel: model.nullable(),
     backgroundBackendId: backendId.nullable(),
     backgroundModel: model.nullable(),
-    browserBackendId: backendId.nullable(),
-    browserModel: model.nullable(),
+    agentBackendId: backendId.nullable(),
+    agentModel: model.nullable(),
     tavilyApiKey: apiKey.nullable(),
     maintenanceModeEnabled: z.boolean(),
     /**

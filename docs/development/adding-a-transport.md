@@ -490,7 +490,7 @@ secrets, and the core probes it unauthenticated.
 | `POST /internal/chats/:chatId/messages?assistantId=` | `internalSendMessageRequestSchema`: `{ text, replyToSourceMessageId?, threadId?, silent, linkableSourceMessageIds? }` | `{ sourceMessageId }` | Silent browsing acknowledgements (their id is registered for later deletion) and self-link confirmations — sends that need the delivered id back |
 | `POST /internal/chats/:chatId/voice` | `{ audioBase64 (OGG/Opus), text, replyToSourceMessageId?, threadId? }` | `{ sourceMessageId, asVoice }` | Voice replies: TTS runs in the core, the bytes cross here. Fall back to a text send of `text` when the platform refuses the voice bubble, and report `asVoice: false` |
 | `POST /internal/chats/:chatId/photos` | `{ images: [base64…], threadId? }` | `{ delivered: [{ sourceMessageId, stored }] }` | Generated images, delivered after the reply. Report each with `message.delivered` carrying `image` |
-| `POST /internal/chats/:chatId/files` | `{ dataBase64, filename, mime?, caption?, threadId? }` | `{ sourceMessageId }` | Browser-agent downloads. Pick the playable send kind by mime, retry as a plain document when the platform refuses the container. The core allows 500 s for this call |
+| `POST /internal/chats/:chatId/files` | `{ dataBase64, filename, mime?, caption?, threadId? }` | `{ sourceMessageId }` | Agent downloads. Pick the playable send kind by mime, retry as a plain document when the platform refuses the container. The core allows 500 s for this call |
 | `DELETE /internal/chats/:chatId/messages/:messageId` | — | `{ deleted }` | Removing a stale acknowledgement or menu. A refusal is `deleted: false`, never an error — cosmetic for every caller |
 | `POST /internal/chats/:chatId/menu?assistantId=` | `internalSendMenuRequestSchema`: `{ text, keyboard: [[{ text, callbackData }]], replyToSourceMessageId }` | `{ sourceMessageId }` | The feedback flow's options menu |
 | `PATCH /internal/chats/:chatId/menu/:messageId?assistantId=` | `{ text, keyboard \| null }` | `{ ok: true }` | Rewriting the menu (`null` removes the buttons) |
@@ -773,7 +773,7 @@ events land, an operator sees it everywhere any other transport is seen:
 | Vision gallery and backfill | Every transport's `source_media`, tagged with your announced name |
 | Tasks | Chats are picked by ref across every transport; a timed fire binds its tool context to the task's chat's transport, so `send_message` is yours |
 | Memory, preferences, feedback, addressing exclusions | Keyed by refs in your namespace |
-| Browser-agent runs | Deliver through the transport the run's chat ref names |
+| Agent runs | Deliver through the transport the run's chat ref names |
 
 Two conventions your transport must follow for those surfaces to work:
 

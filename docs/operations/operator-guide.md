@@ -43,7 +43,7 @@ Navigation, in sidebar order:
 | — | Overview, Analytics |
 | Conversations | History, Vision, Users, Groups |
 | Bot | Assistants, Memory, Tools, Self-improvement |
-| Automation | Tasks, Browser agent, Background jobs |
+| Automation | Tasks, Agents, Background jobs |
 | System | Backends, Accounts, Settings, Debug |
 | Web chat | Chat |
 | You | Profile |
@@ -85,18 +85,18 @@ never an "is the variable set" guess:
 | Trace storage | Opening the current month's file for append — the same operation the flusher performs |
 | Downloads | Creating and removing a file in the downloads directory — the same thing a download does |
 
-Each optional role (embeddings, images, speech, audio, vision, browser agent,
+Each optional role (embeddings, images, speech, audio, vision, background agent,
 classifiers, background jobs) gets its own card, and a neutral card is **not** a
 warning:
 
 | Card reads | Means |
 | --- | --- |
 | Connected | The role has its own model and its endpoint was probed |
-| Chat model | The role has no model of its own, so it runs on the chat model ("main by default") — the capability is on. For Audio, Vision and Browser agent the chat model must additionally accept that input (audio, images, tool calls); Classifiers and Background jobs are ordinary completions with nothing extra to require |
+| Chat model | The role has no model of its own, so it runs on the chat model ("main by default") — the capability is on. For Audio, Vision and Background agent the chat model must additionally accept that input (audio, images, tool calls); Classifiers and Background jobs are ordinary completions with nothing extra to require |
 | Off | The capability genuinely does not run — no model, and nothing to fall back to |
 | Error | A configured endpoint failed its probe |
 
-Only "Error" is a fault. "Chat model" on the Audio, Vision, Browser agent,
+Only "Error" is a fault. "Chat model" on the Audio, Vision, Background agent,
 Classifiers or Background jobs card is the normal state until you give that role
 a model of its own.
 
@@ -397,7 +397,7 @@ when they cancel a task, it is deleted. So a switched-off row is a task only you
 can bring back, and the only place its wording still exists (which is the point:
 the bot cannot discuss a rule it has no way to carry out).
 
-## Browser agent (`/browser`)
+## Agents (`/agents`)
 
 Lists runs and lets you start one. A dashboard-started run has no chat to deliver to —
 its report is read here — and is treated as your own, so downloads are enabled.
@@ -463,10 +463,10 @@ password change has its own endpoint and button.
 
 | Tab | Contents |
 | --- | --- |
-| **Models** | All nine LLM roles as stacked cards on one tab (user decision, 2026-08-14): Chat, Embeddings, Images, Speech (plus the voice name), Audio (plus the transcription mode), Vision, Browser agent, Classifiers, Background jobs. Each picks a backend from the catalog and a model from that backend's live list, has its own Test button, and wears a badge saying what it is set to — the model, "Chat model", "Off", "No model selected", or "*model* — not served" |
+| **Models** | All nine LLM roles as stacked cards on one tab (user decision, 2026-08-14): Chat, Embeddings, Images, Speech (plus the voice name), Audio (plus the transcription mode), Vision, Background agent, Classifiers, Background jobs. Each picks a backend from the catalog and a model from that backend's live list, has its own Test button, and wears a badge saying what it is set to — the model, "Chat model", "Off", "No model selected", or "*model* — not served" |
 | **Bots** | Maintenance mode: when on, senders with owner rights (an assistant's owning account, and admins) keep full replies; everyone else gets a static notice. Bot tokens are no longer here — they are per assistant, in the assistant editor, and the tab links there |
 | **General** | Timezone (IANA), daily jobs run time (`HH:MM` in that zone), **assistant replies in a row** (0–10: how many assistant messages a chat may hold in a row before every assistant there goes quiet until a person speaks; 0 stops assistants answering each other at all), browser download size limit (1–100 GB) |
-| **Integrations** | Tavily API key — the browsing agent's search fallback |
+| **Integrations** | Tavily API key — the agent's search fallback |
 | **Security** | The signed-in account's password: current password, new password, its own button. The same form lives on Profile |
 
 The Chat card is the one role that must support thinking and tool calls; every other
@@ -566,7 +566,7 @@ Which feature to filter to, by question:
 | Why is a recall bad? | `history-summaries` |
 | Why did it remember (or forget) something? | `memory`, `memory-extraction` |
 | Why did a task's message not arrive? | `tasks`, then the job card's pause notice (a quiet fire is the model's own choice, visible in the fire trace) |
-| What did the browser agent do? | `browser-agent` |
+| What did an agent run do? | `agents` |
 | When did the model/config change? | `settings`, `backends` |
 | Who connected, stopped or disconnected a bot? | `tool-connections` — the transport registry records its connection writes there |
 | Who tried to sign in, who linked an identity? | `auth`, `accounts` |

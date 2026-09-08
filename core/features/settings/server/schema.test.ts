@@ -23,7 +23,7 @@ describe("updateSettingsSchema", () => {
 
   it("allows clearing role models with null and rejects empty model strings", () => {
     expect(updateSettingsSchema.parse({ audioModel: null })).toEqual({ audioModel: null });
-    expect(updateSettingsSchema.safeParse({ browserModel: "" }).success).toBe(false);
+    expect(updateSettingsSchema.safeParse({ agentModel: "" }).success).toBe(false);
   });
 
   it("does not take a bot token — connections are per assistant since Phase 3", () => {

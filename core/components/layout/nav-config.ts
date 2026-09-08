@@ -5,7 +5,6 @@ import {
   Brain,
   Bug,
   CalendarClock,
-  Globe,
   Image,
   KeyRound,
   LayoutDashboard,
@@ -84,7 +83,7 @@ const SHELL_NAV_GROUPS: NavGroup[] = [
     label: "Automation",
     items: [
       { href: "/tasks", label: "Tasks", icon: CalendarClock, adminOnly: false },
-      { href: "/browser", label: "Browser agent", icon: Globe },
+      { href: "/agents", label: "Agents", icon: Bot },
       { href: "/jobs", label: "Background jobs", icon: Activity },
     ],
   },

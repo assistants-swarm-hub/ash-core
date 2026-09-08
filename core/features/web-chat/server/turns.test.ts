@@ -37,14 +37,14 @@ describe("ThreadTurns", () => {
     expect(turns.apply(THREAD, lifecycle("accepted"))).toBe(true);
     expect(turns.get(THREAD)).toMatchObject({ sourceMessageId: "1", activity: null });
 
-    expect(turns.apply(THREAD, lifecycle("progress", { activity: "browse_web" }))).toBe(true);
-    expect(turns.get(THREAD)).toMatchObject({ activity: "browse_web" });
+    expect(turns.apply(THREAD, lifecycle("progress", { activity: "start_agent" }))).toBe(true);
+    expect(turns.get(THREAD)).toMatchObject({ activity: "start_agent" });
   });
 
   it("does not ping the dashboard for a repeat of what it already shows", () => {
     const turns = new ThreadTurns();
-    turns.apply(THREAD, lifecycle("progress", { activity: "browse_web" }));
-    expect(turns.apply(THREAD, lifecycle("progress", { activity: "browse_web" }))).toBe(false);
+    turns.apply(THREAD, lifecycle("progress", { activity: "start_agent" }));
+    expect(turns.apply(THREAD, lifecycle("progress", { activity: "start_agent" }))).toBe(false);
   });
 
   it("keeps the start time across a turn's progress, and resets it for the next turn", () => {

@@ -127,7 +127,7 @@ describe("toModelMessages", () => {
           {
             id: "call_1",
             type: "function",
-            function: { name: "browse_web", arguments: '{"url":"https://example.invalid"}' },
+            function: { name: "start_agent", arguments: '{"url":"https://example.invalid"}' },
           },
         ],
       },
@@ -142,7 +142,7 @@ describe("toModelMessages", () => {
         {
           type: "tool-call",
           toolCallId: "call_1",
-          toolName: "browse_web",
+          toolName: "start_agent",
           input: { url: "https://example.invalid" },
         },
       ],
@@ -155,7 +155,7 @@ describe("toModelMessages", () => {
           toolCallId: "call_1",
           // Resolved from the call above — a tool result that cannot name its
           // call is rejected by strict backends.
-          toolName: "browse_web",
+          toolName: "start_agent",
           output: { type: "text", value: "the page said hello" },
         },
       ],
@@ -621,14 +621,14 @@ describe("toToolSet", () => {
       {
         type: "function",
         function: {
-          name: "browse_web",
+          name: "start_agent",
           description: "read a page",
           parameters: { type: "object", properties: { url: { type: "string" } } },
         },
       },
     ]);
-    expect(Object.keys(set ?? {})).toEqual(["browse_web"]);
-    expect(set?.browse_web).not.toHaveProperty("execute");
+    expect(Object.keys(set ?? {})).toEqual(["start_agent"]);
+    expect(set?.start_agent).not.toHaveProperty("execute");
   });
 
   it("is undefined when there are no tools, so the field is omitted entirely", () => {

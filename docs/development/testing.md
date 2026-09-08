@@ -41,7 +41,7 @@ npm run test:linux
 `docker compose -f docker-compose.test.yml run --rm test` — the same suite inside
 `node:24-alpine`, and the way to prove the whole thing from a Windows machine.
 
-Two suites — `features/browser-agent/server/ytdlp-binary.test.ts` and
+Two suites — `features/agents/server/ytdlp-binary.test.ts` and
 `media-download.test.ts` — spawn a **real** stub binary, because what they prove is
 that the app executes the right file: which copy of yt-dlp a download runs, and that a
 downloaded one is executed before it is allowed to replace a working install. A
@@ -62,7 +62,7 @@ the volumes (a couple of minutes); later runs start in seconds. Arguments pass
 through, so a subset works too:
 
 ```bash
-npm run test:linux -- npx vitest run features/browser-agent
+npm run test:linux -- npx vitest run features/agents
 ```
 
 ## Unit tests
@@ -220,7 +220,7 @@ actually pick the right tool for the phrasings people use?**
 ```ts
 const run = await runToolSelection({ prompt: "what did we decide about the invoice?" });
 expectToolCalled(run, "history_recall_topics");
-expectToolNotCalled(run, "browse_web");
+expectToolNotCalled(run, "start_agent");
 ```
 
 It loads the app's real environment (`@next/env`), resolves the configured LLM runtime
@@ -231,7 +231,7 @@ including message ids on a recalled topic so a "recall then read the originals"
 two-step has ids to follow.
 
 These tests are the regression net for tool **descriptions**. A description is
-production behavior: when it changes, which tool the model picks changes. `browse_web`
+production behavior: when it changes, which tool the model picks changes. `start_agent`
 must be chosen when a user asks to download something, or to look anything up — and
 must **not** fire on casual chat or a fact the model already knows. `expectToolNotCalled` matters as much as
 `expectToolCalled`.

@@ -204,7 +204,7 @@ describe("daily job views", () => {
     expect(view.backlog).toBeNull();
   });
 
-  it("yt-dlp: Details points at the job's own trace filter, not the browser-agent page", () => {
+  it("yt-dlp: Details points at the job's own trace filter, not the agents page", () => {
     const view = ytdlpJobView({ ...dailyBase, installedVersion: "2026.07.04", source: "managed" });
     expect(view.href).toBe("/debug?feature=ytdlp-updater");
     expect(ytdlpJobView(null).href).toBe("/debug?feature=ytdlp-updater");

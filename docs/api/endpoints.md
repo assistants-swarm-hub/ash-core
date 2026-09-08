@@ -57,7 +57,7 @@ informational, each for its own reason:
 | --- | --- |
 | `configuration` | The LLM being down must not make the dashboard "unhealthy" |
 | `traceStorage` | While the volume is unwritable, the only copy of the unflushed traces is this process's RAM — restart-looping would destroy exactly the data still savable |
-| `downloadStorage` | The app serves fine without it; only browser-agent downloads fail, and they report it on the run that attempted one |
+| `downloadStorage` | The app serves fine without it; only agent downloads fail, and they report it on the run that attempted one |
 
 Both storage checks are **real filesystem probes**: `traceStorage` opens the current
 month's file for append (the operation the flusher performs), `downloadStorage` creates
@@ -194,7 +194,7 @@ server.
 | `POST` | `/api/settings/test-speech` | admin | `{ backendId?, model? }` | `ProbeReport` |
 | `POST` | `/api/settings/test-audio` | admin | `{ backendId?, model?, transcriptionMode? }` | `ProbeReport` |
 | `POST` | `/api/settings/test-vision` | admin | `{ backendId?, model? }` | `ProbeReport` |
-| `POST` | `/api/settings/test-browser` | admin | `{ backendId?, model? }` | `ProbeReport` |
+| `POST` | `/api/settings/test-agent` | admin | `{ backendId?, model? }` | `ProbeReport` |
 | `POST` | `/api/settings/test-classifier` | admin | `{ backendId?, model? }` | `ProbeReport` |
 | `POST` | `/api/settings/test-background` | admin | `{ backendId?, model? }` | `ProbeReport` |
 
@@ -455,15 +455,15 @@ feedbacksError }`, each row resolved with a `userLabel`. The feedback rows live
 with the owning source; `feedbacksError` names why they are missing when they
 are (an unreachable source is an outage on the page, never "no feedback yet").
 
-## Browser agent
+## Agents
 
 | Method | Path | Access | Body | Returns |
 | --- | --- | --- | --- | --- |
-| `GET` | `/api/browser` | admin | — | `{ runs: BrowserAgentRun[] }` |
-| `POST` | `/api/browser` | admin | `{ goal }` (4–4000 chars) | The queued `BrowserAgentRun` — **201** |
-| `GET` | `/api/browser/{id}` | admin | — | `BrowserAgentRunDetail` |
-| `GET` | `/api/browser/{id}/screenshot/{seq}` | admin | — | `image/jpeg`, `Cache-Control: private, max-age=3600` |
-| `POST` | `/api/browser/ytdlp/run` | admin | — | The yt-dlp updater's job info immediately (fire-and-forget) |
+| `GET` | `/api/agents` | admin | — | `{ runs: BrowserAgentRun[] }` |
+| `POST` | `/api/agents` | admin | `{ goal }` (4–4000 chars) | The queued `BrowserAgentRun` — **201** |
+| `GET` | `/api/agents/{id}` | admin | — | `BrowserAgentRunDetail` |
+| `GET` | `/api/agents/{id}/screenshot/{seq}` | admin | — | `image/jpeg`, `Cache-Control: private, max-age=3600` |
+| `POST` | `/api/agents/ytdlp/run` | admin | — | The yt-dlp updater's job info immediately (fire-and-forget) |
 
 A dashboard-started run has `chatRef: null` and delivers nothing — its report is read
 on the page. It is treated as the **operator's own**, so `isOwner` is true and the
@@ -594,7 +594,7 @@ POST   /api/settings/test-images                              admin
 POST   /api/settings/test-speech                              admin
 POST   /api/settings/test-audio                               admin
 POST   /api/settings/test-vision                              admin
-POST   /api/settings/test-browser                             admin
+POST   /api/settings/test-agent                             admin
 POST   /api/settings/test-classifier                          admin
 POST   /api/settings/test-background                          admin
 
@@ -656,11 +656,11 @@ GET    /api/self-improvement                                  admin
 POST   /api/self-improvement/run                              admin
 DELETE /api/self-improvement/exclusions/{id}                  admin
 
-GET    /api/browser                                           admin
-POST   /api/browser                                           admin
-GET    /api/browser/{id}                                      admin
-GET    /api/browser/{id}/screenshot/{seq}                     admin
-POST   /api/browser/ytdlp/run                                 admin
+GET    /api/agents                                           admin
+POST   /api/agents                                           admin
+GET    /api/agents/{id}                                      admin
+GET    /api/agents/{id}/screenshot/{seq}                     admin
+POST   /api/agents/ytdlp/run                                 admin
 
 GET    /api/analytics/metrics                                 admin
 GET    /api/analytics/series                                  admin

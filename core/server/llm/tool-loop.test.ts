@@ -577,7 +577,7 @@ describe("chatCompletionWithTools — round retries", () => {
     const { chatCompletionWithTools } = await import("./tool-loop");
     const { INTERACTIVE_RETRY_DELAY_MS } = await import("./client");
     const { APIConnectionTimeoutError } = await import("openai");
-    const call = toolCall("c1", "browse_web", { url: "https://example.com/clip" });
+    const call = toolCall("c1", "start_agent", { url: "https://example.com/clip" });
     createMock
       // Round 1 asks for the download.
       .mockResolvedValueOnce({

@@ -5,7 +5,7 @@ import { getAnalyticsJobInfo } from "@/features/analytics/server/scheduler";
 import {
   getYtDlpJobInfo,
   type YtDlpJobInfo,
-} from "@/features/browser-agent/server/ytdlp-scheduler";
+} from "@/features/agents/server/ytdlp-scheduler";
 import { getMessageIndexingStatus } from "@/features/history/server/index-scheduler";
 import { requireSourceContent } from "@/server/source/content";
 import { getSummaryJobInfo, type SummaryJobInfo } from "@/features/history/server/summary-scheduler";
@@ -250,8 +250,8 @@ export function selfImprovementJobView(info: SelfImprovementJobInfo | null): Job
  */
 export function ytdlpJobView(info: YtDlpJobInfo | null): JobView {
   // Details go to this job's own trace filter, not to /browser: unlike the
-  // other jobs it has no data page — the browser-agent page merely hosts its
-  // card — and landing an operator on "Browser agent" answers nothing about
+  // other jobs it has no data page — the agents page merely hosts its
+  // card — and landing an operator on "Agents" answers nothing about
   // what the updater did. Its runs ARE its details.
   if (info == null) return errored("ytdlp-updater", "yt-dlp updater", featureDebugHref("ytdlp-updater"));
   return {
@@ -260,7 +260,7 @@ export function ytdlpJobView(info: YtDlpJobInfo | null): JobView {
     description: `Keeps the media downloader's yt-dlp current against upstream releases, daily at ${info.runTime} (${info.timezone}).`,
     activity: intervalJobActivity(info.status),
     href: featureDebugHref("ytdlp-updater"),
-    runEndpoint: "/api/browser/ytdlp/run",
+    runEndpoint: "/api/agents/ytdlp/run",
     runDisabled: false,
     notice:
       info.source === "missing"

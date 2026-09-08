@@ -175,7 +175,7 @@ account — resolved through person links — is the receiving assistant's ownin
 account, or is an admin (`server/owner-rights.ts`). The ingest stamps the
 verdict on every inbound event as `sender.isOwner`, per receiving assistant,
 and everything owner-gated (maintenance mode, the chat-side task gates, the
-browser agent's downloads) reads that stamp. An identity nobody has linked to
+agent run's downloads) reads that stamp. An identity nobody has linked to
 an account holds no rights, whoever it belongs to on the platform. See
 [Accounts](accounts.md#owner-rights).
 

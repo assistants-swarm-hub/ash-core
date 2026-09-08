@@ -21,7 +21,7 @@ export const REALTIME_TOPICS = [
   "feedback",
   "memory",
   "analytics",
-  "browser",
+  "agents",
   "assistants",
   "threads",
   "tools",

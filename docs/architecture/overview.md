@@ -208,7 +208,7 @@ bundle copy:
 | Shared Chromium | `features/link-fetch/server/playwright.ts` | Launching costs about a second; a per-module copy leaks browser processes |
 | Adblock engine | `features/link-fetch/server/adblock.ts` | One prebuilt filter engine per process |
 | Each scheduler | `server/jobs/daily-scheduler.ts` (per job name), the idle and interval schedulers per feature | Exactly one ticker per job |
-| Browser-run live state, ack registry, run signal | `features/browser-agent/server/{live-state,ack,signal}.ts` | Ephemeral per-run progress, deliberately not persisted |
+| Agent-run live state, ack registry, run signal | `features/agents/server/{live-state,ack,signal}.ts` | Ephemeral per-run progress, deliberately not persisted |
 | Web-chat running turns | `features/web-chat/server/turns.ts` | The thread view's "thinking…" state, fed by lifecycle events |
 | Insight scan floor | `features/analytics/server/watermark.ts` | Process-local lower bound for the due-scan |
 
@@ -244,7 +244,7 @@ of the Edge-analyzed instrumentation module.
    with a release are offered without an operator pressing Apply.
 6. Starts the eight schedulers — vision backfill and history indexing (idle),
    tasks (interval), self-improvement, history summaries, memory, analytics
-   insights and the yt-dlp updater (daily) — and the browser-agent runner,
+   insights and the yt-dlp updater (daily) — and the agent runner,
    which first sweeps any run left `running` by a previous process to `failed`.
 
 Nothing here gates readiness. A missing Redis, an unreachable LLM, a transport
@@ -264,7 +264,7 @@ consumer.
 | Traces (full LLM request/response bodies) | `data/traces/traces-YYYY-MM.ndjson` | Append-only; the only copy. See [Observability](observability.md) |
 | Queued transport updates and turns | Redis (`transport-updates`, `inbound-messages`) | AOF-persisted under `./data/redis`; a queued message survives a restart. Completed jobs are retained for a while (see [Security](security.md#data-sensitivity)) |
 | Browser-run screenshots, media bytes | Postgres (`bytea`) | Never in trace JSON |
-| Browser-agent downloads | `data/downloads/` on disk | Delivered to the chat as they land |
+| Agent downloads | `data/downloads/` on disk | Delivered to the chat as they land |
 | Live job progress, browser live state, running web-chat turns | RAM (`globalThis`) | Transient by design |
 | Running (unsettled) traces | RAM | A crash drops them |
 | The transport's poller state | RAM in the transport | Reported on `/health`; rebuilt from the desired state at boot |

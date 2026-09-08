@@ -4,14 +4,14 @@
 **Trace scope:** none of its own
 
 [Tavily](https://tavily.com) search, used **only** as the last resort of the browser
-agent's [engine cascade](browser-agent.md#search--the-engine-cascade): when neither
+agent's [engine cascade](agents.md#search--the-engine-cascade): when neither
 Google, Bing, nor DuckDuckGo will render a results page in the real browser, the run
 falls back to this API so the agent gets *something* instead of nothing.
 
 > **No tool of its own.** This module used to own the `search_web` MCP tool
 > (priority 5). That tool was **removed on 2026-07-26** (user decision) along with
 > `read_web_page`: the bot searches by browsing now. What survives is the API client,
-> called from `features/browser-agent/server/search.ts`.
+> called from `features/agents/server/search.ts`.
 
 ## The call
 
@@ -41,7 +41,7 @@ The API key lives in DB-backed settings (`settings.tavily_api_key`) and is read 
 
 Leaving it unset is viable as long as one engine works in the browser — today Bing
 does, while DuckDuckGo and Google are blocked (see the
-[measured table](browser-agent.md#what-the-engines-actually-do-measured-2026-07-26)).
+[measured table](agents.md#what-the-engines-actually-do-measured-2026-07-26)).
 It is insurance, not a dependency — but with only one working engine, thin insurance.
 
 ## Tests
@@ -49,5 +49,5 @@ It is insurance, not a dependency — but with only one working engine, thin ins
 `format.test.ts` (payload → context text and sources) and `server/search.test.ts`
 (the `fetch` implementation is injectable, so behavior is unit-tested without hitting
 the network). The cascade that calls it is covered by
-`features/browser-agent/server/search.test.ts` and, live, by
+`features/agents/server/search.test.ts` and, live, by
 `search-live.integration.test.ts`.

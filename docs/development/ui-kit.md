@@ -198,7 +198,7 @@ button (user decision, 2026-08-14). Today that is eight consumers:
 | `/users` → Linked people tab | `features/person-links/ui/PersonLinksManager.tsx` | Link identities |
 | `/tools` → Connections tab | `features/tool-connections/ui/ConnectionsManager.tsx` | New connection (disabled at the limit) |
 | `/tasks` | `features/tasks/ui/TasksManager.tsx` | Create task |
-| `/browser` | `features/browser-agent/ui/NewRunForm.tsx` | Start run |
+| `/agents` | `features/agents/ui/NewRunForm.tsx` | Start run |
 
 The rule is "one unambiguous action", not "every page". Pages deliberately left without
 one: `/history/transfer` (import *and* export are both the point), `/debug` (a bundle

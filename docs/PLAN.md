@@ -307,7 +307,7 @@ Stored in the core store, with an **owning account**:
 Transport MCP servers (each transport's outbound actions) are managed connections the
 core provisions from transport registrations, scoped per-app so a
 platform's tools appear only on its own turns. Built-in feature tools
-(browse_web, memory, tasks, image-gen, web-chat outbound, …) remain an
+(start_agent, memory, tasks, image-gen, web-chat outbound, …) remain an
 in-process registry.
 
 The offered toolset stays a snapshot that changes only on explicit apply —

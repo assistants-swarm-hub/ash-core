@@ -123,7 +123,7 @@ belongs to, filterable at `/debug?correlationId=…`:
 | A reply turn | `<chatRef>:<sourceMessageId>:<assistantId>` (`turnCorrelationId`) — stamped on the reply trace and on every `mcp-tools-*` trace its tool calls open (via the tool context). The chat is named by ref, so the analytics chat filter, which matches this prefix, cannot count another transport's traffic |
 | A task fire | The task id at open, settled to the delivered message's own correlation (`<chatRef>:<sourceMessageId>`, no assistant) once delivered |
 | A nightly sweep (memory, summaries) | One `newRunCorrelationId(job)` per run (`memory:20260815-040100`), shared by every chat-day trace it opens |
-| A browsing run | The run id |
+| An agent run | The run id |
 | Anything standalone | Its own trace id (`startTrace` fills it in), so the filter is never empty |
 
 On the Debug list and detail views the feature, status, trigger (kind · actor)
@@ -280,12 +280,12 @@ still buffered in RAM.
 
 ### The other write path
 
-The browser agent's downloads directory is probed the same way — a real create/unlink
-rather than an `access(W_OK)` guess — and reported on Overview, on `/browser`, in the
+The agents' downloads directory is probed the same way — a real create/unlink
+rather than an `access(W_OK)` guess — and reported on Overview, on `/agents`, in the
 health body, and once in the boot log. It is a **warning**, not an error, and gets no
 global banner: an unwritable downloads directory destroys nothing silently, because the
 download throws and the failure lands on the run row. See
-[the browser agent](../features/browser-agent.md#download-storage-health).
+[the agents feature](../features/agents.md#download-storage-health).
 
 The two probes are the app's only filesystem write paths, and both follow the same rule:
 exercise the real operation, never infer from configuration.

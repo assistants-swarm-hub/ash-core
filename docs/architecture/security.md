@@ -214,7 +214,7 @@ the model was told:
 - Task mutations are author-scoped, with owner-rights holders exempt from the
   author half (never the chat half). An unreadable policy fails closed: the
   author rule stands.
-- The browser agent's download tools are gated to owner-authorized runs, resolved
+- An agent run's download tools are gated to owner-authorized runs, resolved
   at enqueue time — not at call time, and not from anything the model says. The
   authority is the sender, except on a turn a standing task drove, where it
   is the **task's author**: a task is its author's standing order, so an owner's
@@ -233,7 +233,7 @@ model; code checks only mechanical facts.
 
 ## SSRF defense
 
-The model supplies URLs (the browser agent's navigate and download tools), and
+The model supplies URLs (an agent run's navigate and download tools), and
 users register MCP endpoints, so real network clients are pointed at
 attacker-influenced input. Two halves for the browser, one rule for connections:
 
@@ -304,7 +304,7 @@ one.
 | Control | Effect |
 | --- | --- |
 | Addressing | In a group an assistant only answers when addressed. A failed analyzer call resolves to "not addressed" — fail closed |
-| Owner rights | The assistant's owning account (through identity links) and every admin. Keeps a working bot under maintenance mode; enables the browser agent's download tools; exempts from the task author rule |
+| Owner rights | The assistant's owning account (through identity links) and every admin. Keeps a working bot under maintenance mode; enables an agent run's download tools; exempts from the task author rule |
 | Identity links | A platform identity joins an account only by redeeming a one-time code the account minted in its own profile (15-minute TTL, one live code per account), or by an admin's manual link. A code cannot merge two different people — that stays an admin's call |
 | Maintenance mode | Everyone without owner rights gets a static notice and no LLM reply; the LLM analyzer is off for everyone; no task fires |
 | Feedback menus | Answerable only by the person who reacted — anyone else gets a toast. A group message cannot be shown to a single member, so this is enforced where the press is processed |

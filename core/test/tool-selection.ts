@@ -17,7 +17,7 @@ import type { McpToolCallResult } from "@/server/mcp/tool-result";
  *
  * The point is to test *tool selection*, not tool execution: the tools are never
  * actually run. Every tool call is intercepted, recorded, and answered with a
- * canned result — so no browsing run is enqueued, no headless browser launches,
+ * canned result — so no agent run is enqueued, no headless browser launches,
  * and no DB mutation happens. The model sees the same tool contract it sees in production
  * (schemas come straight through {@link getToolset}), so its choice is faithful.
  *
@@ -33,7 +33,7 @@ import type { McpToolCallResult } from "@/server/mcp/tool-result";
 const DEFAULT_CANNED: Record<string, McpToolCallResult> = {
   // The only web tool: a background run that reports to the chat itself, so the
   // canned result carries no findings for the model to relay.
-  browse_web: {
+  start_agent: {
     text:
       "Browsing run started in the background. Tell the user you're on it and will report back " +
       "here with what you find. Do not make up results — the run posts them itself.",
@@ -250,7 +250,7 @@ export function expectToolCalled(run: ToolSelectionRun, tool: string): void {
   ).toContain(tool);
 }
 
-/** Assert the model did NOT choose `tool` (e.g. no browsing run for general knowledge). */
+/** Assert the model did NOT choose `tool` (e.g. no agent run for general knowledge). */
 export function expectToolNotCalled(run: ToolSelectionRun, tool: string): void {
   expect(
     run.toolNames,

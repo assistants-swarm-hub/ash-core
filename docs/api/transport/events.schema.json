@@ -4033,6 +4033,9 @@
               "type": "null"
             }
           ]
+        },
+        "silentDelivery": {
+          "type": "boolean"
         }
       },
       "required": [

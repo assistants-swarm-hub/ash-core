@@ -1,9 +1,9 @@
 import "server-only";
 
 import {
-  BROWSER_AGENT_TOOL_NAMES,
-  registerBrowserAgentMcpTools,
-} from "@/features/browser-agent/server/mcp-tools";
+  AGENTS_TOOL_NAMES,
+  registerAgentsMcpTools,
+} from "@/features/agents/server/mcp-tools";
 import {
   HISTORY_TOOL_NAMES,
   registerHistoryMcpTools,
@@ -88,9 +88,9 @@ const REGISTRARS: {
   },
   { feature: "image-gen", registrar: registerImageGenMcpTools, toolNames: IMAGE_GEN_TOOL_NAMES },
   {
-    feature: "browser-agent",
-    registrar: registerBrowserAgentMcpTools,
-    toolNames: BROWSER_AGENT_TOOL_NAMES,
+    feature: "agents",
+    registrar: registerAgentsMcpTools,
+    toolNames: AGENTS_TOOL_NAMES,
   },
   {
     feature: "web-chat",

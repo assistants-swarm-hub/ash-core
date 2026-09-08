@@ -55,7 +55,7 @@ import type {
 /**
  * Settings domain service — the boundary the Route Handlers and Server
  * Components call. LLM configuration is per **role** (chat, embedding, audio,
- * vision, speech, image generation, browser agent, classifiers, background
+ * vision, speech, image generation, background agents, classifiers, background
  * jobs): each role references a backend from the catalog (`features/backends`)
  * and picks a model; a null backend id means "use the chat backend", and for
  * the audio/vision/browser/classifier/background roles a null model
@@ -88,8 +88,8 @@ function toClientSettings(record: SettingsRecord | null): Settings {
     classifierModel: record?.classifierModel ?? null,
     backgroundBackendId: record?.backgroundBackendId ?? null,
     backgroundModel: record?.backgroundModel ?? null,
-    browserBackendId: record?.browserBackendId ?? null,
-    browserModel: record?.browserModel ?? null,
+    agentBackendId: record?.agentBackendId ?? null,
+    agentModel: record?.agentModel ?? null,
     webSearchConfigured: Boolean(record?.tavilyApiKey),
     maintenanceModeEnabled: record?.maintenanceModeEnabled ?? false,
     // User decision, 2026-08-24: default 3.
@@ -328,7 +328,7 @@ export async function getAudioRuntime(
 /**
  * Resolve a **"main by default"** role: one that falls back to the chat backend
  * and the chat model per unset half, so it is null only when nothing resolves
- * to a full connection. Vision, browser agent, classifiers and background jobs
+ * to a full connection. Vision, background agents, classifiers and background jobs
  * all work this way — they are ordinary chat completions that the operator may
  * want to run somewhere else, not capabilities that switch off without a model
  * of their own (that shape is {@link toEmbeddingRuntime}'s).
@@ -336,8 +336,8 @@ export async function getAudioRuntime(
 async function toInheritingRuntime(
   db: StoreDb,
   record: SettingsRecord | null,
-  modelKey: "visionModel" | "browserModel" | "classifierModel" | "backgroundModel",
-  backendKey: "visionBackendId" | "browserBackendId" | "classifierBackendId" | "backgroundBackendId",
+  modelKey: "visionModel" | "agentModel" | "classifierModel" | "backgroundModel",
+  backendKey: "visionBackendId" | "agentBackendId" | "classifierBackendId" | "backgroundBackendId",
 ): Promise<LlmRuntime | null> {
   const model = record?.[modelKey] ?? record?.model ?? null;
   if (!record || !model) return null;
@@ -362,17 +362,17 @@ async function toVisionRuntime(
   return toInheritingRuntime(db, record, "visionModel", "visionBackendId");
 }
 
-/** Server-only: the browser-agent LLM connection + model. */
-export async function getBrowserLlmRuntime(db: StoreDb = getStoreDb()): Promise<LlmRuntime | null> {
-  return toBrowserRuntime(db, await getSettingsRecord(db));
+/** Server-only: the agent LLM connection + model. */
+export async function getAgentLlmRuntime(db: StoreDb = getStoreDb()): Promise<LlmRuntime | null> {
+  return toAgentRuntime(db, await getSettingsRecord(db));
 }
 
-/** The browser resolver behind {@link getBrowserLlmRuntime}, shared with the probe. */
-async function toBrowserRuntime(
+/** The browser resolver behind {@link getAgentLlmRuntime}, shared with the probe. */
+async function toAgentRuntime(
   db: StoreDb,
   record: SettingsRecord | null,
 ): Promise<LlmRuntime | null> {
-  return toInheritingRuntime(db, record, "browserModel", "browserBackendId");
+  return toInheritingRuntime(db, record, "agentModel", "agentBackendId");
 }
 
 /**
@@ -442,11 +442,11 @@ export async function getDailyJobsRunTime(db: StoreDb = getStoreDb()): Promise<s
   return (await getSettingsRecord(db))?.dailyJobsRunTime ?? DEFAULT_DAILY_JOBS_RUN_TIME;
 }
 
-/** Default hard ceiling on a single browser-agent download (user decision, 2026-07-29). */
+/** Default hard ceiling on a single agent download (user decision, 2026-07-29). */
 export const DEFAULT_BROWSER_DOWNLOAD_LIMIT_GB = 10;
 
 /**
- * Server-only: the hard ceiling **in bytes** on a single browser-agent download,
+ * Server-only: the hard ceiling **in bytes** on a single agent download,
  * for every download tool — a plain file, a muxed stream, a yt-dlp extraction.
  * Purely a disk guard; it never picks a lower quality. Read at call time so a
  * change applies without a restart.
@@ -485,7 +485,7 @@ const ROLE_FIELDS = [
   { label: "speech", modelKey: "speechModel", backendKey: "speechBackendId" },
   { label: "audio", modelKey: "audioModel", backendKey: "audioBackendId" },
   { label: "vision", modelKey: "visionModel", backendKey: "visionBackendId" },
-  { label: "browser", modelKey: "browserModel", backendKey: "browserBackendId" },
+  { label: "agent", modelKey: "agentModel", backendKey: "agentBackendId" },
   { label: "classifier", modelKey: "classifierModel", backendKey: "classifierBackendId" },
   { label: "background", modelKey: "backgroundModel", backendKey: "backgroundBackendId" },
 ] as const;
@@ -1291,7 +1291,7 @@ const BROWSER_PROBE_TOOL = {
 };
 
 /**
- * Probe the browser-agent configuration by running one real tool round: the
+ * Probe the agent role configuration by running one real tool round: the
  * model is offered a single trivial tool and asked to use it. A **real** probe
  * for the same reason as vision — a model listing cannot say whether a model
  * supports tool calling, and browsing is nothing but tool calls, so a model
@@ -1304,29 +1304,29 @@ const BROWSER_PROBE_TOOL = {
  * connection demonstrably works, and how strictly a model obeys "use the tool"
  * is a quality judgement for the operator, not a pass/fail this can make.
  */
-export async function testBrowser(
+export async function testAgent(
   input: TestRoleConnection,
   trigger: TraceTrigger,
   db: StoreDb = getStoreDb(),
 ): Promise<ProbeReport> {
   const record = await getSettingsRecord(db);
   const merged = mergeRoleInput(record, input, {
-    backendKey: "browserBackendId",
-    modelKey: "browserModel",
+    backendKey: "agentBackendId",
+    modelKey: "agentModel",
   });
-  const runtime = await toBrowserRuntime(db, merged);
+  const runtime = await toAgentRuntime(db, merged);
 
   return withTrace(
     {
       feature: FEATURE.id,
-      action: "test-browser",
+      action: "test-agent",
       trigger,
-      inputSummary: merged.browserModel ?? merged.model ?? "(no model)",
+      inputSummary: merged.agentModel ?? merged.model ?? "(no model)",
     },
     async (trace) => {
       if (!runtime) {
         throw ApiError.badRequest(
-          "Choose a browser-agent model, or configure the chat role it falls back to.",
+          "Choose a agent model, or configure the chat role it falls back to.",
         );
       }
       const startedAt = Date.now();
@@ -1651,8 +1651,8 @@ const EMPTY_RECORD: SettingsRecord = {
   classifierModel: null,
   backgroundBackendId: null,
   backgroundModel: null,
-  browserBackendId: null,
-  browserModel: null,
+  agentBackendId: null,
+  agentModel: null,
   tavilyApiKey: null,
   maintenanceModeEnabled: false,
   assistantLoopGuardTurns: 3,

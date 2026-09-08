@@ -16,7 +16,7 @@ the same client serves both the Settings probe and the production path.
 
 | Client | Endpoint | Used by |
 | --- | --- | --- |
-| `client.ts` | `/v1/chat/completions`, `/v1/models` | Replies, the per-message classifications, every LLM background job, the browser agent |
+| `client.ts` | `/v1/chat/completions`, `/v1/models` | Replies, the per-message classifications, every LLM background job, the background agents |
 | `embeddings.ts` | `/v1/embeddings` | History summary embeddings, user-memory embeddings |
 | `images.ts` | `/v1/images/generations` | The `image_generate` tool |
 | `speech.ts` | `/v1/audio/speech` | Voice replies |
@@ -199,7 +199,7 @@ Termination is **progress-driven** (ported from the MVP):
   stuck or looping model — takes the tools away for one final forced answer, and
   the result is flagged `loopDetected`.
 
-There is no round cap or wall-clock cap. For the browser agent that is an explicit
+There is no round cap or wall-clock cap. For the background agent that is an explicit
 recorded decision: only the stall guard ends a run that stops progressing, and the
 forced tools-free final round then salvages a report from what was gathered.
 
@@ -270,8 +270,8 @@ with any actual request.
 
 The kinds: `addressing-check`, `task-match`, `reply-tool-turn`, `reply-final`,
 `vision-describe`, `voice-transcribe`, `history-summarize`, `memory-extract`,
-`memory-consolidate`, `insight-hour`, `insight-rollup`, `browser-agent-turn`,
-`browser-agent-report`, `task-fire`, `self-improve-analyze`,
+`memory-consolidate`, `insight-hour`, `insight-rollup`, `agent-turn`,
+`agent-report`, `task-fire`, `self-improve-analyze`,
 `self-improve-reflect` (plus the retired `chat-rule-match` and
 `scheduled-task-fire`, kept so pre-merge traces still label).
 
@@ -346,7 +346,7 @@ The consequences are structural, not advisory:
   is exempt and may edit or cancel any task in a chat they are in, including the
   authorless dashboard-created ones (user decision, 2026-08-07). Chat scoping is
   not part of the exemption. Owner status is resolved from the turn's authority,
-  the same way the browser agent's download rights are.
+  the same way an agent run's download rights are.
 
 The storage itself is a `globalThis` singleton, like the registry. Next
 evaluates the same server module in several bundles (instrumentation, where the
@@ -572,17 +572,17 @@ Both store the message in the thread and ping the live view; they report the
 delivery in `structuredContent` exactly like a transport's pair, so the core's
 bookkeeping is the same whichever source a task fires on.
 
-### Browser agent — `mcp-tools-browser-agent`
+### Agents — `mcp-tools-agents`
 
 | Tool | Input | Purpose |
 | --- | --- | --- |
-| `browse_web` | `goal` | Enqueue a background run: a sub-agent drives a full browser, then reports back to this chat |
+| `start_agent` | `goal` | Enqueue a background run: a sub-agent drives a full browser, then reports back to this chat |
 
 **This is the only web-facing tool.** `search_web` (Tavily) and `read_web_page`
 (one-shot Chromium read) were removed on 2026-07-26 (user decision) — searching
 and page reading both happen inside a run now, on a real browser, where the
 agent can follow up on what it finds. Two weaker alternatives alongside it only
-split the model's choice. See [Browser agent](../features/browser-agent.md);
+split the model's choice. See [Agents](../features/agents.md);
 every URL the model supplies is SSRF-checked before the browser touches it
 ([Security](security.md#ssrf-defense)).
 

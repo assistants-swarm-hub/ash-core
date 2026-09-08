@@ -7,13 +7,13 @@ import type { LlmBackendId } from "@/lib/llm-backend";
 import {
   getDownloadStorageHealth,
   type DownloadStorageHealth,
-} from "@/features/browser-agent/server/download";
+} from "@/features/agents/server/download";
 import { getBackendById } from "@/features/backends/server/repository";
 import { getSettingsRecord } from "@/features/settings/server/repository";
 import {
   getAudioRuntime,
   getBackgroundRuntime,
-  getBrowserLlmRuntime,
+  getAgentLlmRuntime,
   getClassifierRuntime,
   getEmbeddingRuntime,
   getImageRuntime,
@@ -55,7 +55,7 @@ export interface ModelStatus {
 
 /**
  * Live status of one optional endpoint (embeddings, images, speech,
- * transcription, vision, browser agent).
+ * transcription, vision, background agents).
  *
  * - `ok` / `error`: a dedicated endpoint that was actually probed.
  * - `off`: the capability genuinely does not run — a configuration choice, not
@@ -66,7 +66,7 @@ export interface ModelStatus {
  *   would be a lie about a working feature.
  */
 export interface EndpointStatus {
-  id: "embeddings" | "images" | "speech" | "audio" | "vision" | "browser" | "classifier" | "background";
+  id: "embeddings" | "images" | "speech" | "audio" | "vision" | "agent" | "classifier" | "background";
   label: string;
   state: "off" | "inherited" | "ok" | "error";
   detail: string;
@@ -86,7 +86,7 @@ export interface SystemStatus {
   endpoints: EndpointStatus[];
   /** Trace/debug log write path — a real append probe, not a config guess. */
   traces: TraceStorageHealth;
-  /** Browser-agent download write path — a real create/unlink probe, same reasoning. */
+  /** Agent download write path — a real create/unlink probe, same reasoning. */
   downloads: DownloadStorageHealth;
 }
 
@@ -194,13 +194,13 @@ async function probeTranscriptionEndpoint(
 
 /** Every optional endpoint's live status, probed concurrently. */
 async function probeOptionalEndpoints(db: StoreDb): Promise<EndpointStatus[]> {
-  // The chat-fallback roles (vision, browser agent, voice transcription) are
+  // The chat-fallback roles (vision, the background agent, voice transcription) are
   // probed only when the operator gave them a model or backend of their own —
   // otherwise they resolve to exactly the chat connection the LLM card already
   // probes, and a second identical probe would just double the noise.
   const record = await getSettingsRecord(db).catch(() => null);
   const visionOverridden = Boolean(record?.visionBackendId || record?.visionModel);
-  const browserOverridden = Boolean(record?.browserBackendId || record?.browserModel);
+  const agentOverridden = Boolean(record?.agentBackendId || record?.agentModel);
   const classifierOverridden = Boolean(record?.classifierBackendId || record?.classifierModel);
   const backgroundOverridden = Boolean(record?.backgroundBackendId || record?.backgroundModel);
   const chatModelSet = Boolean(record?.chatBackendId && record?.model);
@@ -271,16 +271,16 @@ async function probeOptionalEndpoints(db: StoreDb): Promise<EndpointStatus[]> {
           runtime,
         ),
     ),
-    (browserOverridden ? getBrowserLlmRuntime(db).catch(() => null) : Promise.resolve(null)).then(
+    (agentOverridden ? getAgentLlmRuntime(db).catch(() => null) : Promise.resolve(null)).then(
       (runtime) =>
         probeModelEndpoint(
-          "browser",
-          "Browser agent",
-          browserOverridden
+          "agent",
+          "Background agent",
+          agentOverridden
             ? { state: "off", detail: "Not fully configured" }
             : fallback(
                 needsModality("tool calls"),
-                "No browser model and no chat model — browsing is off",
+                "No agent model and no chat model — background agents are off",
               ),
           runtime,
         ),
@@ -443,7 +443,7 @@ export interface HealthReport {
   /**
    * Download write-path health (real create/unlink probe). Informational and never a
    * readiness gate, for a different reason than traces: the app serves fine without
-   * it — only the browser agent's downloads fail, loudly, on the run that attempted
+   * it — only agent downloads fail, loudly, on the run that attempted
    * one. Reported here so an unwritable mount is visible to an orchestrator's probe
    * output without affecting whether the container is considered healthy.
    */

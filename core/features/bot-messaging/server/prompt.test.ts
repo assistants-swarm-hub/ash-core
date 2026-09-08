@@ -110,7 +110,7 @@ describe("BASE_SYSTEM_PROMPT honesty rules", () => {
   });
 
   it("stays tool-agnostic: names the mechanism but never a specific tool", () => {
-    expect(BASE_SYSTEM_PROMPT).not.toMatch(/tasks_create|browse_web|history_|memory_|image_generate/);
+    expect(BASE_SYSTEM_PROMPT).not.toMatch(/tasks_create|start_agent|history_|memory_|image_generate/);
   });
 });
 
@@ -200,7 +200,7 @@ describe("buildTimeContext", () => {
     const out = buildTimeContext(now, "UTC");
     expect(out).toContain("in 5 minutes");
     expect(out).toContain("tomorrow");
-    expect(out).not.toMatch(/tasks_create|browse_web|history_/);
+    expect(out).not.toMatch(/tasks_create|start_agent|history_/);
   });
 
   it("falls back to UTC for an unusable timezone instead of throwing", () => {

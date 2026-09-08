@@ -74,7 +74,7 @@ export async function rolesUsingBackend(id: string, db: StoreDb = getStoreDb()):
     [record.speechBackendId, "speech"],
     [record.audioBackendId, "audio"],
     [record.visionBackendId, "vision"],
-    [record.browserBackendId, "browser agent"],
+    [record.agentBackendId, "background agents"],
   ];
   return refs.filter(([ref]) => ref === id).map(([, role]) => role);
 }

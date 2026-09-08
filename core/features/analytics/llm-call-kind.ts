@@ -91,15 +91,29 @@ export const LLM_CALL_KINDS = {
     label: "Insight · roll up period",
     description: "Rolls scored hours up into a day/week/month/year/all-time insight.",
   },
+  "agent-turn": {
+    id: "agent-turn",
+    label: "Agent · tool turn",
+    description:
+      "One round of a background agent run — the agent called tools (browser actions, the assistant's own tools) and got their results back.",
+  },
+  "agent-report": {
+    id: "agent-report",
+    label: "Agent · final report",
+    description: "The round that produced a background agent run's report.",
+  },
+  // Retired writers (the browser agent became the agent, 2026-09-08), kept so
+  // traces recorded before the rename still label instead of showing a raw id.
   "browser-agent-turn": {
     id: "browser-agent-turn",
-    label: "Browser agent · tool turn",
-    description: "One round of a browsing run — the agent asked for browser actions and got page state back.",
+    label: "Browser agent · tool turn (retired)",
+    description: "One round of a agent run, before the browser agent became the agent.",
   },
   "browser-agent-report": {
     id: "browser-agent-report",
-    label: "Browser agent · final report",
-    description: "The round that produced a browsing run's report.",
+    label: "Browser agent · final report (retired)",
+    description:
+      "The round that produced a agent run's report, before the browser agent became the agent.",
   },
   "task-fire": {
     id: "task-fire",
@@ -176,6 +190,8 @@ export function callKindOf(
       return "scheduled-task-fire";
     case "tasks":
       return "task-fire";
+    case "agents":
+      return "agent-turn";
     case "browser-agent":
       return "browser-agent-turn";
     case "self-improvement":

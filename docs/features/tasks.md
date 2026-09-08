@@ -185,7 +185,7 @@ the core compares no user ids), and the runtime binds the result as
 provenance (`userId`) stays the real sender. The matcher also runs on addressed
 turns (skipped when nothing could elevate), so the answer is the same whether or
 not the person happened to name the bot. Restricted rule-driven downloads are
-unchanged — see `docs/features/browser-agent.md`.
+unchanged — see `docs/features/agents.md`.
 
 ## Two ways in
 
