@@ -1000,117 +1000,287 @@ Turning thinking off for replies is **rejected** (user decision, 2026-08-24) —
 is the one thing measured to stop the leak outright, and it is not on the table.
 Re-run the probe against any replacement model before trusting it.
 
-## Collections feature (`deferred` — possible future feature, spec agreed 2026-08-19)
+## Collections: an assistant's structured data (`todo` — spec agreed 2026-09-08)
 
-Not scheduled: the user parked this after the brainstorm ("maybe will work on
-it eventually", 2026-08-19). The full agreed spec below is kept so a future
-session can start from the decisions instead of re-asking them. If picked up,
-the suggested order is: inline-buttons subsystem → schema + CRUD + dashboard →
-detection/enrichment adapters → interview flow → task-based tracking.
+Supersedes the 2026-08-19 "Collections feature" spec (`deferred`), which is
+dropped as a whole (user decision, 2026-09-08 — see "What changed" below;
+the old text is in git history). Not started. Two generic upgrades it
+depends on are tracked as their own entries right after this one:
+"Documents: a text-like media kind" and "`browse_web` spawns the assistant".
 
-The bot becomes a personal collection keeper in DMs: things the user sends
-(YouTube links, IMDB links, Steam links, photos of food, generic links) are
-enriched, automatically categorized and stored into that user's collections,
-browsable and CRUD-able from the dashboard. Note: this deliberately
-re-introduces a generic entry store after the Specialists removal (2026-08-19)
-— a fresh user decision, different product (user-facing collecting with
-enrichment and tracking, not operator-authored roles).
+### The scenario (user, 2026-09-08)
 
-Decisions (user, 2026-08-19):
+1. Create a dedicated assistant — the example is a movie assistant.
+2. Export a watchlist from a site (the example: an IMDb export, a CSV of
+   ~18 columns — title, year, genres, directors, the site's rating, the
+   user's own rating, URL …), send the file to the assistant in chat, and
+   ask it to store it.
+3. Ask it to fill what the file lacks (description, cast, …). It works in
+   the background and reports when done.
+4. From then on, a standing instruction: whenever the owner sends a link of
+   that kind, add it to the collection, look it up, present it the usual
+   way, and ask for the owner's rating.
 
-- **DM-only, per-user.** The whole feature engages only in direct messages;
-  collections belong to the DM user. Group messages never touch it.
-- **Rule-driven collections, created by interview.** When the first item of an
-  unrecognized kind arrives, the bot asks what to do with it and keeps asking
-  until it has all required info (name, what matches, what to extract, rating
-  policy, statuses, tracking policy, notification cadence), then creates the
-  collection + its rules. Subsequent matching items follow the rules without
-  asking. Enforcement mechanism: the create tool's schema refuses incomplete
-  input and names what is missing, so the model's next question is driven by
-  the refusal — the conversation is the interview state.
-- **Rating / statuses / tracking cadence are per-collection rules**, not
-  global settings. Notification target for tracking fires is the DM.
-- **Movie metadata via web crawler** (browser agent over the IMDB page), not a
-  TMDB/OMDb API key.
-- **Steam (and similar) update tracking reuses Tasks** — no new watcher
-  mechanism. Tracking an item = the bot creates/maintains a task in the DM
-  chat per the collection's rules; requires collection-item tools in fire
-  turns (read/compare/update the item's `watch_state` so one update never
-  fires twice), plus `browse_web` (exists). Deleting an item removes its task.
-- **Items carry media (at least images)** — derived from the source (YouTube
-  thumbnail, Steam header image, crawled poster, the sent photo itself) or
-  found by the bot via the browser agent when the source yields none. Own
-  persistence, not `message_media` (that pipeline drops bytes after
-  describing; collection images must persist for the dashboard gallery).
-- **Telegram interaction tools — dynamic buttons** (user decision,
-  2026-08-19, superseding the first deterministic-binding proposal): the bot
-  *decides* what options to render (free-form labels from the model — a
-  rating scale, yes/no, interview choices), receives the tap, and processes
-  the answer itself. A tap does not apply a pre-bound action; it opens a new
-  model turn in that chat with the chosen option as the triggering input, and
-  the model does whatever follows (update the item's rating, ask the next
-  interview question, …). New shared subsystem (nothing handles
-  `callback_query` today): a generic ask-with-buttons tool, server-side
-  payload token (64-byte callback-data cap), the choice recorded in history,
-  the question message edited to show the selection with the keyboard removed
-  (one-shot — a consumed button set never processes twice). The tool result
-  tells the model the buttons were *sent*, never the answer — the answer
-  arrives in a later turn, and the description must forbid claiming the
-  choice was already handled. Shared across features, not
-  collections-specific.
+### What changed against the 2026-08-19 spec
 
-Proposed architecture (direction agreed in brainstorm, details to implement):
+| 2026-08-19 | 2026-09-08 |
+| --- | --- |
+| Per DM user, DM-only | Per **assistant**; visibility per collection |
+| Link kinds detected in the pipeline, per-source adapters in core | No detection, no adapters: the assistant's own tools and a per-collection instruction |
+| Created by an interview at the first item of a kind | Created from a **bulk import** (one confirmation) or on request |
+| Rules per collection, enforced by the create tool's schema | The standing rule is a **Task**; the collection holds two instructions (fill gaps, present) |
+| Rating via a new inline-buttons subsystem | Rating asked in plain text, applied in the next turn |
+| Item update tracking via tasks | **Dropped entirely** |
+| Fixed item shape plus an attributes blob | **Typed columns** the model proposes and code enforces |
 
-- Tables: `collections` (per-user, tree via `parent_id`, structured rule
-  fields + free-text rules instruction), `collection_items` (title,
-  `source_kind`, `source_url`, `attributes` JSONB, status, rating/review,
-  provenance chat/user/media ids, `watch_state` JSONB, embedding), item
-  images table. Dedupe: same `source_url` in the same collection updates
-  rather than duplicates.
-- Deterministic detection in the DM pipeline (URL domain / media kind —
-  mechanical facts only) → source-adapter enrichment (YouTube oEmbed/yt-dlp,
-  Steam `appdetails` + `ISteamNews`, crawler for IMDB/generic, vision
-  pipeline for photos — multi-item photos itemize into N items) → LLM
-  categorization against the user's collection tree (metadata is the
-  evidence; the model picks/creates the shelf, never invents the facts).
-- MCP tools (~8): collections create/update/delete, items
-  add/update/delete/search, ask-with-buttons. No `collections_list` tool —
-  DM turns compose the user's collection tree into context (like tasks).
+### Decisions (user, 2026-09-08)
 
-Sub-decisions (user, 2026-08-19 — both resolved as recommended):
+1. **Primitive: structured collections.** An assistant owns collections;
+   each has typed columns proposed by the model from the data and enforced
+   by code. Domain-agnostic — movies, books, recipes, expenses are the same
+   feature. No template library, no schema-less rows.
+2. **Scope: per assistant; owner rights write.** A collection belongs to
+   one assistant (cascade). Writes need owner rights on that assistant
+   (`sender.isOwner`, or `authorityIsOwner` lent by a Task — the usual
+   rule). Dashboard access follows assistant ownership (a user-role account
+   sees its own assistants' collections).
+3. **Visibility flag per collection, private by default.** Private: only
+   owner-rights senders see it in the prompt block and through the tools.
+   Shared: anyone in a chat with the assistant may read and query; writes
+   stay owner-only. The gate lives in the service, not in the prompt.
+4. **File ingest: a `document` media kind on the transport contract** (own
+   entry below). A dashboard import button is not part of v1.
+5. **Enrichment data: the per-collection fill-gaps instruction picks the
+   tools.** The assistant uses what it has — `browse_web`, or any lookup
+   server the operator connects as a tool connection. No source adapters
+   in core; the domain lives in the instruction.
+6. **The bulk job is a Task, not a new worker.** (The AGENTS.md ask for a
+   new long-running worker was put and declined.) "Fill the gaps" makes
+   the assistant create an interval task in the chat; every fire dispatches
+   one quiet `browse_web` run whose goal is the batch ("query rows with
+   gaps, look each up, update them"). The run does the work with the
+   assistant's full toolset (own entry below). The browser runner executes
+   one run at a time, so a later run simply re-queries and continues — no
+   overlap, no pending markers.
+7. **Loop end: code reports the gaps, the model ends the task.** The prompt
+   block carries "rows with gaps" per collection, so a fire that sees zero
+   sends the one completion message (`send_message`) and deletes its own
+   task; a fire that sees gaps dispatches and stays quiet. Progress on the
+   dashboard is complete/total, live.
+8. **The standing rule is a Task; the rating is asked in plain text.**
+   "Whenever I send a link of this kind: add it, look it up, present it as
+   usual, ask my rating" is a prompt-kind Task of the assistant — `on-reply`
+   in a DM (every DM message is addressed, no matcher needed), `message`
+   trigger in a group. The rating answer arrives in a later turn and the
+   model applies it with the row-update tool, history as context. No
+   buttons subsystem, no per-collection "on add" policy.
+9. **Prompt: a compact block, tools offered per assistant.** A block like
+   the standing-tasks block lists each visible collection (name,
+   description, columns with types and the required set, row count, rows
+   with gaps, presentation instruction). Rows are reached through tools.
+   The collection tools are offered only to assistants that have at least
+   one collection (derived detail: `collections_create` is always offered,
+   or the first one could never be made). This is variance **per assistant
+   by data presence**, stable for the whole conversation — not routing by
+   message content, so the 2026-08-19 "no toolset routing" decision
+   stands; refine its AGENTS.md wording when this lands.
+10. **Dashboard: `/collections`** with the assistant as a URL facet; per
+    collection the shared Tabs: Rows, Columns, Instructions, Activity.
+11. **Presentation: per-collection free text; images by URL.** An `image`
+    column holds a URL the assistant sends as a link the platform previews.
+    No image bytes in the core.
+12. **Import flow: one confirmation.** The model proposes the name, the
+    typed columns (with the key column and the "needed for complete" set)
+    and the file-to-column mapping, asks once, then imports in one call and
+    reports inserted / updated / skipped rows with reasons.
+13. **Search: structured query plus semantic search.** Column filters,
+    sort, text match, paging and a gaps-only flag; and an embedding of a
+    text rendering of each row when an embedding model is configured (the
+    memory feature's client), re-embedded on every write, degrading to
+    structured-only without a model.
+14. **Tracking is dropped entirely** — not built, not kept as a later idea.
+15. **No hand-off mechanism.** "How does web-found data get into a row" is
+    answered by the agent holding the tools (own entry), not by
+    continuation turns or a synchronous research tool.
 
-1. **Toolset is DM-variant**: collections + buttons tools are offered in DM
-   turns only. Two stable tool blocks (group vs DM) instead of one; each
-   variant stays internally stable per the llama.cpp prefix-cache constraint
-   (the stable-toolset decision of 2026-08-19; see AGENTS.md's standing
-   decisions).
-2. **Rules are hybrid**: required structured fields (name, match rule, media
-   policy, rating policy, tracking cadence) + a free-text instruction for the
-   rest, injected when handling a matching item.
+### Proposed architecture (to implement; details are the implementer's)
 
-Acceptance criteria (v1):
+- **Tables.** `collections`: `id`, `assistant_id` (NOT NULL → assistants,
+  cascade), `name` (unique per assistant, case-insensitive, in the
+  service), `description`, `visibility` (`private` | `shared`),
+  `fill_instruction`, `presentation_instruction`, `columns` JSONB
+  (`[{ key, label, type, options?, scale?, isKey, requiredForComplete }]`),
+  timestamps. `collection_rows`: `id`, `collection_id` (cascade),
+  `key_value` (unique per collection), `values` JSONB, `complete` boolean
+  (computed by code on every write: every `requiredForComplete` column
+  non-empty), `created_by_user_ref`, `origin_chat_ref`,
+  `source_document_ref` (the import's document, or null), `embedding
+  vector(1024)` nullable with an HNSW cosine index, timestamps. Column
+  types: `text`, `long_text`, `number`, `date`, `url`, `image` (a URL),
+  `list`, `enum` (with options), `rating` (a number with a scale),
+  `boolean`. Values are validated per type on every write; an invalid
+  value is refused with the column named, never coerced silently.
+- **Key column and dedupe.** Exactly one `isKey` column (the site's id or
+  the URL); a write with an existing key updates the row. The model fills
+  the key from what it sees (an id inside a URL is a mechanical fact it
+  may extract); code only enforces uniqueness.
+- **Import.** `collection_import` takes a document ref plus either an
+  existing collection id or the confirmed proposal (name, columns,
+  mapping). Code parses CSV / TSV / JSON / XLSX by the mapping, validates
+  per type, upserts by key, and answers counts with per-row skip reasons.
+  The trace records the mapping, the counts and the skipped rows in full;
+  the raw file is in the media store.
+- **Tools** (in-process registry; feature ids `collections` and
+  `mcp-tools-collections`): `collections_create`, `collections_update`
+  (name, description, visibility, instructions, columns — add, rename,
+  retype, remove), `collections_delete`, `collection_import`, `rows_add`,
+  `rows_update`, `rows_delete`, `rows_get`, `rows_query` (filters, sort,
+  text match, semantic query, gaps flag, paging; a page is capped). No
+  `collections_list` — the block. Every tool self-describes; none names
+  another tool. Visibility and owner-rights gates are in the service and
+  answer denials, never throw.
+- **Prompt block.** `buildCollectionsBlock(assistantId, senderHasOwnerRights)`
+  composed next to the standing-tasks block, in reply turns and in fires (a
+  fire is how the loop sees the gap count). Private collections are
+  omitted for non-owner senders.
+- **Dashboard.** `/collections`: assistant facet in the URL; per
+  collection the Rows tab (typed table, per-column filters as URL
+  controls, sort, inline edit, delete, JSON and CSV export), Columns
+  (schema editor with the same validation as the tools), Instructions,
+  Activity (imports and mutations). Live on a `collections` SSE topic;
+  `featureDebugHref`; a Debug button per collection
+  (`/debug?relatedId=<collectionId>`).
+- **Tracing.** `collections`: create / update / delete / import and every
+  dashboard row mutation; `mcp-tools-collections`: every tool call; full
+  raw bodies throughout; a chat-side mutation stamps the turn's
+  correlation (`toolContextTrigger`).
+- **Limits (proposed constants).** 16 collections per assistant, 64
+  columns, 50 000 rows per collection, 50 rows per query page.
 
-- A known-kind link sent in DM becomes an enriched, categorized item with an
-  image; a first-of-kind link triggers the creation interview and the bot
-  does not stop asking until the create tool accepts.
-- A photo of food creates item(s) in the right branch with the photo
-  attached; an order photo with several dishes itemizes.
-- Rating is asked exactly when the collection's rules say, via inline
-  buttons the model composed; a tap opens a turn in which the model records
-  the choice on the item, the question message shows the selection with its
-  keyboard removed, and a consumed button set never processes twice.
-- A tracked Steam item gets a task; a new update fires one DM message and
-  stamps the item's `watch_state`; the same update never fires twice.
-- `/collections` dashboard: tree + items with shared components, every
-  filter a visible URL control, live SSE updates, full raw enrichment bodies
-  in traces, `featureDebugHref`, JSON export, full CRUD.
-- Feature-contract tests: service logic, Route Handlers, adapters (pinned
-  fixture pages for the crawler), button callback handling, task-fire item
-  update path.
+### The three flows, end to end
 
-Dependencies: vision pipeline (photo items), browser agent (crawler + image
-finding), tasks (tracking), history (DM context), the new inline-keyboard
-subsystem.
+1. **Import.** The file arrives as a `document` (kept). The model reads the
+   header and a sample through the document read tool, proposes, the owner
+   confirms once, `collection_import` runs, the reply reports the counts.
+2. **Fill the gaps.** The owner asks; the assistant creates an interval
+   task (every 15 minutes, say) in the chat. Each fire reads the block:
+   gaps left → `browse_web({ goal: <batch>, quiet: true })` and no message;
+   zero → one `send_message` and `tasks_delete` of its own task. Each run:
+   `rows_query({ gaps: true, limit: N })`, per row browse and read, then
+   `rows_update`. A quiet run reports to the chat only when its goal
+   failed.
+3. **A link under the standing rule.** The owner sends a link; the
+   `on-reply` Task tells the turn what to do: `rows_add` with the key and
+   whatever is known, then `browse_web` with the goal "open the link, fill
+   row <id>, then present the item per the presentation instruction and
+   ask for a rating". The turn acknowledges; the run's report is the card
+   plus the question; the owner's "8" is applied by an ordinary turn via
+   `rows_update`. In a group the same runs from a `message` Task.
+
+### Acceptance criteria (v1)
+
+- A text-like document sent in a chat is stored, readable through the read
+  tool, and importable; the proposal is confirmed once; a second import of
+  the same file updates by key and reports zero inserts.
+- A fill-gaps request becomes a Task; runs fill rows without a message per
+  row; the completion message arrives exactly once and the task is gone;
+  complete/total is live on the dashboard while it runs.
+- A link sent under the standing rule ends with a formatted card and a
+  rating question; the answer lands on the row.
+- A private collection is absent from the block and refused by the tools
+  for a non-owner sender; a shared one is readable; writes are owner-only
+  in both.
+- `/collections` meets the feature contract: tabs, URL filters, live
+  updates, export, debug link, full raw bodies in traces.
+- Tests: service (per-type validation, key dedupe, completeness, visibility
+  and owner gates, limits), import parsers (pinned fixtures per format),
+  query (filters, paging, semantic degrade without a model), tools (the
+  boundary and the offer rule), Route Handlers, the block, the fire prompt
+  carrying the gap count; live suites gated as elsewhere.
+
+### Suggested order
+
+1. The `document` media kind (own entry) — contract, SDK release, the
+   transports' normalizers, core ingest, the read tool.
+2. `browse_web` with the assistant's toolset, persona and `quiet` (own
+   entry).
+3. Collections: schema, service, tools, block, import.
+4. `/collections`.
+5. The fill-gaps loop and the link flow live, in the dev setup.
+
+### Risks
+
+- Throughput: the browser runner is sequential and a run takes minutes, so
+  a 500-row watchlist takes many hours; a parallelism knob on the runner is
+  the later answer, not part of v1.
+- The browser role's model now holds a larger toolset; the operator picks a
+  model that copes (settings, browser role).
+
+## Documents: a text-like media kind on the transport contract (`todo`, 2026-09-08)
+
+Prerequisite of the collections entry, useful on its own: a document sent in
+a chat is dropped today — the media detection forwards photos, image
+documents, video and voice only, and the web chat's `file` kind is outbound.
+
+Decisions (user, 2026-09-08): text-like formats — CSV, TSV, JSON, XLSX,
+TXT, MD — under a size cap; bytes **kept** in the core (unlike images,
+whose bytes drop after describing); a general read tool so any document
+sent in a chat can be read in a turn, and the import tool takes the
+document ref. PDF later. Import-only was declined.
+
+Proposed shape (verify against the contract's rules):
+
+- `transportMediaSchema.kind` gains `document`; the payload travels as one
+  base64 blob (like voice) plus a new `filename`. Additive, so a minor SDK
+  release, not a `CONTRACT_MAJOR` move — confirm against the compatibility
+  rule in `docs/development/adding-a-transport.md` before publishing.
+- The transport decides what it forwards (mime or extension in the
+  text-like set) and downloads the bytes; the size cap is a core setting
+  for storage, not a platform limit.
+- Core ingest stores the row as `source_media` kind `document` with bytes
+  retained; the transcript line reads `[document: <filename>, <size>]`;
+  the web chat's upload route takes the same path (unify with its `file`
+  kind).
+- `read_document`: a document ref plus a window (rows for tabular formats,
+  characters for text), answering the slice with totals so the model
+  pages. Self-describing, names no other tool.
+- The media gallery lists documents with a download.
+- Tests: contract schema, ingest, the read tool's slicing per format, and
+  each transport's normalizer in its own repository.
+
+## `browse_web` spawns the assistant, not a browser-only agent (`todo`, 2026-09-08)
+
+Today a run binds no turn context and the agent holds `BROWSER_AGENT_TOOLS`
+only; its report is posted to the chat verbatim and never re-enters a turn.
+User decision (2026-09-08): the agent a run spawns must hold the assistant's
+whole toolset so a goal like "look this up and record it" is carried out
+inside the run — no continuation turns, no synchronous research tool.
+
+- The run row carries the full turn binding (source, chat, thread,
+  assistant, sender, owner rights, correlation); `runOne` wraps the agent
+  in `runWithToolContext` so every in-process and connection tool binds as
+  in any turn.
+- Toolset = browser tools + `getToolset()` for that assistant minus
+  `browse_web` (no recursion) and minus the delivery tools (the runner
+  keeps delivering the report — user decision). One dispatcher routes
+  `browser_*` to the browser dispatcher and the rest to the toolset's
+  `callTool`. Stable per assistant.
+- **Persona composed** into the agent's system prompt (user decision,
+  2026-09-08, reversing "the agent reports facts, never in character");
+  the honesty, download and substitution rules stay as directives.
+- `quiet: boolean` on `browse_web`: a quiet run stores its report on the
+  run row and delivers to the chat only when the outcome check says the
+  goal failed. Meant for batches dispatched from fires; the description
+  says so.
+- A restricted run keeps its URL fence for downloads; every other tool
+  gates on the bound owner flags exactly as in a turn.
+- Sub-decision to take when implementing: a dashboard-started run has no
+  chat, so tools that need one refuse — either such runs keep the
+  browser-only toolset, or the dashboard asks which assistant runs it.
+- Tests: toolset composition (no `browse_web`, no delivery tools), the
+  context binding in `runOne`, the persona in the prompt, quiet delivery
+  both ways, a restricted run's gates; the live suite extended with a goal
+  that records through a tool.
 
 ## The honesty gate cannot judge a retrospective turn (`todo` — observing, 2026-08-15)
 
