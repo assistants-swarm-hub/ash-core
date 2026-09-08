@@ -40,6 +40,10 @@ export interface MediaRecord {
   fileId: string;
   fileUniqueId: string | null;
   mimeType: string | null;
+  /** The file's name as sent (a document's, always), or null. */
+  filename: string | null;
+  /** The payload's size in bytes (a document's, always), or null. */
+  sizeBytes: number | null;
   dataBase64: string | null;
   /** Video/GIF frames (base64, chronological); null for a single still image. */
   frames: string[] | null;
@@ -83,6 +87,8 @@ function mapRow(row: MediaRow, images: string[] = []): MediaRecord {
     fileId: row.fileId,
     fileUniqueId: row.fileUniqueId,
     mimeType: row.mimeType,
+    filename: row.filename,
+    sizeBytes: row.sizeBytes,
     dataBase64: images[0] ?? null,
     frames: images.length > 1 ? images : null,
     visionHint: row.visionHint,
@@ -180,10 +186,14 @@ export async function insertUnavailableMedia(
   return row ? mapRow(row) : null;
 }
 
-/** A row plus its frames — only a pending row can have any, so skip the query otherwise. */
+/** Whether a row still holds bytes: while pending, or always for a document. */
+function holdsBytes(row: Pick<MediaRow, "status" | "kind">): boolean {
+  return row.status === "pending" || row.kind === "document";
+}
+
+/** A row plus its frames — only a row that holds bytes has any, so skip the query otherwise. */
 async function withImages(db: StoreDb, row: MediaRow): Promise<MediaRecord> {
-  const images =
-    row.status === "pending" ? ((await loadImagesByMediaId(db, [row.id])).get(row.id) ?? []) : [];
+  const images = holdsBytes(row) ? ((await loadImagesByMediaId(db, [row.id])).get(row.id) ?? []) : [];
   return mapRow(row, images);
 }
 
@@ -254,6 +264,7 @@ export async function getMediaAnnotations(
   if (sourceMessageIds.length === 0) return new Map();
   const rows = await db
     .select({
+      id: sourceMedia.id,
       sourceMessageId: sourceMedia.sourceMessageId,
       kind: sourceMedia.kind,
       status: sourceMedia.status,
@@ -270,7 +281,12 @@ export async function getMediaAnnotations(
   return new Map(
     rows.map((r) => [
       r.sourceMessageId,
-      { kind: r.kind as MediaKind, status: r.status as MediaStatus, description: r.description },
+      {
+        kind: r.kind as MediaKind,
+        status: r.status as MediaStatus,
+        description: r.description,
+        mediaId: r.id,
+      },
     ]),
   );
 }
@@ -291,8 +307,10 @@ export async function listRecentMedia(
     .where(eq(sourceMedia.source, source))
     .orderBy(desc(sourceMedia.createdAt))
     .limit(limit);
-  const pendingIds = rows.filter((row) => row.status === "pending").map((row) => row.id);
-  const images = await loadImagesByMediaId(db, pendingIds);
+  // Bytes are fetched for the rows that still hold any: pending ones (their
+  // preview is rendered) and documents (kept whole).
+  const withBytes = rows.filter(holdsBytes).map((row) => row.id);
+  const images = await loadImagesByMediaId(db, withBytes);
   return rows.map((row) => mapRow(row, images.get(row.id) ?? []));
 }
 

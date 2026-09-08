@@ -1218,37 +1218,66 @@ of the assistant".
 - The agent role's model holds a far larger toolset than the browser agent
   did; the operator picks a model that copes (settings, agent role).
 
-## Documents: a text-like media kind on the transport contract (`todo`, 2026-09-08)
+## Documents: a text-like media kind on the transport contract (`done`, 2026-09-08 — prune after the next release)
 
-Prerequisite of the collections entry, useful on its own: a document sent in
-a chat is dropped today — the media detection forwards photos, image
-documents, video and voice only, and the web chat's `file` kind is outbound.
+Shipped and documented in `docs/features/documents.md`; stays here until the
+release that carries it is out. The prerequisite of the collections entry
+above (its import takes the document ref this produces), useful on its own:
+"what does this file say" now has an answer.
 
-Decisions (user, 2026-09-08): text-like formats — CSV, TSV, JSON, XLSX,
-TXT, MD — under a size cap; bytes **kept** in the core (unlike images,
-whose bytes drop after describing); a general read tool so any document
-sent in a chat can be read in a turn, and the import tool takes the
-document ref. PDF later. Import-only was declined.
+**What landed:**
 
-Proposed shape (verify against the contract's rules):
+- The contract: `transportMediaSchema` gains `kind: "document"` and an
+  optional `filename`; `packages/contracts/src/documents.ts` defines the
+  carried formats (CSV, TSV, JSON, XLSX, TXT, MD), `documentFormatOf` (the
+  extension wins over a loosely guessed mime type) and `DOCUMENT_MAX_BYTES`
+  (10 MB); the SDK re-exports them. Additive — rides the unpublished 4.0.0.
+  Wire files regenerated.
+- Core: `source_media` and `web_media` gain `filename` and `size_bytes`
+  (migration `0020`, applied to the dev store). A document is stored **born
+  described** with its label (name, format, size) and **keeps its bytes**; no
+  describe pass claims it, the backfill never sees it, a pass that reaches
+  one skips. Ingest refuses an oversize or non-carried file as unavailable
+  with the reason. The transcript line reads ` [document: <label>, id <id>]`;
+  the turn is told the label and the id, never the content.
+- `read_document` (feature `documents` / `mcp-tools-documents`): windows
+  of rows with a header for CSV/TSV/XLSX (default 50, cap 200, sheets by name
+  or index) or characters for JSON/TXT/MD (default 6000, cap 20 000), always
+  with the total and `has_more`; only the bound conversation's documents.
+  Own dependency-free readers: an RFC 4180 parser and a workbook reader over
+  the zip container with Node's zlib.
+- `GET /api/documents/{id}` serves a document as a named download; the
+  gallery shows a file card with it; the web chat takes a document on the
+  message route (a second attach button), refusing a non-carried format or an
+  oversize file with a 400 before storing anything.
+- Both transports: Telegram forwards a text-like `document` whole, checks the
+  declared size against the cap before downloading, reports an oversize one as
+  unavailable, and forwards nothing for any other document; Discord classifies
+  attachments the same way, forwards the first readable one, and names the
+  rest (or a lone unreadable one) in the text. Each repository carries its own
+  tests and commit; their installed SDK copies were refreshed from the local
+  build so the new exports resolve.
 
-- `transportMediaSchema.kind` gains `document`; the payload travels as one
-  base64 blob (like voice) plus a new `filename`. Additive, so a minor SDK
-  release, not a `CONTRACT_MAJOR` move — confirm against the compatibility
-  rule in `docs/development/adding-a-transport.md` before publishing.
-- The transport decides what it forwards (mime or extension in the
-  text-like set) and downloads the bytes; the size cap is a core setting
-  for storage, not a platform limit.
-- Core ingest stores the row as `source_media` kind `document` with bytes
-  retained; the transcript line reads `[document: <filename>, <size>]`;
-  the web chat's upload route takes the same path (unify with its `file`
-  kind).
-- `read_document`: a document ref plus a window (rows for tabular formats,
-  characters for text), answering the slice with totals so the model
-  pages. Self-describing, names no other tool.
-- The media gallery lists documents with a download.
-- Tests: contract schema, ingest, the read tool's slicing per format, and
-  each transport's normalizer in its own repository.
+**Two deviations from the entry's proposal, both deliberate:**
+
+- The cap is a **contract constant**, not a core setting: a transport must
+  know it before it downloads, and one definition read by both sides cannot
+  drift. A setting would have needed desired-state plumbing to reach the
+  transports for a number nobody tunes.
+- Discord's non-text attachments are **not forwarded** as unavailable media —
+  they are named in the text. A row saying "unavailable" for a PDF would read
+  as a failure where nothing failed.
+
+**Proof (2026-09-08):** typecheck and lint clean (core, both transports); unit
+— core 1197 passed / 26 skipped, contracts 27, SDK 26, service 3, Telegram 38,
+Discord 27; integration — source-store, web-chat, vision, turn-consumer,
+ingest 71+ passed (the document rows, the refused upload, the annotation id);
+`npm run build` ok.
+
+**Not exercised live:** a document sent through a real transport end to end
+(needs the transports rebuilt against the refreshed SDK and the dev bots), and
+a model reading one through the tool (the tool-selection live suite does not
+cover it yet).
 
 ## `start_agent`: a background copy of the assistant (`done`, 2026-09-08 — prune after the next release)
 

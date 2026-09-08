@@ -25,6 +25,13 @@ an `unavailable` marker, recorded once and never re-attempted — and the turn
 still runs on the text. A web-chat upload takes the in-process route: the
 web-chat service normalizes it and stores it as pending `web_media`.
 
+A **document** (a text-like file — see [Documents](documents.md)) takes the
+same ingest and then leaves this feature's lifecycle: it is stored **born
+`described`** with its label as the description and **keeps its bytes**, no
+describe pass ever claims it (the backfill lists pending rows only, and a pass
+that reaches one skips), and the assistant reads it through the document tool.
+The gallery shows it as a file card with a download.
+
 **Describe**: caption the stored image with a context-free describe pass, store the
 description on the media row, mark it `described`, and — for a transport's media —
 **drop the bytes**: the platform is its own archive. A described row never comes

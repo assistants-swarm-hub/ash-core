@@ -29,6 +29,10 @@ export interface StoredWebMedia {
   messageId: number;
   kind: string;
   mimeType: string | null;
+  /** The file's name as sent (a document's, always), or null. */
+  filename: string | null;
+  /** The payload's size in bytes (a document's, always), or null. */
+  sizeBytes: number | null;
   description: string | null;
   status: string;
   frames: string[];
@@ -50,6 +54,8 @@ async function withFrames(db: StoreDb, row: MediaRow, threadId: string): Promise
     messageId: row.messageId,
     kind: row.kind,
     mimeType: row.mimeType,
+    filename: row.filename,
+    sizeBytes: row.sizeBytes,
     description: row.description,
     status: row.status,
     frames: blobs.map((blob) => blob.data.toString("base64")),
@@ -74,7 +80,9 @@ export async function insertMedia(
     messageId: number;
     kind: string;
     mimeType: string | null;
-    /** Ordered base64 payload — one image today, a frame sequence later. */
+    filename?: string | null;
+    sizeBytes?: number | null;
+    /** Ordered base64 payload — one image, raw audio, or a whole file. */
     frames: string[];
   },
   db: StoreDb = getStoreDb(),
@@ -87,6 +95,8 @@ export async function insertMedia(
       messageId: values.messageId,
       kind: values.kind,
       mimeType: values.mimeType,
+      filename: values.filename ?? null,
+      sizeBytes: values.sizeBytes ?? null,
       status: "pending",
     })
     .onConflictDoNothing()
@@ -224,6 +234,8 @@ export async function describeOnInsert(
     messageId: number;
     kind: string;
     mimeType: string | null;
+    filename?: string | null;
+    sizeBytes?: number | null;
     frames: string[];
     description: string;
   },

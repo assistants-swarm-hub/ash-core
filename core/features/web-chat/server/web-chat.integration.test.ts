@@ -301,6 +301,49 @@ describe("posting", () => {
     expect(enqueued.at(-1)!.message).toMatchObject({ content: "look at this", media: [] });
   });
 
+  it("takes a document in, stored whole and born described with its label", async () => {
+    const thread = await service.createChatThread(
+      { assistantId: ASSISTANT_ID, name: "Files" },
+      ACCOUNT_ID,
+      db,
+    );
+    const csv = Buffer.from("title,year\nHeat,1995\n");
+    const posted = await service.postChatMessage(
+      thread.id,
+      {
+        text: "store this",
+        document: { dataBase64: csv.toString("base64"), mimeType: "text/csv", filename: "watchlist.csv" },
+      },
+      { db },
+    );
+    expect(posted.message).toMatchObject({
+      content: "store this",
+      media: { kind: "document", status: "described", description: "watchlist.csv (CSV, 21 B)" },
+    });
+    const stored = await mediaRepository.getMediaById(posted.message.media!.id, db);
+    expect(stored).toMatchObject({ filename: "watchlist.csv", sizeBytes: csv.length });
+    expect(Buffer.from(stored!.frames[0], "base64").toString()).toBe(csv.toString());
+  });
+
+  it("refuses a document that is not a carried format, before storing anything", async () => {
+    const thread = await service.createChatThread(
+      { assistantId: ASSISTANT_ID, name: "Files" },
+      ACCOUNT_ID,
+      db,
+    );
+    await expect(
+      service.postChatMessage(
+        thread.id,
+        {
+          text: "",
+          document: { dataBase64: Buffer.from("%PDF").toString("base64"), mimeType: "application/pdf", filename: "paper.pdf" },
+        },
+        { db },
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+    expect((await db.select().from(storeSchema.webMessages)).length).toBe(0);
+  });
+
   it("takes a voice note in, stored raw", async () => {
     const thread = await service.createChatThread(
       { assistantId: ASSISTANT_ID, name: "Spoken" },

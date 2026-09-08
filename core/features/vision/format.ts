@@ -18,6 +18,7 @@ const KIND_LABEL: Record<MediaKind, string> = {
   video: "video",
   voice: "voice message",
   image: "image",
+  document: "document",
 };
 
 /** Human label for a media kind. */
@@ -33,6 +34,14 @@ export function mediaKindLabel(kind: MediaKind): string {
  */
 export function renderMediaSuffix(annotation: MediaAnnotation): string {
   const label = mediaKindLabel(annotation.kind);
+  // A document's description is its label (name, format, size); the id lets
+  // the model read the file through the document tool, so it rides along.
+  if (annotation.kind === "document" && annotation.status !== "unavailable") {
+    const name = annotation.description ?? "document";
+    return annotation.mediaId
+      ? ` [document: ${name}, id ${annotation.mediaId}]`
+      : ` [document: ${name}]`;
+  }
   if (annotation.status === "described" && annotation.description) {
     return ` [${label}: ${annotation.description}]`;
   }

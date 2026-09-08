@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImagePlus, MessagesSquare, Mic, PenSquare, Send, Square, Trash2, X } from "lucide-react";
+import {
+  FileText,
+  ImagePlus,
+  MessagesSquare,
+  Mic,
+  PenSquare,
+  Send,
+  Square,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import {
   Button,
@@ -437,7 +447,13 @@ function Conversation({
 /** One line of the transcript, with whatever came attached to it. */
 function Message({ message }: { message: ChatThreadMessage }) {
   const media = message.media;
-  const mediaUrl = media ? `/api/chat/media/${encodeURIComponent(media.id)}` : null;
+  // A document downloads through the documents route (a named file); every
+  // other kind streams from the web chat's own bytes route.
+  const mediaUrl = media
+    ? media.kind === "document"
+      ? `/api/documents/${encodeURIComponent(media.id)}`
+      : `/api/chat/media/${encodeURIComponent(media.id)}`
+    : null;
   return (
     <div
       className={cn(
@@ -450,7 +466,7 @@ function Message({ message }: { message: ChatThreadMessage }) {
       {media && mediaUrl ? (
         media.kind === "voice" ? (
           <audio controls preload="none" src={mediaUrl} className="mb-2 w-full" />
-        ) : media.kind === "file" ? (
+        ) : media.kind === "file" || media.kind === "document" ? (
           <a href={mediaUrl} className="mb-2 block text-xs underline">
             {media.description ?? "the file"}
           </a>
@@ -490,7 +506,11 @@ interface Draft {
   text: string;
   image?: { name: string; dataBase64: string; mimeType: string } | null;
   audio?: { dataBase64: string; mimeType: string } | null;
+  document?: { name: string; dataBase64: string; mimeType: string } | null;
 }
+
+/** What the file picker accepts as a document — the contract's formats. */
+const DOCUMENT_ACCEPT = ".csv,.tsv,.json,.xlsx,.txt,.md,text/csv,text/plain,application/json";
 
 function draftBody(draft: Draft): Record<string, unknown> {
   return {
@@ -499,6 +519,15 @@ function draftBody(draft: Draft): Record<string, unknown> {
       ? { image: { dataBase64: draft.image.dataBase64, mimeType: draft.image.mimeType } }
       : {}),
     ...(draft.audio ? { audio: draft.audio } : {}),
+    ...(draft.document
+      ? {
+          document: {
+            dataBase64: draft.document.dataBase64,
+            mimeType: draft.document.mimeType,
+            filename: draft.document.name,
+          },
+        }
+      : {}),
   };
 }
 
@@ -523,18 +552,20 @@ function Composer({
   const [text, setText] = useState("");
   const [image, setImage] = useState<Draft["image"]>(null);
   const [audio, setAudio] = useState<Draft["audio"]>(null);
+  const [document, setDocument] = useState<Draft["document"]>(null);
   const [recording, setRecording] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
 
-  const empty = !text.trim() && !image && !audio;
+  const empty = !text.trim() && !image && !audio && !document;
 
   const send = async () => {
     if (empty || disabled) return;
-    const draft: Draft = { text: text.trim(), image, audio };
+    const draft: Draft = { text: text.trim(), image, audio, document };
     setText("");
     setImage(null);
     setAudio(null);
+    setDocument(null);
     await onSend(draft);
   };
 
@@ -588,6 +619,13 @@ function Composer({
           onRemove={() => setImage(null)}
         />
       ) : null}
+      {document ? (
+        <Attachment
+          icon={<FileText className="h-3.5 w-3.5" />}
+          label={document.name}
+          onRemove={() => setDocument(null)}
+        />
+      ) : null}
       <div className="flex items-end gap-2">
         <label
           className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border text-muted hover:text-foreground"
@@ -606,6 +644,31 @@ function Composer({
                 setImage({
                   name: file.name,
                   mimeType: file.type || "image/jpeg",
+                  dataBase64: await readAsBase64(file),
+                });
+              } catch {
+                setLocalError("That file could not be read");
+              }
+            }}
+          />
+        </label>
+        <label
+          className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-border text-muted hover:text-foreground"
+          title="Attach a document (CSV, TSV, JSON, XLSX, TXT, MD)"
+        >
+          <FileText className="h-4 w-4" />
+          <input
+            type="file"
+            accept={DOCUMENT_ACCEPT}
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              try {
+                setDocument({
+                  name: file.name,
+                  mimeType: file.type || "",
                   dataBase64: await readAsBase64(file),
                 });
               } catch {

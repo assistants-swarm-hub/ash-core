@@ -19,7 +19,12 @@ import {
   type TransportPresenceEvent,
   type TransportReactionEvent,
   type TransportReceiver,
+  DOCUMENT_MAX_BYTES,
+  DOCUMENT_MEDIA_KIND,
+  documentFormatOf,
 } from "@assistants-swarm-hub/contracts";
+
+import { documentLabel } from "@/features/documents/format";
 import { normalizeImageForChat } from "@assistants-swarm-hub/media";
 import type { Worker } from "bullmq";
 
@@ -160,11 +165,24 @@ async function buildTurnEvent(
   } satisfies InboundMessageEvent);
 }
 
-/** Persist the media a message update carried, best-effort. */
+/**
+ * Persist the media a message update carried, best-effort. A document is
+ * stored whole and born described with its label (name, format, size) — the
+ * document tool reads its bytes later, no describe pass does — and refused
+ * as unavailable when it is over the contract's cap or not a format the
+ * contract carries, whatever the transport sent.
+ */
 async function storeEventMedia(event: TransportMessageEvent): Promise<void> {
   const media = event.media;
   if (!media) return;
-  if (media.unavailable || media.frames.length === 0) {
+  const isDocument = media.kind === DOCUMENT_MEDIA_KIND;
+  const filename = media.filename ?? null;
+  const sizeBytes = isDocument && media.frames[0] ? base64ByteLength(media.frames[0]) : null;
+  const refused =
+    isDocument &&
+    ((sizeBytes ?? 0) > DOCUMENT_MAX_BYTES ||
+      documentFormatOf({ filename, mimeType: media.mimeType }) === null);
+  if (media.unavailable || media.frames.length === 0 || refused) {
     await insertUnavailableSourceMedia({
       id: randomUUID(),
       source: event.source,
@@ -173,7 +191,11 @@ async function storeEventMedia(event: TransportMessageEvent): Promise<void> {
       kind: media.kind,
       fileId: media.fileId,
       fileUniqueId: media.fileUniqueId,
-      visionHint: media.visionHint,
+      filename,
+      sizeBytes,
+      visionHint: refused
+        ? `document refused: ${(sizeBytes ?? 0) > DOCUMENT_MAX_BYTES ? "over the size cap" : "not a carried format"}`
+        : media.visionHint,
     }).catch(() => undefined);
     return;
   }
@@ -186,9 +208,20 @@ async function storeEventMedia(event: TransportMessageEvent): Promise<void> {
     fileId: media.fileId,
     fileUniqueId: media.fileUniqueId,
     mimeType: media.mimeType,
+    filename,
+    sizeBytes,
     visionHint: media.visionHint,
     frames: media.frames,
+    describedOnInsert: isDocument
+      ? documentLabel({ filename, mimeType: media.mimeType, sizeBytes })
+      : null,
   }).catch(() => undefined);
+}
+
+/** The byte length a base64 payload decodes to, without decoding it. */
+function base64ByteLength(base64: string): number {
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  return Math.floor((base64.length * 3) / 4) - padding;
 }
 
 /**

@@ -57,6 +57,15 @@ export {
 } from "./content-api";
 export { EMBEDDING_DIMENSIONS } from "./embeddings";
 export {
+  DOCUMENT_FORMATS,
+  DOCUMENT_MAX_BYTES,
+  DOCUMENT_MEDIA_KIND,
+  documentExtension,
+  documentFormatOf,
+  isDocumentFile,
+  type DocumentFormat,
+} from "./documents";
+export {
   internalDeleteMessageResponseSchema,
   internalEditMenuRequestSchema,
   internalSendFileRequestSchema,

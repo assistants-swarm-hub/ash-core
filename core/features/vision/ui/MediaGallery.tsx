@@ -1,4 +1,4 @@
-import { Image as ImageIcon } from "lucide-react";
+import { FileText, Image as ImageIcon } from "lucide-react";
 
 import {
   Badge,
@@ -11,6 +11,8 @@ import {
   type BadgeTone,
 } from "@/components/ui";
 import { Timestamp } from "@/components/time/Timestamp";
+
+import { formatBytes } from "@/lib/format-bytes";
 
 import { mediaKindLabel } from "../format";
 import type { MediaStatus, MediaView } from "../types";
@@ -35,10 +37,28 @@ const STATUS_LABEL: Record<MediaStatus, string> = {
 
 function MediaCard({ media }: { media: MediaView }) {
   const isVoice = media.kind === "voice";
+  const isDocument = media.kind === "document";
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-surface-2">
       <div className="flex aspect-video items-center justify-center overflow-hidden bg-surface-3">
-        {isVoice && media.preview ? (
+        {isDocument ? (
+          // A document is a file, kept whole: its name, its size, a download.
+          <div className="flex flex-col items-center gap-2 p-3 text-center">
+            <FileText className="h-8 w-8 text-muted" aria-hidden />
+            <p className="max-w-full truncate text-sm font-medium" title={media.filename ?? undefined}>
+              {media.filename ?? "document"}
+            </p>
+            <p className="text-xs text-muted">
+              {media.sizeBytes != null ? formatBytes(media.sizeBytes) : null}
+              {media.status === "unavailable" ? " · not kept" : null}
+            </p>
+            {media.bytesUrl ? (
+              <a href={media.bytesUrl} className="text-xs underline" download>
+                Download
+              </a>
+            ) : null}
+          </div>
+        ) : isVoice && media.preview ? (
           // A pending voice message: its stored audio, playable while the bytes
           // still exist (they drop once transcribed, like image bytes do).
           <audio controls preload="none" src={media.preview} className="w-full px-3" />
@@ -76,7 +96,11 @@ function MediaCard({ media }: { media: MediaView }) {
         <div className="flex items-center justify-between gap-2">
           <Badge tone="neutral">{mediaKindLabel(media.kind)}</Badge>
           <Badge tone={STATUS_TONE[media.status]} dot>
-            {isVoice && media.status === "described" ? "Transcribed" : STATUS_LABEL[media.status]}
+            {isVoice && media.status === "described"
+              ? "Transcribed"
+              : isDocument && media.status === "described"
+                ? "Kept"
+                : STATUS_LABEL[media.status]}
           </Badge>
         </div>
         <div className="flex items-center justify-between gap-2 text-xs text-faint">
@@ -100,9 +124,10 @@ export function MediaGallery({ media }: { media: MediaView[] }) {
         <div>
           <CardTitle>Received media</CardTitle>
           <CardDescription>
-            Images, stickers, video frames, and voice messages the bot has seen. Media on an
-            answered message is described (voice: transcribed) immediately; the rest wait for the
-            backfill job.
+            Images, stickers, video frames, voice messages, and documents the bot has received.
+            Media on an answered message is described (voice: transcribed) immediately; the rest
+            wait for the backfill job. A document is kept whole instead — the assistant reads it
+            through its document tool, and you can download it here.
           </CardDescription>
         </div>
       </CardHeader>
@@ -111,7 +136,7 @@ export function MediaGallery({ media }: { media: MediaView[] }) {
           <EmptyState
             icon={ImageIcon}
             title="No media yet"
-            description="Send the bot a photo or sticker and it appears here."
+            description="Send the bot a photo, a sticker, or a document and it appears here."
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

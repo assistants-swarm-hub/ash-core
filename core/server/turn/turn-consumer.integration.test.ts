@@ -619,6 +619,8 @@ describe("inbound turn consumer", () => {
       fileId: "",
       fileUniqueId: null,
       mimeType: "image/jpeg",
+      filename: null,
+      sizeBytes: null,
       dataBase64: Buffer.from("fake-jpeg").toString("base64"),
       frames: null,
       visionHint: null,

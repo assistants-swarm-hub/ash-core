@@ -857,8 +857,12 @@ export const webMedia = pgTable(
     messageId: bigint("message_id", { mode: "number" })
       .notNull()
       .references(() => webMessages.id, { onDelete: "cascade" }),
-    /** Media kind: `image` | `voice` | `file`. */
+    /** Media kind: `image` | `voice` | `file` | `document`. */
     kind: text("kind").notNull(),
+    /** The file's name as the person sent it (a document's, always), or null. */
+    filename: text("filename"),
+    /** The payload's size in bytes (a document's, always), or null. */
+    sizeBytes: integer("size_bytes"),
     /** Mime hint of the stored payload. */
     mimeType: text("mime_type"),
     /** The vision model's text description / the voice transcript; null until made. */
@@ -1100,7 +1104,9 @@ export type SourceMessageSearchRow = typeof sourceMessageSearch.$inferSelect;
  * Media attached to a transport message (the former transport-side `media`). One row per
  * media-bearing message; bytes live in {@link sourceMediaBlobs} while the
  * row is `pending` and are dropped once described — the platform is its own
- * archive.
+ * archive. A `document` is the exception: born `described` (its label is
+ * its description) with its bytes kept, because the core reads it whole
+ * later and the platform may not serve the file again.
  */
 export const sourceMedia = pgTable(
   "source_media",
@@ -1109,8 +1115,12 @@ export const sourceMedia = pgTable(
     source: text("source").notNull(),
     chatId: text("chat_id").notNull(),
     sourceMessageId: text("source_message_id").notNull(),
-    /** Media kind: `photo` | `sticker` | `image_document` | `animation` | `video` | `voice`. */
+    /** Media kind: `photo` | `sticker` | `image_document` | `animation` | `video` | `voice` | `document`. */
     kind: text("kind").notNull(),
+    /** The file's name as the person sent it (a document's, always), or null. */
+    filename: text("filename"),
+    /** The payload's size in bytes (a document's, always), or null. */
+    sizeBytes: integer("size_bytes"),
     /** Source-local file handle, for re-downloads. */
     fileId: text("file_id").notNull(),
     /** Source-local stable file identity, or null. */

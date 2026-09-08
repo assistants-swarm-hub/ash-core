@@ -331,8 +331,9 @@ the acting account's own; a thread that is not answers `not_found`.
 | `GET` | `/api/chat/threads/{id}` | account | — | `{ thread, messages: ChatThreadMessage[], turn: ChatThreadTurn \| null }` |
 | `PATCH` | `/api/chat/threads/{id}` | account | `{ name }` | `{ thread }`. The assistant is fixed at creation |
 | `DELETE` | `/api/chat/threads/{id}` | account | — | `{ deleted: true }` |
-| `POST` | `/api/chat/threads/{id}/messages` | account | `{ text?="" (≤10 000), image?: { dataBase64, mimeType? }, audio?: { dataBase64, mimeType? } }` — at least one of the three | `{ message: ChatThreadMessage, correlationId }` |
+| `POST` | `/api/chat/threads/{id}/messages` | account | `{ text?="" (≤10 000), image?: { dataBase64, mimeType? }, audio?: { dataBase64, mimeType? }, document?: { dataBase64 (≤ the 10 MB cap), mimeType?, filename } }` — at least one of the four. A document that is not CSV/TSV/JSON/XLSX/TXT/MD, or over the cap, is a `400` | `{ message: ChatThreadMessage, correlationId }` |
 | `GET` | `/api/chat/media/{id}` | account | — | The image bytes; `Cache-Control: private, max-age=31536000, immutable`. Plain-text `404` when unknown |
+| `GET` | `/api/documents/{id}` | admin | — | A stored document's bytes as a named download (`Content-Disposition: attachment`), whichever source keeps the row; immutable. Plain-text `404` when unknown or not a document |
 
 `ChatThread` = `{ id, assistantId, name, titleProvisional, userId, messageCount,
 lastMessageAt, createdAt, updatedAt }`. `ChatThreadMessage` = `{ id, role,

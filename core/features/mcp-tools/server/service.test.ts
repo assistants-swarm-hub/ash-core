@@ -7,6 +7,7 @@ import {
   HISTORY_SEARCH_TOOL,
 } from "@/features/history/server/mcp-tools";
 import { START_AGENT_TOOL } from "@/features/agents/server/mcp-tools";
+import { READ_DOCUMENT_TOOL } from "@/features/documents/server/mcp-tools";
 import { IMAGE_GENERATE_TOOL } from "@/features/image-gen/server/mcp-tools";
 import { UPDATE_USER_ALIASES_TOOL } from "@/features/known-users/server/mcp-tools";
 import { MEMORY_TOOL_NAMES } from "@/features/memory/server/mcp-tools";
@@ -63,6 +64,9 @@ const COMMON_TOOLS = [
   ...RANDOMNESS_TOOL_NAMES,
   IMAGE_GENERATE_TOOL,
   START_AGENT_TOOL,
+  // Reading a document is a lookup, not a delivery: every turn may read a
+  // file sent in its conversation.
+  READ_DOCUMENT_TOOL,
 ].sort();
 
 /**
@@ -88,6 +92,7 @@ describe("getToolsView", () => {
     // The owning feature is what gives the tool its `mcp-tools-image-gen` Debug scope.
     expect(featureOf(IMAGE_GENERATE_TOOL)).toBe("image-gen");
     expect(featureOf(START_AGENT_TOOL)).toBe("agents");
+    expect(featureOf(READ_DOCUMENT_TOOL)).toBe("documents");
     expect(featureOf(ROLL_CHANCE_TOOL)).toBe("randomness");
     expect(featureOf(CHAT_REPLY_TOOL)).toBe("web-chat");
     expect(view.tools.every((t) => t.description.length > 0)).toBe(true);

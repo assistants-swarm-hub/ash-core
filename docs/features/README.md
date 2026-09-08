@@ -21,6 +21,7 @@ relative to `core/` unless they start with `core/` or `packages/`.
 | Memory | `memory`, `memory-extraction`, `mcp-tools-memory` | `/memory` | [memory.md](memory.md) |
 | Vision | `vision`, `vision-backfill` | `/vision` | [vision.md](vision.md) |
 | Voice | `voice` | `/vision` | [voice.md](voice.md) |
+| Documents (text-like files kept whole, read by a tool) | `documents`, `mcp-tools-documents` | `/vision` | [documents.md](documents.md) |
 | Image generation | `mcp-tools-image-gen` | `/tools`, `/vision` | [image-generation.md](image-generation.md) |
 | Randomness (`roll_chance`) | `mcp-tools-randomness` | `/tools` | [randomness.md](randomness.md) |
 | Agents (background work, all web access) | `agents`, `mcp-tools-agents`, `ytdlp-updater` | `/agents` | [agents.md](agents.md) |

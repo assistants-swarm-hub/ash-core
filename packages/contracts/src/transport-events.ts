@@ -55,10 +55,17 @@ export const transportReceiverSchema = z.object({
   addressing: addressingSchema,
 });
 
-/** Media on an update, downloaded and normalized by the transport. */
+/**
+ * Media on an update, downloaded and normalized by the transport. A
+ * `document` — a text-like file (see `documents.ts` for which, and the byte
+ * cap) — travels whole as one frame, with its `filename`; the core keeps it
+ * rather than describing it.
+ */
 export const transportMediaSchema = z.object({
-  /** Media kind: `photo` | `sticker` | `image_document` | `animation` | `video` | `voice`. */
+  /** Media kind: `photo` | `sticker` | `image_document` | `animation` | `video` | `voice` | `document`. */
   kind: z.string().min(1),
+  /** The file's name as the person sent it — set for a `document`, optional otherwise. */
+  filename: z.string().nullable().optional(),
   /** Source-local file handle, kept for provenance. */
   fileId: z.string(),
   fileUniqueId: z.string().nullable(),

@@ -233,7 +233,7 @@ paths:
       tags:
         - transport
       summary: Deliver a file
-      description: An agent download. Pick the playable send kind by mime where the platform has one, and retry as a plain attachment when it refuses the container. The core allows 500 s for this call, because the upload is the platform's.
+      description: A browser-agent download. Pick the playable send kind by mime where the platform has one, and retry as a plain attachment when it refuses the container. The core allows 500 s for this call, because the upload is the platform's.
       requestBody:
         required: true
         content:
@@ -2205,6 +2205,10 @@ components:
                 kind:
                   type: string
                   minLength: 1
+                filename:
+                  anyOf:
+                    - type: string
+                    - type: "null"
                 fileId:
                   type: string
                 fileUniqueId:
@@ -2699,6 +2703,10 @@ components:
                     kind:
                       type: string
                       minLength: 1
+                    filename:
+                      anyOf:
+                        - type: string
+                        - type: "null"
                     fileId:
                       type: string
                     fileUniqueId:

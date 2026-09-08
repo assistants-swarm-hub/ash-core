@@ -5,6 +5,10 @@ import {
   registerAgentsMcpTools,
 } from "@/features/agents/server/mcp-tools";
 import {
+  DOCUMENTS_TOOL_NAMES,
+  registerDocumentsMcpTools,
+} from "@/features/documents/server/mcp-tools";
+import {
   HISTORY_TOOL_NAMES,
   registerHistoryMcpTools,
 } from "@/features/history/server/mcp-tools";
@@ -74,6 +78,11 @@ const REGISTRARS: {
   offered?: ToolOfferPredicate;
 }[] = [
   { feature: "history", registrar: registerHistoryMcpTools, toolNames: HISTORY_TOOL_NAMES },
+  {
+    feature: "documents",
+    registrar: registerDocumentsMcpTools,
+    toolNames: DOCUMENTS_TOOL_NAMES,
+  },
   {
     feature: "known-users",
     registrar: registerKnownUsersMcpTools,

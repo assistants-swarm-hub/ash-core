@@ -7,7 +7,15 @@ import {
   turnCorrelationId,
   type InboundMessageEvent,
 } from "@assistants-swarm-hub/contracts";
+import {
+  DOCUMENT_MAX_BYTES,
+  documentFormatOf,
+  type DocumentFormat,
+} from "@assistants-swarm-hub/contracts";
 import { normalizeImageForChat } from "@assistants-swarm-hub/media";
+
+import { documentLabel } from "@/features/documents/format";
+import { formatBytes } from "@/lib/format-bytes";
 
 import { ApiError } from "@/lib/api-error";
 import { publishEvent } from "@/server/realtime/hub";
@@ -17,7 +25,7 @@ import { enqueueInboundEvent } from "@/server/turn/enqueue";
 import type { WebMessageRow } from "../../../store/schema";
 import type { ChatThread, ChatThreadMessage, ChatThreadTurn } from "../schema";
 import { buildChatInfo, buildConversationContext, buildSenderInfo, threadOwner } from "./context";
-import { getMediaForMessages, insertMedia } from "./media-repository";
+import { describeOnInsert, getMediaForMessages, insertMedia } from "./media-repository";
 import {
   appendMessage,
   createThread,
@@ -195,8 +203,11 @@ export interface PostMessageResult {
  * An uploaded image is normalized and stored `pending`, then referenced on
  * the event exactly as a transport's photo is: the vision pass describes it and
  * writes the text back. A voice note is stored raw and referenced the same
- * way; the pipeline transcribes it and answers the words. Media that cannot
- * be stored does NOT lose the message — the turn runs on the text.
+ * way; the pipeline transcribes it and answers the words. A document is
+ * stored whole and born described with its label — the document tool reads
+ * it later — and is refused up front when it is not a carried format or over
+ * the cap. Media that cannot be stored does NOT lose the message — the turn
+ * runs on the text.
  */
 export async function postChatMessage(
   threadId: string,
@@ -204,6 +215,7 @@ export async function postChatMessage(
     text: string;
     image?: { dataBase64: string; mimeType?: string | null } | null;
     audio?: { dataBase64: string; mimeType?: string | null } | null;
+    document?: { dataBase64: string; mimeType?: string | null; filename: string } | null;
   },
   options: { accountId?: string; now?: () => Date; db?: StoreDb } = {},
 ): Promise<PostMessageResult> {
@@ -217,6 +229,10 @@ export async function postChatMessage(
   const user = await threadOwner(thread, db);
   if (!user) throw ApiError.notFound("thread not found");
 
+  // A document is checked before anything is stored: a refused file is a
+  // refused post, not a message with a hole in it.
+  const document = input.document ? checkDocument(input.document) : null;
+
   // Store first: the transcript is the durable record, and a turn that fails
   // to enqueue must still leave what the person said behind.
   const message = await appendMessage(
@@ -229,9 +245,10 @@ export async function postChatMessage(
     db,
   );
 
-  // One attachment per message (the store's index): a picture or a voice
-  // note. A voice note's bytes are stored raw — the pipeline converts before
-  // transcribing, exactly as it does for a transport's audio.
+  // One attachment per message (the store's index): a picture, a voice
+  // note, or a document. A voice note's bytes are stored raw — the pipeline
+  // converts before transcribing, exactly as it does for a transport's audio.
+  // A document is born described with its label; nothing describes it later.
   const stored = input.image
     ? await insertNormalizedImage(message.id, input.image, db).catch(() => null)
     : input.audio
@@ -244,7 +261,20 @@ export async function postChatMessage(
           },
           db,
         ).catch(() => null)
-      : null;
+      : document
+        ? await describeOnInsert(
+            {
+              messageId: message.id,
+              kind: "document",
+              mimeType: document.mimeType,
+              filename: document.filename,
+              sizeBytes: document.sizeBytes,
+              frames: [document.dataBase64],
+              description: document.label,
+            },
+            db,
+          ).catch(() => null)
+        : null;
 
   const context = await buildConversationContext(
     { thread, user, excludeMessageId: message.id, now },
@@ -313,6 +343,51 @@ export async function postChatMessage(
     correlationId,
   };
 }
+
+/**
+ * A document upload, checked against the contract: a carried format, under
+ * the cap. What survives is what the store needs — the bytes, the mime type
+ * the format implies when the browser sent none, the size, the label.
+ */
+function checkDocument(input: { dataBase64: string; mimeType?: string | null; filename: string }): {
+  dataBase64: string;
+  mimeType: string;
+  filename: string;
+  sizeBytes: number;
+  label: string;
+} {
+  const filename = input.filename.trim();
+  const format = documentFormatOf({ filename, mimeType: input.mimeType });
+  if (!format) {
+    throw ApiError.badRequest(
+      `"${filename}" is not a document the assistant can read (CSV, TSV, JSON, XLSX, TXT or MD)`,
+    );
+  }
+  const sizeBytes = Buffer.from(input.dataBase64, "base64").length;
+  if (sizeBytes > DOCUMENT_MAX_BYTES) {
+    throw ApiError.badRequest(
+      `"${filename}" is ${formatBytes(sizeBytes)}; a document may be at most ${formatBytes(DOCUMENT_MAX_BYTES)}`,
+    );
+  }
+  const mimeType = input.mimeType?.trim() || DOCUMENT_MIME_FALLBACK[format];
+  return {
+    dataBase64: input.dataBase64,
+    mimeType,
+    filename,
+    sizeBytes,
+    label: documentLabel({ filename, mimeType, sizeBytes }),
+  };
+}
+
+/** The mime type to store when the browser sent none for a format. */
+const DOCUMENT_MIME_FALLBACK: Record<DocumentFormat, string> = {
+  csv: "text/csv",
+  tsv: "text/tab-separated-values",
+  json: "application/json",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  txt: "text/plain",
+  md: "text/markdown",
+};
 
 /** Normalize an upload to a bounded JPEG and store it as pending media. */
 async function insertNormalizedImage(

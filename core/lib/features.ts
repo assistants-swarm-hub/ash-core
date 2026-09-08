@@ -70,6 +70,15 @@ export const FEATURES = {
     relatedIdsKey: "message_media",
     path: "/vision",
   },
+  /** Documents: text-like files kept whole and read by a tool — they share the vision gallery. */
+  documents: {
+    id: "documents",
+    label: "Documents",
+    group: "conversation",
+    realtimeTopic: "vision",
+    relatedIdsKey: "message_media",
+    path: "/vision",
+  },
   "vision-backfill": {
     id: "vision-backfill",
     label: "Vision backfill",
@@ -342,6 +351,12 @@ export const FEATURES = {
   // The web chat's delivery tools, in-process since the chat dissolve
   // (Phase 6) — before it they traced as `mcp-tools-connections` calls on the
   // chat app's managed connection.
+  "mcp-tools-documents": {
+    id: "mcp-tools-documents",
+    label: "Document tool",
+    group: "tools",
+    path: "/tools",
+  },
   "mcp-tools-web-chat": {
     id: "mcp-tools-web-chat",
     label: "Web chat tools",

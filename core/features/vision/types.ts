@@ -7,8 +7,10 @@ import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 /**
  * The kinds of media the bot can read from a chat message: the visual kinds
- * (described by the vision model) plus `voice` (transcribed by the audio-capable
- * chat model — the transcript plays the role of the description).
+ * (described by the vision model), `voice` (transcribed by the audio-capable
+ * chat model — the transcript plays the role of the description), and
+ * `document` (a text-like file kept whole and read by a tool — its label
+ * plays the role of the description).
  */
 export const MEDIA_KINDS = [
   "photo",
@@ -19,6 +21,8 @@ export const MEDIA_KINDS = [
   "voice",
   /** A browser upload in a web thread — no platform kind, just a picture. */
   "image",
+  /** A text-like file (CSV, JSON, XLSX, …) kept whole for the document tool. */
+  "document",
 ] as const;
 
 /** The union, derived from the list so a new kind cannot be added to only one. */
@@ -75,6 +79,8 @@ export interface MediaAnnotation {
   kind: MediaKind;
   status: MediaStatus;
   description: string | null;
+  /** The media row's id — a document's annotation names it so a tool can read the file. */
+  mediaId?: string;
 }
 
 /**
@@ -94,6 +100,10 @@ export interface MediaView {
   kind: MediaKind;
   status: MediaStatus;
   description: string | null;
+  /** The file's name as sent (a document's, always), or null. */
+  filename: string | null;
+  /** The payload's size in bytes (a document's, always), or null. */
+  sizeBytes: number | null;
   /** `data:<mime>;base64,…` for a row whose bytes came with the listing, else null. */
   preview: string | null;
   /**

@@ -209,6 +209,16 @@ export {
   type ImagePayload,
 } from "@assistants-swarm-hub/media";
 
+// ---- Documents: which files travel whole as the `document` kind, and how large
+export {
+  DOCUMENT_FORMATS,
+  DOCUMENT_MAX_BYTES,
+  DOCUMENT_MEDIA_KIND,
+  documentFormatOf,
+  isDocumentFile,
+  type DocumentFormat,
+} from "@assistants-swarm-hub/contracts";
+
 // ---- The runtime: everything that is the same for every platform ----------
 // A transport supplies a descriptor, a platform adapter, a normalizer and an
 // addressing rule; `startTransportService` is the rest of it — boot,

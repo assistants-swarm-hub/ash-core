@@ -268,6 +268,46 @@ describe("media lifecycle", () => {
     expect(reread?.description).toBe("a cat on a chair");
   });
 
+  it("keeps a document whole: born described with its label, bytes retained, never backfilled", async () => {
+    await seedMessage({ chatId: GROUP, sourceMessageId: "72" });
+    const csv = Buffer.from("title,year\nHeat,1995\n");
+    const stored = await insertSourceMedia(
+      {
+        id: "media-doc",
+        source: "acme",
+        chatId: GROUP,
+        sourceMessageId: "72",
+        kind: "document",
+        fileId: "file-doc",
+        fileUniqueId: null,
+        mimeType: "text/csv",
+        filename: "watchlist.csv",
+        sizeBytes: csv.length,
+        visionHint: null,
+        frames: [csv.toString("base64")],
+        describedOnInsert: "watchlist.csv (CSV, 22 B)",
+      },
+      db,
+    );
+    expect(stored).toMatchObject({
+      status: "described",
+      description: "watchlist.csv (CSV, 22 B)",
+      filename: "watchlist.csv",
+      sizeBytes: csv.length,
+    });
+    expect(stored?.describedAt).not.toBeNull();
+    // The bytes are the point: a described document still serves them.
+    expect(Buffer.from(stored!.frames[0], "base64").toString()).toBe(csv.toString());
+    const reread = await getSourceMediaByMessage("acme", GROUP, "72", db);
+    expect(reread?.frames).toHaveLength(1);
+    // Never the backfill's business — it was never pending.
+    expect((await listPendingSourceMediaRefs("acme", 10, db)).map((ref) => ref.id)).not.toContain(
+      "media-doc",
+    );
+    // And a describe pass that arrives anyway cannot overwrite the label or drop the bytes.
+    expect(await markSourceMediaDescribed("media-doc", "something else", db)).toBeNull();
+  });
+
   it("keeps media of a live-held message out of the backfill's reach", async () => {
     await appendSourceMessage(
       {

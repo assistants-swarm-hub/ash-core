@@ -572,6 +572,12 @@ Both store the message in the thread and ping the live view; they report the
 delivery in `structuredContent` exactly like a transport's pair, so the core's
 bookkeeping is the same whichever source a task fires on.
 
+### Documents — `mcp-tools-documents`
+
+| Tool | Input | Purpose |
+| --- | --- | --- |
+| `read_document` | `document_id`, `offset?`, `limit?`, `sheet?` | Read a text-like file sent in this conversation, in windows: rows with a header for CSV/TSV/XLSX, a character range for JSON/TXT/MD, always with the total and `has_more`. Only this conversation's documents; see [Documents](../features/documents.md) |
+
 ### Agents — `mcp-tools-agents`
 
 | Tool | Input | Purpose |

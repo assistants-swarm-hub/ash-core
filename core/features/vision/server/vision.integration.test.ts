@@ -155,10 +155,21 @@ describe("message_media repository", () => {
   it("returns media annotations keyed by source message id", async () => {
     const pending = await seedPending({ sourceMessageId: 20 });
     await markDescribed(ctx.db, pending!.id, "a cat");
-    await seedPending({ sourceMessageId: 21 });
+    const stillPending = await seedPending({ sourceMessageId: 21 });
     const annotations = await getMediaAnnotations(ctx.db, "acme", "5", ["20", "21", "99"]);
-    expect(annotations.get("20")).toEqual({ kind: "photo", status: "described", description: "a cat" });
-    expect(annotations.get("21")).toEqual({ kind: "photo", status: "pending", description: null });
+    // The row id rides along: a document's annotation names it so the tool can read the file.
+    expect(annotations.get("20")).toEqual({
+      kind: "photo",
+      status: "described",
+      description: "a cat",
+      mediaId: pending!.id,
+    });
+    expect(annotations.get("21")).toEqual({
+      kind: "photo",
+      status: "pending",
+      description: null,
+      mediaId: stillPending!.id,
+    });
     expect(annotations.has("99")).toBe(false);
   });
 

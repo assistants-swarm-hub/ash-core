@@ -312,7 +312,8 @@ off-window targets through the history tools. A reply whose target is stored is
 marked `[reply to #<id>]`; when it is not stored, the quoted text is inlined. A
 line another assistant wrote is attributed to that assistant by name. Media
 turns read as text: ` [photo: <description>]` once described, ` [photo]` while
-pending.
+pending, ` [document: <name>, id <id>]` for a kept file (the id is what the
+document tool takes).
 
 *Known limitation:* forum-topic threads (`message_thread_id`) are carried on the
 turn for delivery but not stored, so a forum supergroup's topics interleave into

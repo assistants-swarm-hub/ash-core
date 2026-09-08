@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildDownloadFilename,
   extForUrl,
-  formatBytes,
   formatTransferLine,
   mimeForFilename,
   primaryTitle,
@@ -55,17 +54,6 @@ describe("primaryTitle", () => {
 
   it("keeps a short title with no separator whole", () => {
     expect(primaryTitle("Home")).toBe("Home");
-  });
-});
-
-describe("formatBytes", () => {
-  it("scales bytes to KB/MB/GB with sensible precision", () => {
-    expect(formatBytes(0)).toBe("0 B");
-    expect(formatBytes(512)).toBe("512 B");
-    expect(formatBytes(2048)).toBe("2 KB");
-    expect(formatBytes(5 * 1024 * 1024)).toBe("5.0 MB");
-    expect(formatBytes(120 * 1024 * 1024)).toBe("120 MB");
-    expect(formatBytes(Math.round(1.35 * 1024 * 1024 * 1024))).toBe("1.35 GB");
   });
 });
 

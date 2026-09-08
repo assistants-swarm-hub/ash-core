@@ -1798,7 +1798,10 @@ paths:
         through the pipeline like every other source's and the `threads` SSE
         topic fires when it lands. An image is normalized to a bounded JPEG and
         stored pending for the vision pass; a voice note is stored raw and
-        transcribed. Media that cannot be stored does not lose the message.
+        transcribed; a document (CSV, TSV, JSON, XLSX, TXT, MD, up to 10 MB) is
+        stored whole, born described with its label, for the document tool to
+        read - a file that is not one of those, or over the cap, is a 400.
+        Media that cannot be stored does not lose the message.
       requestBody:
         required: true
         content:
@@ -1817,6 +1820,34 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/ValidationError" }
+
+  /api/documents/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: A media id of a document, from a transcript line or the gallery.
+        schema: { type: string }
+    get:
+      tags: [vision]
+      x-access: admin
+      summary: A stored document's bytes, as a download
+      description: |
+        Not a JSON route: it streams the file (a document keeps its bytes for
+        good, whichever source holds the row) with a Content-Disposition naming
+        it. Failures are plain-text bodies.
+      responses:
+        "200":
+          description: The file
+          headers:
+            Cache-Control:
+              schema: { type: string, example: "private, max-age=31536000, immutable" }
+            Content-Disposition:
+              schema: { type: string, example: 'attachment; filename="watchlist.csv"' }
+          content:
+            "*/*": { schema: { type: string, format: binary } }
+        "401": { description: Not signed in (plain text) }
+        "404": { description: Unknown id, or not a document (plain text) }
 
   /api/chat/media/{id}:
     parameters:
@@ -4409,13 +4440,24 @@ components:
       properties:
         dataBase64: { type: string, minLength: 1, maxLength: 16777216 }
         mimeType: { type: [string, "null"], maxLength: 200 }
+    ChatDocument:
+      type: object
+      required: [dataBase64, filename]
+      properties:
+        dataBase64:
+          type: string
+          minLength: 1
+          description: The whole file, base64; at most the contract's 10 MB of bytes.
+        mimeType: { type: [string, "null"], maxLength: 200 }
+        filename: { type: string, minLength: 1, maxLength: 255 }
     ChatPostMessage:
       type: object
-      description: Text, an image, a voice note, or some of each - at least one.
+      description: Text, an image, a voice note, a document, or some of each - at least one.
       properties:
         text: { type: string, maxLength: 10000, default: "" }
         image: { $ref: "#/components/schemas/ChatAttachment" }
         audio: { $ref: "#/components/schemas/ChatAttachment" }
+        document: { $ref: "#/components/schemas/ChatDocument" }
     ChatPostMessageResult:
       type: object
       required: [message, correlationId]

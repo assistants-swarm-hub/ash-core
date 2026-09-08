@@ -360,11 +360,12 @@ talk to your platform's file API — and attach them:
 
 | Field | Value |
 | --- | --- |
-| `kind` | `photo` \| `sticker` \| `image_document` \| `animation` \| `video` \| `voice` |
+| `kind` | `photo` \| `sticker` \| `image_document` \| `animation` \| `video` \| `voice` \| `document` |
+| `filename` | the file's name as the person sent it — set for a `document`, optional otherwise |
 | `fileId`, `fileUniqueId` | your platform's handles, kept for provenance |
 | `mimeType` | of the payload (`image/jpeg` after normalization, `audio/ogg` for voice) |
 | `visionHint` | a hint for the describer: a sticker's emoji and pack, the frame-sequence note for video |
-| `frames` | base64 payloads, ordered: one normalized JPEG for a still, several sampled frames for a video/GIF, one raw audio blob for voice |
+| `frames` | base64 payloads, ordered: one normalized JPEG for a still, several sampled frames for a video/GIF, one raw audio blob for voice, the whole file for a document |
 | `unavailable` | `true` with empty `frames` when the bytes could not be loaded — recorded once, never re-attempted |
 
 Run every image through `normalizeImageForChat` (longest edge 768 px, under
@@ -373,6 +374,17 @@ thumbnail is the fallback. The core
 stores the row as pending media, describes or transcribes it, drops the bytes,
 and from then on the transcript line reads ` [photo: …]`. A failed download
 still opens the turn — the pipeline answers from the text.
+
+**Documents.** A text-like file — CSV, TSV, JSON, XLSX, TXT, MD — travels whole
+as `kind: "document"`: the file as the one frame, its `mimeType`, its
+`filename`. Decide with the SDK's `isDocumentFile({ filename, mimeType })`
+(the extension wins over a loosely guessed mime type) and never download past
+`DOCUMENT_MAX_BYTES` (10 MB): check the platform's declared size first and
+report an oversize file as `unavailable`, so the core still hears the message
+had one. Any other file a platform calls an attachment is not media — name it
+in the message text and forward nothing. The core keeps a document whole,
+never describes it, and lets the assistant read it through a tool; the
+transcript line reads ` [document: <name>, id <id>]`.
 
 ### `transport.edited`
 

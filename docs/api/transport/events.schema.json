@@ -2319,6 +2319,16 @@
                   "type": "string",
                   "minLength": 1
                 },
+                "filename": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "fileId": {
                   "type": "string"
                 },
@@ -3104,6 +3114,16 @@
                     "kind": {
                       "type": "string",
                       "minLength": 1
+                    },
+                    "filename": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "fileId": {
                       "type": "string"

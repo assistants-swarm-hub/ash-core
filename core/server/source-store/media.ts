@@ -11,10 +11,12 @@ import { sourceMedia, sourceMediaBlobs, sourceMessages } from "../../store/schem
  * Transport media in the conversation store — the former transport-side media store,
  * source-parameterized: rows in `source_media`, pending payloads as ordered
  * frames in `source_media_blobs` (a still image is one frame, a video its
- * sampled sequence, a voice message its raw audio as frame 0). Describing is
- * the vision/voice features' job; `markSourceMediaDescribed` is where the
- * describe-then-drop lifecycle lands — the platform is its own archive, so
- * described bytes go (unlike the web chat's, which have no other home).
+ * sampled sequence, a voice message its raw audio as frame 0, a document its
+ * whole file as frame 0). Describing is the vision/voice features' job;
+ * `markSourceMediaDescribed` is where the describe-then-drop lifecycle lands —
+ * the platform is its own archive, so described bytes go (unlike the web
+ * chat's, which have no other home). A document is born described with its
+ * label and keeps its bytes: it is read whole later, by the document tool.
  */
 
 /** A stored media row with its payload assembled from the frames. */
@@ -27,6 +29,8 @@ export interface StoredSourceMedia {
   fileId: string;
   fileUniqueId: string | null;
   mimeType: string | null;
+  filename: string | null;
+  sizeBytes: number | null;
   visionHint: string | null;
   description: string | null;
   status: string;
@@ -37,9 +41,14 @@ export interface StoredSourceMedia {
 
 type MediaRow = typeof sourceMedia.$inferSelect;
 
+/** Whether a row still holds bytes: while pending, or always for a document. */
+function holdsBytes(row: Pick<MediaRow, "status" | "kind">): boolean {
+  return row.status === "pending" || row.kind === "document";
+}
+
 async function withFrames(db: StoreDb, row: MediaRow): Promise<StoredSourceMedia> {
   const blobs =
-    row.status === "pending"
+    holdsBytes(row)
       ? await db
           .select()
           .from(sourceMediaBlobs)
@@ -55,6 +64,8 @@ async function withFrames(db: StoreDb, row: MediaRow): Promise<StoredSourceMedia
     fileId: row.fileId,
     fileUniqueId: row.fileUniqueId,
     mimeType: row.mimeType,
+    filename: row.filename,
+    sizeBytes: row.sizeBytes,
     visionHint: row.visionHint,
     description: row.description,
     status: row.status,
@@ -65,9 +76,12 @@ async function withFrames(db: StoreDb, row: MediaRow): Promise<StoredSourceMedia
 }
 
 /**
- * Store one media row with its pending payload. Idempotent on
+ * Store one media row with its payload. Idempotent on
  * `(source, chat, source message id)` — a re-delivered update returns null
- * and the caller re-reads the existing row.
+ * and the caller re-reads the existing row. A row is born `pending` for the
+ * describe passes to pick up, unless `describedOnInsert` carries its text —
+ * a document's label — in which case it is born `described` and no pass
+ * ever looks at it; its bytes stay.
  */
 export async function insertSourceMedia(
   values: {
@@ -79,12 +93,17 @@ export async function insertSourceMedia(
     fileId: string;
     fileUniqueId: string | null;
     mimeType: string | null;
+    filename?: string | null;
+    sizeBytes?: number | null;
     visionHint: string | null;
-    /** Ordered base64 payload — frames for video, one image, or raw audio. */
+    /** Ordered base64 payload — frames for video, one image, raw audio, or a whole file. */
     frames: string[];
+    /** The description the row is born with (a document's label), or none. */
+    describedOnInsert?: string | null;
   },
   db: StoreDb = getStoreDb(),
 ): Promise<StoredSourceMedia | null> {
+  const bornDescribed = values.describedOnInsert != null;
   return db.transaction(async (tx) => {
     const rows = await tx
       .insert(sourceMedia)
@@ -97,8 +116,12 @@ export async function insertSourceMedia(
         fileId: values.fileId,
         fileUniqueId: values.fileUniqueId,
         mimeType: values.mimeType ?? "image/jpeg",
+        filename: values.filename ?? null,
+        sizeBytes: values.sizeBytes ?? null,
         visionHint: values.visionHint,
-        status: "pending",
+        ...(bornDescribed
+          ? { status: "described", description: values.describedOnInsert, describedAt: new Date() }
+          : { status: "pending" }),
       })
       .onConflictDoNothing({
         target: [sourceMedia.source, sourceMedia.chatId, sourceMedia.sourceMessageId],
@@ -129,13 +152,15 @@ export async function insertUnavailableSourceMedia(
     kind: string;
     fileId: string;
     fileUniqueId: string | null;
+    filename?: string | null;
+    sizeBytes?: number | null;
     visionHint: string | null;
   },
   db: StoreDb = getStoreDb(),
 ): Promise<void> {
   await db
     .insert(sourceMedia)
-    .values({ ...values, status: "unavailable" })
+    .values({ ...values, filename: values.filename ?? null, sizeBytes: values.sizeBytes ?? null, status: "unavailable" })
     .onConflictDoNothing({
       target: [sourceMedia.source, sourceMedia.chatId, sourceMedia.sourceMessageId],
     });

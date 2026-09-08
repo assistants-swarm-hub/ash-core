@@ -33,6 +33,8 @@ function toMediaRecord(media: StoredSourceMedia): MediaRecord {
     fileId: media.fileId,
     fileUniqueId: media.fileUniqueId,
     mimeType: media.mimeType,
+    filename: media.filename,
+    sizeBytes: media.sizeBytes,
     dataBase64: media.frames[0] ?? null,
     frames: media.frames.length > 1 ? media.frames : null,
     visionHint: media.visionHint,

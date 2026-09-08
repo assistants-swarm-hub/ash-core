@@ -6,7 +6,9 @@ import type { ChatCompletionFunctionTool } from "openai/resources/chat/completio
 
 import type { McpToolCallResult } from "@/server/mcp/tool-result";
 
-import { formatBytes, formatTransferLine } from "../files";
+import { formatBytes } from "@/lib/format-bytes";
+
+import { formatTransferLine } from "../files";
 import { formatSnapshot, type PageSnapshot } from "../snapshot";
 import type { MediaMode } from "../ytdlp";
 import type { BrowserDownloadRecord } from "../types";

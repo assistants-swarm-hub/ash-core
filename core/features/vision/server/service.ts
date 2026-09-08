@@ -53,8 +53,8 @@ const FEATURE = FEATURES["vision"];
 /** The stored image sequence for a media row (frames for a video, else the single image). */
 function storedMediaImages(media: MediaRecord | null): ImagePayload[] | null {
   if (!media) return null;
-  // A voice row's bytes are audio — never an image sequence.
-  if (media.kind === "voice") return null;
+  // A voice row's bytes are audio, a document's are a file — never an image sequence.
+  if (media.kind === "voice" || media.kind === "document") return null;
   if (media.frames && media.frames.length > 0) {
     return media.frames.map((base64) => ({ base64, mimeHint: "image/jpeg" }));
   }
@@ -237,6 +237,9 @@ export async function describeAndStore(
 
   try {
     if (!media) return await skip("no media stored for this message");
+    // A document is kept whole and read by the document tool; its label is
+    // its description from the moment it is stored. Nothing to describe.
+    if (media.kind === "document") return await skip("a document is kept whole, never described");
 
     // A re-delivered update (or a pass that lost an earlier race) finds the row
     // already described: its stored text is the answer — reuse it, spend nothing.
@@ -455,6 +458,9 @@ const BYTES_URL: Partial<Record<SourceId, (id: string) => string>> = {
   chat: (id) => `/api/chat/media/${encodeURIComponent(id)}`,
 };
 
+/** A document's bytes are kept by every source, and served by one route. */
+const DOCUMENT_URL = (id: string) => `/api/documents/${encodeURIComponent(id)}`;
+
 function toView(record: MediaRecord, source: SourceId, sourceLabel: string): MediaView {
   // Show the picture whenever the source still has it. A described transport
   // row has dropped its bytes and shows none; a web thread keeps them, since
@@ -463,6 +469,8 @@ function toView(record: MediaRecord, source: SourceId, sourceLabel: string): Med
     record.frames && record.frames.length > 0
       ? record.frames.map((base64) => `data:image/jpeg;base64,${base64}`)
       : null;
+  // A document is a file, not a picture: no inline preview, a download instead.
+  const isDocument = record.kind === "document";
   return {
     id: record.id,
     source,
@@ -472,11 +480,20 @@ function toView(record: MediaRecord, source: SourceId, sourceLabel: string): Med
     kind: record.kind,
     status: record.status,
     description: record.description,
-    preview: record.dataBase64
-      ? `data:${record.mimeType ?? "image/jpeg"};base64,${record.dataBase64}`
-      : null,
-    bytesUrl: record.dataBase64 ? null : (BYTES_URL[source]?.(record.id) ?? null),
-    frames,
+    filename: record.filename,
+    sizeBytes: record.sizeBytes,
+    preview:
+      record.dataBase64 && !isDocument
+        ? `data:${record.mimeType ?? "image/jpeg"};base64,${record.dataBase64}`
+        : null,
+    bytesUrl: isDocument
+      ? record.status === "unavailable"
+        ? null
+        : DOCUMENT_URL(record.id)
+      : record.dataBase64
+        ? null
+        : (BYTES_URL[source]?.(record.id) ?? null),
+    frames: isDocument ? null : frames,
     createdAt: record.createdAt,
     describedAt: record.describedAt,
   };

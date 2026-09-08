@@ -44,12 +44,13 @@ and enqueues one `message.inbound` event; the answer arrives the way every
 source's does, through the pipeline and back over the bus. The response carries
 the turn's correlation id.
 
-A message needs text, an image, a voice note, or some of each:
+A message needs text, an image, a voice note, a document, or some of each:
 
 | Attachment | Stored as | Then |
 | --- | --- | --- |
 | An image (base64, capped at 16 MB on the route) | Normalized to a bounded JPEG and stored `pending` in `web_media` / `web_media_blobs` | The vision pass describes it inside the turn; the bytes **stay** after describing — a web thread is the only archive its pictures have — and `GET /api/chat/media/{id}` serves them to the thread view |
 | A voice note (`audio/webm`, as the browser records it) | Stored raw as `kind = 'voice'` | Transcribed by the core exactly as a transport's voice message is; the turn answers the words |
+| A document (CSV, TSV, JSON, XLSX, TXT or MD, up to the contract's 10 MB; `{ dataBase64, mimeType?, filename }`) | Stored whole as `kind = 'document'`, born `described` with its label | Never described; the assistant reads it through the document tool, the thread view offers it as a download from `GET /api/documents/{id}`. A file that is not a carried format, or over the cap, is a refused post (`400`) — see [Documents](documents.md) |
 
 Media that cannot be stored does not lose the message — the turn runs on the
 text.
@@ -116,7 +117,7 @@ an admin tool.
 | --- | --- |
 | `web_threads` | `user_id` (the account, cascades), `assistant_id` (fixed; a plain column), `name`, `title_provisional`, `notes`, `language` |
 | `web_messages` | The transcript: `role`, `content`, `sent_at`, `reply_to_message_id`, `deleted_at` (soft delete) |
-| `web_media` | One row per message: `kind` (`image` \| `voice` \| `file`), `mime_type`, `description`, `status` |
+| `web_media` | One row per message: `kind` (`image` \| `voice` \| `file` \| `document`), `mime_type`, `filename`, `size_bytes`, `description`, `status` |
 | `web_media_blobs` | The bytes, one row per frame — kept after describing |
 
 Operators curate a thread's `notes` and `language`, and a web user's aliases and

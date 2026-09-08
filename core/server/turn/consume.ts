@@ -54,6 +54,7 @@ import {
   type DescribeDeps,
   type MediaStorePort,
 } from "@/features/vision/server/service";
+import { DOCUMENT_UNAVAILABLE_NOTE, documentTurnNote } from "@/features/documents/format";
 import { VOICE_TURN_NOTE, VOICE_UNAVAILABLE_NOTE } from "@/features/voice/format";
 import { synthesizeVoiceReply } from "@/features/voice/server/speak";
 import { pokeVisionBackfill } from "@/features/vision/server/backfill-scheduler";
@@ -615,6 +616,7 @@ export async function processInboundEvent(
   const chatId = parseScopedRef(event.chat.ref).id;
   const media = event.message.media[0] ?? null;
   const isVoice = media?.kind === "voice";
+  const isDocument = media?.kind === "document";
   const store = resolveMediaStore(ctx, event.source);
   const outbound = resolveOutbound(ctx, event.source);
 
@@ -732,6 +734,16 @@ export async function processInboundEvent(
     // With a transcript the turn is answered from the words; without one the
     // bot owns up in a DM (in a group the empty text fails addressing).
     attachment = { note: transcript ? VOICE_TURN_NOTE : VOICE_UNAVAILABLE_NOTE };
+  } else if (isDocument && media) {
+    // A document is kept whole, never described: the turn learns its name
+    // and id, and reads it through the document tool when the request needs
+    // its content.
+    attachment = {
+      note:
+        media.status === "unavailable"
+          ? DOCUMENT_UNAVAILABLE_NOTE
+          : documentTurnNote({ label: media.description ?? "document", mediaId: media.id }),
+    };
   } else if (media && media.status !== "unavailable") {
     attachment = {
       recognizeMessageId: event.message.sourceMessageId,

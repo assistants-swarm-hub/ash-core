@@ -386,14 +386,17 @@ the columns hold the current badge.
 
 Media attached to a transport message — one row per media-bearing message.
 Bytes live in `source_media_blobs` **only while the row is `pending`** and
-are dropped once described: the platform is its own archive. See
-[Vision](../features/vision.md).
+are dropped once described: the platform is its own archive. A `document` is
+the exception — born `described` with its label, bytes kept for good. See
+[Vision](../features/vision.md) and [Documents](../features/documents.md).
 
 | Column | Type | Notes |
 | --- | --- | --- |
 | `id` | text PK | |
 | `source`, `chat_id`, `source_message_id` | text NOT NULL | The message it belongs to (no FK to `source_messages`) |
-| `kind` | text NOT NULL | `photo` \| `sticker` \| `image_document` \| `animation` \| `video` \| `voice` (no `check`) |
+| `kind` | text NOT NULL | `photo` \| `sticker` \| `image_document` \| `animation` \| `video` \| `voice` \| `document` (no `check`) |
+| `filename` | text | The file's name as the person sent it (a document's, always), or null |
+| `size_bytes` | integer | The payload's size (a document's, always), or null |
 | `file_id` | text NOT NULL | Source-local file handle, for re-downloads |
 | `file_unique_id` | text | Source-local stable file identity, or null |
 | `mime_type` | text | Mime hint of the stored payload |
@@ -479,7 +482,9 @@ the only archive its pictures have (`features/web-chat/server/media-repository.t
 | --- | --- | --- |
 | `id` | text PK | |
 | `message_id` | bigint NOT NULL → `web_messages.id` CASCADE | |
-| `kind` | text NOT NULL | `image` \| `voice` \| `file` (no `check`) |
+| `kind` | text NOT NULL | `image` \| `voice` \| `file` \| `document` (no `check`) |
+| `filename` | text | The file's name as sent (a document's, always), or null |
+| `size_bytes` | integer | The payload's size (a document's, always), or null |
 | `mime_type` | text | |
 | `description` | text | The vision model's description / the voice transcript; null until made |
 | `status` | text NOT NULL, default `pending` | `check`: `pending` \| `described` \| `unavailable` |

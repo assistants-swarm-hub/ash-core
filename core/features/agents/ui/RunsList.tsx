@@ -27,7 +27,7 @@ import {
 import { Timestamp } from "@/components/time/Timestamp";
 import { cn } from "@/lib/cn";
 
-import { formatBytes } from "../files";
+import { formatBytes } from "@/lib/format-bytes";
 import type {
   AgentRun,
   AgentRunDetail,
