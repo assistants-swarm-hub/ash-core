@@ -1,10 +1,9 @@
 # assistant-hub-swarm — v2 Redesign Plan
 
-The source of truth for the v2 target architecture. Progress and phase
-status live in [PROGRESS.md](PROGRESS.md); the pointer entry is in
-[TODO.md](TODO.md). This document describes the target as designed — it is
-updated in place when the design changes, and carries no decision history
-(the session log in PROGRESS.md does).
+The source of truth for the v2 target architecture. The redesign closed on
+2026-08-31; what is still open is tracked in [TODO.md](TODO.md). This
+document describes the target as designed — it is updated in place when the
+design changes, and carries no decision history (git history is that).
 
 Revised 2026-08-30: the per-app-storage architecture built in phases 2–5
 was superseded by user decision. Core and chat merge, all data moves into
@@ -354,10 +353,9 @@ Redis.
 
 ## Build phases
 
-Phases 0–5 are done and describe the as-built history (per-app stores,
-source contract, build-time UI extensions); see PROGRESS.md. The revised
-target is built by phases 6–10. Each phase gets detailed acceptance
-criteria in PROGRESS.md when it starts.
+Phases 0–5 describe the as-built history (per-app stores, source contract,
+build-time UI extensions); phases 6–10 built the revised target. All of
+them landed by 2026-08-31; the commits are the record.
 
 - **Phase 6 — Chat dissolve.** `apps/chat` merges into the core: its
   store into the core schema, its backend in-process, its outbound MCP
@@ -390,11 +388,9 @@ streaming, per-user quotas, Signal, mobile apps.
 
 ## Working rules
 
-- Big-bang redesign: the full target is designed here first; intermediate
-  states need not be shippable.
-- All work happens on one long-lived redesign branch — the sanctioned
-  exception to the commit-on-main rule. Main stays releasable for hotfixes;
-  the branch is **rebased onto main** after hotfixes (rebases, not merges).
-- No version bumps from the branch until cutover.
-- Design changes are made by asking the user, then updating this document
-  in place; the outcome is logged in PROGRESS.md's session log.
+The redesign ran big-bang on one long-lived branch — the sanctioned
+exception to the commit-on-main rule. It closed on 2026-08-31 and that
+exception went with it: work commits to `main` like everything else.
+
+The one rule that outlives it: design changes are made by asking the user,
+then updating this document in place.

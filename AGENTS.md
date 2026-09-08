@@ -46,8 +46,7 @@ step-by-step manual for an author with no access to this repository.
 Before doing implementation work, read:
 
 1. `docs/TODO.md` — the working tracker: pending features with their agreed
-   specs and decisions, plus open operational items. (`docs/PROGRESS.md`
-   is the completed v2 redesign's record — history, not open work.)
+   specs and decisions, plus open operational items.
 2. Relevant installed Next.js docs under `node_modules/next/dist/docs/`.
 
 This is not optional. The installed Next.js version may have APIs and

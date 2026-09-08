@@ -12,8 +12,7 @@ platform connects the same way.
 Everything here describes the code in this repository. Pending and upcoming
 work — features with their agreed specs and decisions, plus open operational
 items — is tracked in [TODO](TODO.md). The v2 redesign's design is
-[PLAN](PLAN.md) and its completed record is [PROGRESS](PROGRESS.md) (history,
-not open work).
+[PLAN](PLAN.md).
 
 ## Reading paths
 
@@ -111,4 +110,4 @@ its behavior, configuration, data, traces and tests.
   timezone, never the viewer's local zone.
 - Where a doc states a decision was the user's, it was made by asking the user
   directly. Decisions for pending work are recorded in [TODO](TODO.md); the
-  redesign's decisions are in [PROGRESS](PROGRESS.md).
+  standing ones are in [AGENTS.md](../AGENTS.md).

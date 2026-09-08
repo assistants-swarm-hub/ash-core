@@ -7,7 +7,7 @@ export { sourceIdSchema };
 /**
  * The source-app contract's event shapes (PLAN.md, "The source-app contract"
  * and "Message flow"), shaped by what the v1 pipeline actually consumes
- * (`BotMessagingDeps` — see the Phase 2 boundary study in PROGRESS.md):
+ * (`BotMessagingDeps`):
  *
  * - **Inbound**: the source persists the message in its own store, then
  *   enqueues ONE normalized {@link inboundMessageEventSchema} carrying the

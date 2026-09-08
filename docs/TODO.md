@@ -23,8 +23,7 @@ How to use this file:
 
 ## Current state
 
-The v2 redesign is complete (2026-08-31; record in `docs/PROGRESS.md`, design
-in `docs/PLAN.md`). Instead of renaming the old repository, the redesign
+The v2 redesign is complete (2026-08-31; design in `docs/PLAN.md`). Instead of renaming the old repository, the redesign
 branch became `main` of a fresh repository —
 [assistant-hub-swarm/ahw-core](https://github.com/assistant-hub-swarm/ahw-core)
 (user decision, 2026-09-01); the old `llm-tg-bot-nextjs` repo stays behind as
@@ -401,7 +400,7 @@ Any core edit for a new source id is a bug.
    - **Proof (this repo)**: `npm run lint`, `npm run typecheck` (8/8),
      `npm run test` (contracts 20, service 3, transport-sdk 3, core 1161 passed
      / 26 skipped), `docker compose config` on base and base+dev, the compose
-     pin check. `git grep apps/tg` is empty outside `PROGRESS.md` (history).
+     pin check. `git grep apps/tg` is empty outside this entry.
    - **Known window, accepted by the user:** until the new repository is pushed
      and releases its first image, `ghcr.io/assistant-hub-swarm/ahw-transport-telegram:1.0.0`
      does not exist, so `docker compose up` cannot start the `tg` service, and
@@ -931,7 +930,7 @@ rights replace "operator" and "owner".
 parses with `js-yaml` and every `$ref` resolves; a stale-identifier sweep
 (old table names, `telegramBotToken`, `ownerUserId`, `/personalities`,
 `server/telegram/`, `test/simulate`, …) is clean outside the historical
-records (`PLAN.md`, `PROGRESS.md`, this file). No code changed, so lint /
+records (`PLAN.md`, this file). No code changed, so lint /
 typecheck / test were not run for this entry.
 
 **Found on the way (recorded under "Other open items"):** the Overview bot
