@@ -159,8 +159,7 @@ brings its own copies there — the case above.
    `npm install` would leave it) loaded under `node server.js`. `tsc`,
    `eslint` and `next build` clean (the build's one warning is the
    pre-existing dynamic-path one in `download.ts`).
-2. **Host** (`in-progress`, 2026-10-24 — built and booted; the live
-   round trip is the last check) — what landed:
+2. **Host** (`done`, 2026-10-24) — what landed:
    - **The platform interface is the contracts'**:
      `packages/contracts/src/transport-interface.ts` holds `TransportDescriptor`,
      `PlatformAdapter`/`PlatformConnection`/`PlatformHooks`, `InboundMessage`,
@@ -215,12 +214,23 @@ brings its own copies there — the case above.
      their handles), and the boot reconcile discovered three tools per
      transport (`reply_to_message`, `send_message`,
      `set_message_reaction`) through the in-process client with no error.
-   - **Left**: the live round trip (a message in and a reply out on each
-     platform, voice/photo/file/delete/menus through the port) needs
-     someone to message a bot while the host runs; the SDK-major
-     compatibility check waits for step 3 (SDK 5 is what a package will
-     declare as a peer); the dev workflow's `npm link` is written up in
-     step 5.
+   - **Live round trip (user-sent message, 2026-10-24)**: a Telegram
+     message to one of the hosted bots produced, on one correlation, the
+     host's `inbound` trace ("enqueued for the pipeline"), the core's
+     `reply` trace (the turn composed through to the request), and the
+     host's `deliver` trace ("reply sent", delivered as a reply to the
+     message) — the reply mirrored as the assistant's row two seconds after
+     the user's. The reply's text was the pipeline's fallback because the
+     configured chat backend answered `404 page not found` to the
+     completion request, which is the LLM serving, not the transport path;
+     the delivery of whatever the pipeline says is what this step proves.
+     The host's traces reached the store over the bus trace client, as a
+     service's did.
+   - **Left for later steps**: voice/photo/file/delete/menus through the
+     in-process port are covered by `outbound.test.ts` and were not
+     exercised on a live platform; the SDK-major compatibility check waits
+     for step 3 (SDK 5 is what a package will declare as a peer); the dev
+     workflow's `npm link` is written up in step 5.
    - **Gotcha (Windows)**: when Docker Desktop's VM comes up, Hyper-V may
      reserve dynamic port blocks that swallow 3200 (`netsh interface ipv4
      show excludedportrange protocol=tcp`); `next dev` then fails with
