@@ -1,7 +1,7 @@
 {
   "name": "@assistants-swarm-hub/transport-sdk",
-  "version": "4.0.0",
-  "description": "Everything a transport needs to connect a messaging platform to an assistants-swarm-hub core: the wire contracts, the Redis queue and bus helpers, the internal-token guard, an MCP server over Hono, the trace client and image normalization.",
+  "version": "5.0.0",
+  "description": "What a transport package is written against: the interface a messaging platform is connected to an assistants-swarm-hub core through — the descriptor, adapter, normalizer and addressing rule the core hosts in its own process — plus the helpers a transport's own tools call.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -39,34 +39,23 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "wire:generate": "tsx scripts/generate-wire-contract.ts"
+    "test": "vitest run"
   },
   "dependencies": {
-    "bullmq": "^5.66.5",
-    "ioredis": "^5.9.3",
     "sharp": "^0.35.4"
   },
   "peerDependencies": {
-    "@hono/node-server": "^1.14.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "hono": "^4.7.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@assistants-swarm-hub/bus": "*",
     "@assistants-swarm-hub/contracts": "*",
     "@assistants-swarm-hub/media": "*",
-    "@assistants-swarm-hub/service": "*",
-    "@hono/node-server": "^1.14.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^20",
-    "hono": "^4.7.0",
     "tsup": "^8.5.0",
-    "tsx": "^4.19.2",
     "typescript": "^5",
     "vitest": "^4.1.10",
-    "yaml": "^2.8.1",
     "zod": "^4.4.3"
   }
 }

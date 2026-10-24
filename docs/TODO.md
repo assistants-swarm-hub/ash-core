@@ -237,8 +237,31 @@ brings its own copies there — the case above.
      `EACCES`. The org tree's `.claude/launch.json` has a `dev-4300`
      entry for that case; a reboot (or an elevated `net stop winnat` /
      `net start winnat`) gives 3200 back.
-3. **SDK 5.0.0** (`todo`) — runtime removed, `defineTransport` added,
-   published; the wire generator and its CI check removed.
+3. **SDK 5.0.0** (`done`, 2026-10-24 — built, not published: the
+   registry token in `~/.npmrc` is refused, see step 2) — the runtime is
+   gone from `packages/transport-sdk` (`service`, `http`, `core-api`,
+   `delivery`, `updates`, `send`, `inbound`, `manager`, `mcp`, `split`,
+   with their tests; the core's host carries them now). What remains is the
+   package a transport is written against: `defineTransport` (a typed
+   identity over the contracts' `TransportPackage`), the interface and
+   contract types re-exported from contracts, `turnOf`/`toolRefusal`
+   (`tools.ts`), `tracedTool`/`toolTrigger`, `reactToMessage` (on the
+   contracts' `SendContext` + `TransportCoreApi`), `describeError`, the
+   media and document helpers. The manifest is 5.0.0 with `sharp` as its one
+   dependency and the MCP SDK + zod as peers (Hono, BullMQ, ioredis gone);
+   `CONTRACT_MAJOR` and the internal-API/event schemas are no longer
+   exported — a package neither registers nor publishes. The wire generator
+   (`scripts/generate-wire-contract.ts`, `wire:generate`, `wire.test.ts`)
+   and its output (`docs/api/transport/`) are deleted; the release
+   workflow's post-publish check imports `defineTransport` and typechecks a
+   `defineTransport` consumer instead of the runtime, and no longer compares
+   a wire major. README rewritten for the package form. Proof: `tsup` build
+   (ESM + dts), `tsc`, 9 SDK tests; the built declarations import no private
+   package (the release check, run locally); every name the two transports
+   import from the SDK is still exported except `startTransportService`,
+   which step 4 removes from them. Docs that still describe the wire
+   (`docs/api/README.md`, overview, adding-a-transport, testing, PLAN) are
+   step 5's.
 4. **Transport repositories** (`todo`) — each becomes a package: `index.ts`
    exports the transport, the service dependencies go, the image workflow
    becomes a publish workflow. Published on SDK 5.

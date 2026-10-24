@@ -1,6 +1,9 @@
-import { scopedRef, type SourceTraceClient, type TurnToolMeta } from "@assistants-swarm-hub/contracts";
-
-import type { TransportDescriptor } from "./types";
+import {
+  scopedRef,
+  type SourceTraceClient,
+  type TransportDescriptor,
+  type TurnToolMeta,
+} from "@assistants-swarm-hub/contracts";
 
 /**
  * Tracing a hosted MCP tool.

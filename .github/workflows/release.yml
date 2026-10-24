@@ -9,8 +9,8 @@ name: Release
 #    published to the org's npm registry on GitHub Packages and tagged
 #    `transport-sdk-v<version>`. It carries its own semver because a transport
 #    author pins the SDK, not a core release, and the two move at different
-#    speeds (the wire major they must agree on is `CONTRACT_MAJOR`, which lives
-#    in the code, not in either version field).
+#    speeds (the SDK's major is the interface a transport package and the
+#    core that hosts it must agree on).
 #
 # THE GATE IS THE REGISTRY, NOT THE DIFF. A version field that changed on this
 # push says nothing about whether anything shipped: a release that failed
@@ -498,14 +498,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
-          # The wire major the SOURCE of this commit declares. The published
-          # package has to agree: a bundle built from a stale tree would
-          # announce a different one and every transport would be refused by a
-          # core that is actually compatible.
-          expected_major=$(grep -oE 'CONTRACT_MAJOR = [0-9]+' \
-            packages/contracts/src/contract-version.ts | grep -oE '[0-9]+')
-          echo "this commit declares CONTRACT_MAJOR $expected_major"
-
           dir=$(mktemp -d)
           cd "$dir"
           printf '@assistants-swarm-hub:registry=%s\n//npm.pkg.github.com/:_authToken=%s\n' \
@@ -513,7 +505,7 @@ jobs:
           npm init -y >/dev/null
           npm install --no-audit --no-fund \
             "$SDK_PACKAGE@$VERSION" \
-            hono @hono/node-server @modelcontextprotocol/sdk zod typescript
+            @modelcontextprotocol/sdk zod typescript
 
           # By path, not through the resolver: the package's exports map
           # deliberately exposes only ".", so requiring its manifest by name
@@ -525,18 +517,14 @@ jobs:
           fi
 
           # 1. It imports and runs, with nothing from the core's workspace on disk.
-          EXPECTED_MAJOR="$expected_major" node --input-type=module -e "
-            import { CONTRACT_MAJOR, startTransportService } from '$SDK_PACKAGE';
-            if (typeof startTransportService !== 'function') {
-              throw new Error('the published package exports no runtime');
+          node --input-type=module -e "
+            import { defineTransport, reactToMessage, turnOf } from '$SDK_PACKAGE';
+            for (const [name, fn] of Object.entries({ defineTransport, reactToMessage, turnOf })) {
+              if (typeof fn !== 'function') {
+                throw new Error('the published package exports no ' + name);
+              }
             }
-            if (String(CONTRACT_MAJOR) !== process.env.EXPECTED_MAJOR) {
-              throw new Error(
-                'published CONTRACT_MAJOR ' + CONTRACT_MAJOR +
-                  ', source says ' + process.env.EXPECTED_MAJOR,
-              );
-            }
-            console.log('imports, and announces contract major', CONTRACT_MAJOR);
+            console.log('imports');
           "
 
           # 2. Its declarations name no package that only exists in the core's
@@ -551,7 +539,7 @@ jobs:
           # 3. A consumer typechecks against them.
           cat > consumer.ts <<'TS'
           import {
-            startTransportService,
+            defineTransport,
             type AddressingRule,
             type Normalizer,
             type PlatformAdapter,
@@ -563,8 +551,7 @@ jobs:
           declare const normalize: Normalizer<unknown>;
           declare const addressing: AddressingRule<unknown>;
 
-          export const boot = () =>
-            startTransportService({ descriptor, adapter, normalize, addressing });
+          export default defineTransport({ descriptor, adapter, normalize, addressing });
           TS
           npx tsc --noEmit --strict --module nodenext --moduleResolution nodenext \
             --target es2022 --skipLibCheck consumer.ts

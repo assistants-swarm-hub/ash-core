@@ -1,22 +1,22 @@
 # `@assistants-swarm-hub/transport-sdk`
 
-Everything a **transport** needs to connect a messaging platform (Signal,
-Matrix, Slack, …) to a running [assistants-swarm-hub][core] core — as a
-**runtime** you hand your platform to, over the wire contracts, Redis helpers,
-token guard, MCP server, trace client and image normalization it is built on.
+What a **transport package** is written against: the interface a messaging
+platform (Signal, Matrix, Slack, …) is connected to an
+[assistants-swarm-hub][core] core through, and the few helpers a transport's
+own tools call.
 
-A transport is a stateless service that owns exactly one platform. It has no
-database and no files. It registers with a core at boot, forwards every update
-it sees as normalized events, performs the sends the core asks for, and hosts
-its platform's own actions as MCP tools. The core needs **no changes** to
-accept one: you pick your own source id, announce it, and appear on the
-dashboard.
+A transport is an npm package the core **hosts in its own process**. Its
+default export is a descriptor, a platform adapter, a normalizer, an
+addressing rule, and the words and tools of its own. Everything that is the
+same for every platform — registering, reconciling connections from the
+desired state, deduping shared chats, assembling and publishing events,
+consuming deliveries, splitting and performing sends, hosting the delivery
+tools — is the core's. An operator installs your package into their core with
+`npm install`, restarts, and you appear on their dashboard; the core needs
+**no changes** to accept you.
 
-- **The manual**: [Adding a transport][manual] walks the whole contract in the
+- **The manual**: [Adding a transport][manual] walks the interface in the
   order you meet it, with a worked example.
-- **The wire, language-neutral**: [JSON Schema][schema] for every event and
-  [OpenAPI][openapi] for the HTTP in both directions, generated from the same
-  zod schemas this package exports and checked against them in CI.
 
 ## Install
 
@@ -37,126 +37,90 @@ repository you write:
 //npm.pkg.github.com/:_authToken=<token>
 ```
 
-In CI it is the workflow's own `GITHUB_TOKEN`; in an image build, pass it as a
-BuildKit secret rather than a build arg, so it never lands in a layer.
+Then:
 
 ```bash
-npm install @assistants-swarm-hub/transport-sdk hono @hono/node-server @modelcontextprotocol/sdk zod
+npm install --save-peer @assistants-swarm-hub/transport-sdk
+npm install --save-dev tsup typescript
 ```
 
-Those four are **peer dependencies**: you construct Hono apps, `McpServer`s and
-zod schemas and hand them to the SDK, so you and the SDK must share one copy of
-each. Everything else the SDK needs (BullMQ, ioredis, sharp) it installs
-itself.
+The SDK is a **peer** dependency of your package, and its major is the
+compatibility contract: the core you are installed into checks the range you
+declare against the SDK it was built with, and refuses a package that does not
+fit — by name, with a reason its dashboard shows. `zod` and
+`@modelcontextprotocol/sdk` are peers of this package in turn, so your tools'
+input shapes and the server they register on agree.
 
-## The two versions
-
-| | What it covers | Where it lives |
-| --- | --- | --- |
-| This package's **semver** | The TypeScript API — the exports below | `package.json` |
-| `CONTRACT_MAJOR` | The **wire** — events, internal routes, the registration shape | exported from this package |
-
-Announce `CONTRACT_MAJOR` at registration. A core that speaks another major
-refuses you **by name**, with a reason its dashboard shows next to your
-transport — never a silent drop. When that happens, bump the SDK and rebuild;
-the manual's "Before you start" has the exact failure.
-
-## A whole transport
+## Write the package
 
 ```ts
-import { startTransportService } from "@assistants-swarm-hub/transport-sdk";
+// src/transport.ts
+import { defineTransport } from "@assistants-swarm-hub/transport-sdk";
 
-await startTransportService({
-  descriptor,   // who you are: id, name, config fields, message cap
-  adapter,      // connect() one connection: the actions you support, the events you report
-  normalize,    // one platform message -> the contract's InboundMessage
-  addressing,   // the structural verdict, per receiving bot
-  tools: { platform: "Signal" },
+export default defineTransport({
+  descriptor,   // { id, name, connectionConfigSchema, maxMessageLength, typingRefreshMs }
+  adapter,      // { connect(input, hooks): Promise<PlatformConnection> }
+  normalize,    // (raw) => Promise<InboundMessage | null>
+  addressing,   // (raw, bot) => Addressing
+  tools: {
+    platform: "Signal",            // how the delivery tools word themselves
+    register(server, runtime) {}, // your own MCP tools, on the server the host builds for you
+  },
 });
 ```
 
-That call is the service: it opens the queue, serves `/health` from the first
-moment, registers with the core (retrying — the core may boot second),
-reconciles its connections from the desired state and refetches on every
-change, dedupes shared chats, assembles and publishes every event, consumes
-the core's deliveries and drives the typing indicator, splits and performs
-sends, serves the whole internal API, hosts the delivery tools, and shuts all
-of it down in order on a signal.
+Build it to ESM (`tsup src/transport.ts --format esm`), point `exports` at the
+output, and mark the package as a transport so the core finds it among its
+installed dependencies:
 
-What you write is your platform, and nothing else. Two rules shape it:
+```json
+{
+  "keywords": ["assistants-swarm-hub-transport"],
+  "exports": { ".": { "import": "./dist/transport.js" } },
+  "peerDependencies": { "@assistants-swarm-hub/transport-sdk": "^5.0.0" }
+}
+```
 
-- **A missing action is a missing method.** `PlatformConnection` declares
-  `sendVoice`, `sendPhoto`, `sendFile`, `deleteMessage`, `sendMenu`,
+Two rules decide the shape of your adapter:
+
+- **A missing action is a missing method, not a refusal.** `PlatformConnection`
+  declares `sendVoice`, `sendPhoto`, `sendFile`, `deleteMessage`, `sendMenu`,
   `editMenu`, `setReaction`, `setChatTitle` and `sendTyping` as optional. Leave
-  out what your platform cannot do and no route is served and no tool offered
-  for it. There are no capability flags anywhere.
-- **Report, never decide.** Your adapter says what the platform said, in the
-  contract's vocabulary. Duplicates, receivers, correlation ids and whether
-  anyone answers are decided elsewhere.
+  out what your platform cannot do and the host offers no tool and answers no
+  call for it. There are no capability flags anywhere.
+- **Report, never decide.** The hooks (`message`, `edited`, `reaction`,
+  `menuPress`, `status`) take what the platform said, in the contract's
+  vocabulary. Whether an event is a duplicate, who its receivers are, what its
+  correlation id is and whether anyone answers are all decided by the core.
 
-## Or the wire, by hand
+Your own tools go on the same server through `tools.register(server, runtime)`,
+which hands you the running context (`runtime.send`, `runtime.core`,
+`runtime.traces`, `runtime.descriptor`). Reacting is the usual case: the emoji
+a platform accepts are its own, so each transport registers its own
+`set_message_reaction` over this package's `reactToMessage`, which owns the
+part that is not — the mirror check that refuses a guessed id or the bot's
+own message, and the record that lets the next turn remember it. `turnOf`,
+`toolRefusal` and `tracedTool` are the binding check, the refusal shape and
+the trace every hosted tool uses.
 
-Nothing above is required. Every schema and helper the runtime is built on is
-exported, so a transport that wants its own boot — or a language that is not
-TypeScript, reading [JSON Schema][schema] and [OpenAPI][openapi] instead — can
-speak Redis and HTTP directly:
+## Develop against a local core
 
-```ts
-import {
-  CONTRACT_MAJOR,
-  TRANSPORT_UPDATES_QUEUE,
-  openQueue,
-  requireEnv,
-  scopedRef,
-  transportRegistrationRequestSchema,
-} from "@assistants-swarm-hub/transport-sdk";
+Link your checkout into the core's `node_modules` and restart it:
 
-const updates = openQueue(TRANSPORT_UPDATES_QUEUE, requireEnv("REDIS_URL"));
-
-const registration = transportRegistrationRequestSchema.parse({
-  id: "matrix",
-  name: "Matrix",
-  contractMajor: CONTRACT_MAJOR,
-  baseUrl: process.env.SELF_URL ?? "http://localhost:3220",
-  mcpPath: "/mcp",
-  connectionConfigSchema: [
-    { key: "botToken", label: "Bot token", type: "secret", required: true },
-  ],
-  transportConfigSchema: [],
-});
-// POST it to {CORE_API_URL}/api/internal/transports/register with the
-// x-internal-token header; the answer is your desired state.
-
-await updates.add("update", {
-  /* transportMessageEventSchema — every message you see, addressed or not */
-});
-
-console.log(scopedRef("matrix", "chat", "!abc…")); // matrix:chat:!abc…
+```bash
+cd your-transport && npm link
+cd ../ash-core && npm link your-transport --no-save
 ```
 
-## What is in here
+A linked package resolves its dependencies from its own folder, which is fine:
+the host validates your tools' input shapes with whichever zod you brought.
 
-| Group | For |
-| --- | --- |
-| `startTransportService`, `PlatformAdapter`, `PlatformConnection`, `Normalizer`, `AddressingRule`, `TransportDescriptor` | The runtime, and the four things you implement against it |
-| `ConnectionManager`, `createCoreApi`, `createTransportApi`, `startDeliveryConsumer`, `registerDeliveryTools`, `reactToMessage`, `sendChatMessage`, `splitMessage`, `buildInboundEvent` | Its pieces, for a transport that wants its own boot |
-| Scoped refs (`scopedRef`, `parseScopedRef`, `SOURCE_ID_PATTERN`) | Naming a chat, a person or a message across apps without a foreign key |
-| `CONTRACT_MAJOR` | The handshake at registration |
-| `transport*` schemas + `TRANSPORT_UPDATES_QUEUE` | Registering, receiving desired state, publishing every update |
-| `inboundMessageEvent*`, `replyDelivery*`, `turnLifecycle*`, `BUS_EVENTS_CHANNEL`, `turnCorrelationId`, `messageDedupeKey` | What the core publishes back, and the ids one turn shares |
-| `internal*` schemas | The HTTP surface the core calls on you (voice, photos, files, menus, deletes) |
-| `readTurnMeta`, `toolDeliveryResult`, `TURN_META_KEY` | Your MCP tools: the turn they are bound to, the delivery they report |
-| `busTraceClient`, `createSourceTraceRecorder` | Recording what you did into the core's one debug explorer |
-| `openQueue`, `openWorker`, `openPublisher`, `openSubscriber` | Redis, wired the way the core expects (`attempts: 1` — the turn runner alone decides re-enqueue) |
-| `internalTokenGuard`, `INTERNAL_TOKEN_HEADER`, `serveMcp`, `requireEnv` | Your HTTP surface |
-| `normalizeImageForChat` | Turning platform media into the bounded JPEG the core's vision endpoints accept |
+## Versioning
 
-Deliberately **not** here: the core's dashboard DTOs, its operator listings and
-its content plane. A transport never speaks them, they change with the
-dashboard, and this package's semver would otherwise promise something it does
-not control.
+This package's **major** is what the core checks. It moves when the interface
+moves incompatibly — a hook's shape, a connection method's signature, what
+the runtime hands your tools. Minor and patch versions add and fix without
+breaking a package built on the same major.
 
 [core]: https://github.com/assistants-swarm-hub/ash-core
 [manual]: https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/development/adding-a-transport.md
-[schema]: https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/api/transport/events.schema.json
-[openapi]: https://github.com/assistants-swarm-hub/ash-core/blob/main/docs/api/transport/openapi.yaml

@@ -4,18 +4,17 @@ import { defineConfig } from "tsup";
  * The SDK ships **built** output, not the workspace sources.
  *
  * A transport is developed in its own repository, so nothing it installs may
- * resolve to a package that only exists in this one. The four internal
- * packages the SDK is assembled from (`contracts`, `bus`, `service`, `media`)
- * are private and unpublished, which is why they are `devDependencies` here
- * and `noExternal` below: their code is inlined into `dist/index.js` and their
- * types into `dist/index.d.ts`, and the published manifest has no dependency
- * an outsider cannot install.
+ * resolve to a package that only exists in this one. The two internal
+ * packages the SDK is assembled from (`contracts`, `media`) are private and
+ * unpublished, which is why they are `devDependencies` here and `noExternal`
+ * below: their code is inlined into `dist/index.js` and their types into
+ * `dist/index.d.ts`, and the published manifest has no dependency an
+ * outsider cannot install.
  *
- * Everything else stays external and is declared in `package.json`. The four
- * libraries whose objects the author constructs and hands to the SDK — Hono,
- * the MCP SDK and zod (plus Hono's node adapter) — are peer dependencies, so
- * a transport and the SDK share exactly one copy: two `McpServer` classes or
- * two zod registries in one process is a class of bug worth designing out.
+ * Everything else stays external and is declared in `package.json`. The two
+ * libraries whose objects the author constructs and hands across — the MCP
+ * SDK and zod — are peer dependencies, so a transport, this package and the
+ * core that hosts them agree on what a tool's input shape and server are.
  */
 export default defineConfig({
   entry: ["src/index.ts"],

@@ -1,8 +1,11 @@
-import { scopedRef, turnCorrelationId } from "@assistants-swarm-hub/contracts";
+import { randomUUID } from "node:crypto";
 
-import type { CoreApi } from "./core-api";
-import type { SendContext } from "./send";
-import { updateEnvelope } from "./updates";
+import {
+  scopedRef,
+  turnCorrelationId,
+  type SendContext,
+  type TransportCoreApi,
+} from "@assistants-swarm-hub/contracts";
 
 /**
  * Reacting to a message, minus the emoji.
@@ -20,6 +23,9 @@ import { updateEnvelope } from "./updates";
  *   does not remember reacting and says so out loud (operator report,
  *   2026-08-15) — and a failed record must read as a missing memory, not as
  *   a platform refusal, because the reaction IS on the message.
+ *
+ * The runtime the host hands your tool registrar carries everything this
+ * needs: `reactToMessage({ ...runtime.send, core: runtime.core }, input)`.
  */
 
 export type ReactionStatus = "ok" | "not_found" | "own_message";
@@ -32,7 +38,7 @@ export interface ReactionOutcome {
 
 export async function reactToMessage(
   ctx: Pick<SendContext, "descriptor" | "publisher" | "running" | "connectionFor"> & {
-    core: CoreApi;
+    core: Pick<TransportCoreApi, "lookupMessage">;
   },
   input: {
     chatId: string;
@@ -68,8 +74,12 @@ export async function reactToMessage(
 
   try {
     await ctx.publisher.publish({
-      ...updateEnvelope(
-        turnCorrelationId(scopedRef(source, "chat", input.chatId), input.sourceMessageId),
+      v: 1,
+      eventId: randomUUID(),
+      occurredAt: new Date().toISOString(),
+      correlationId: turnCorrelationId(
+        scopedRef(source, "chat", input.chatId),
+        input.sourceMessageId,
       ),
       type: "transport.bot-reaction",
       source,
