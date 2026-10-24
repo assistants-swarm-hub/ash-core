@@ -262,9 +262,40 @@ brings its own copies there — the case above.
    which step 4 removes from them. Docs that still describe the wire
    (`docs/api/README.md`, overview, adding-a-transport, testing, PLAN) are
    step 5's.
-4. **Transport repositories** (`todo`) — each becomes a package: `index.ts`
-   exports the transport, the service dependencies go, the image workflow
-   becomes a publish workflow. Published on SDK 5.
+4. **Transport repositories** (`done`, 2026-10-24 — converted, not
+   published: SDK 5 is not on the registry and the token is refused) — in
+   each repository: `src/index.ts` is the package (`export default
+   defineTransport({...})`; `transport.ts` folded in), the manifest is a
+   publishable package — **`@assistants-swarm-hub/ash-transport-telegram`** and
+   **`@assistants-swarm-hub/ash-transport-discord`** (the repository and image
+   names under the org scope; rename before the first publish if another
+   name is wanted), `exports` → `dist/index.js`, `files` dist + README,
+   `prepack` builds, `publishConfig` on GitHub Packages, the SDK (`^5.0.0`),
+   the MCP SDK and zod as peers, only the platform library as a dependency
+   (Hono, its node adapter and dotenv gone), `tsup`/`typescript`/`vitest` as
+   dev dependencies (`tsx` gone with the service entry). `Dockerfile` and
+   `.env.example` deleted. The reaction tools take the SDK's non-generic
+   `TransportRuntime` and the new `TransportToolServer` (contracts:
+   `Pick<McpServer, "registerTool">`, so the server a registrar receives is
+   a shape, not a class with private fields). `tsconfig` sets
+   `preserveSymlinks` so a linked SDK checkout resolves zod and the MCP SDK
+   from the package's own `node_modules` (without it the editor sees two
+   copies of each and nothing is assignable). READMEs rewritten for the
+   package form (install into a core, link for development, the Discord
+   bot setup kept). The release workflow publishes instead of pushing an
+   image: registry-gated like before (`npm view` decides what is pending),
+   typecheck + test + build, `npm publish --access public`, then the
+   package installed back from the registry into an empty project and its
+   default export checked for the four pieces, then the `v<version>` tag.
+   **Lockfiles are stale** in both repositories (`tsup` added, the SDK
+   range moved to `^5.0.0`, service deps removed): `npm install` there
+   needs SDK 5 on the registry and a working token — run it once after the
+   SDK publishes. Locally both checkouts resolve the SDK through a link to
+   `ash-core/packages/transport-sdk`. Proof: `tsc`, both test suites (38,
+   27), both builds import with the four pieces; the core booted on the
+   rebuilt packages (registered as the scoped names, all three stored
+   connections running, no errors). Gotcha for the dev workflow, now in the
+   READMEs: `npm install` in the core prunes the links.
 5. **Core cleanup** (`todo`) — delete everything under "What goes", the
    compose services here and in the org tree, `transport.Dockerfile`, the
    env; migration drops `base_url`/`contract_major`; rewrite

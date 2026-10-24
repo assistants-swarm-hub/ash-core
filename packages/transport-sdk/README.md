@@ -112,8 +112,16 @@ cd your-transport && npm link
 cd ../ash-core && npm link your-transport --no-save
 ```
 
+Note that `npm install` in the core prunes anything in its `node_modules` that
+its manifest does not list — a link included — so link again after one.
+
 A linked package resolves its dependencies from its own folder, which is fine:
 the host validates your tools' input shapes with whichever zod you brought.
+
+To link the other way — this SDK from a checkout of the core into your
+package — set `"preserveSymlinks": true` in your `tsconfig.json`, so the SDK's
+declarations resolve zod and the MCP SDK from your `node_modules` rather than
+the core's; otherwise the editor sees two copies of each.
 
 ## Versioning
 

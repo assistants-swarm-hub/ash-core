@@ -233,5 +233,6 @@ export type {
   TransportDescriptor,
   TransportPackage,
   TransportRuntime,
+  TransportToolServer,
   UpdatePublisher,
 } from "./transport-interface";

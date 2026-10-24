@@ -40,6 +40,7 @@ export type {
   TransportDescriptor,
   TransportPackage,
   TransportRuntime,
+  TransportToolServer,
   UpdatePublisher,
 } from "@assistants-swarm-hub/contracts";
 

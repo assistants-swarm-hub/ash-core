@@ -273,6 +273,15 @@ export interface TransportCoreApi {
   forwardMenuPress(body: TransportCallbackRequest): Promise<{ toast: string | null }>;
 }
 
+/**
+ * The server a transport's own tools register on: the host's `McpServer`,
+ * named by the one method a registrar calls rather than by the class. The
+ * class carries private fields, so two copies of the MCP SDK — a linked
+ * checkout resolving its own, a core built against another — would be
+ * two incompatible types for the same object; the method's shape is one.
+ */
+export type TransportToolServer = Pick<McpServer, "registerTool">;
+
 /** How the delivery tools word themselves for one platform. */
 export interface DeliveryToolTexts {
   /** How the platform names itself in a tool description ("Matrix"). */
@@ -316,6 +325,6 @@ export interface TransportPackage<TRaw = unknown> {
    * transport. A transport with no extra tools passes only `platform`.
    */
   tools?: DeliveryToolTexts & {
-    register?: (server: McpServer, runtime: TransportRuntime) => void;
+    register?: (server: TransportToolServer, runtime: TransportRuntime) => void;
   };
 }
