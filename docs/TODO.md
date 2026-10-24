@@ -32,7 +32,140 @@ the archive. Commit-on-main is back in force. Entries below dated before
 2026-08-21 predate the redesign — re-check their file paths against the
 current tree before acting on them.
 
-## Transport SDK: a new transport with zero core edits (`in-progress`, opened 2026-09-02)
+## Transports as packages the core hosts in-process (`todo`, opened 2026-10-24)
+
+**Decision (user, 2026-10-24).** A transport is an **npm package, not a
+service**. It keeps its own repository and its own release (a package version
+on the registry), and the core loads it into its own process at boot. This
+reverses the "coupling stays Redis + HTTP" line of the item below: the wire
+between a transport and the core is gone, and with it everything that existed
+only because of the process boundary. The standing decision that **the core
+knows no transport** stands unchanged — the host is generic, a platform is
+named nowhere in `core/`, and a package that follows the interface loads
+without a core edit.
+
+**Why.** Two first-party transports and one operator paid for a boundary built
+for third-party authors in any language, and none exist: two extra images, an
+internal HTTP API in both directions, a shared token, `SELF_URL`/`CORE_API_URL`,
+a contract-major handshake, generated OpenAPI/JSON Schema with CI checks, a
+registry token on every install, a compose Dockerfile that exists only because
+the registry holds the published SDK rather than the tree's, and orphan
+containers in the dev workflow.
+
+**The interface already exists.** `TransportServiceOptions` is the plugin
+surface: a descriptor, a platform adapter, a normalizer, an addressing rule,
+and optional tools. A package's default export becomes exactly that (a
+`defineTransport({...})` for the types), minus `defaultPort` and
+`hostsTools`. The division "platform judgement in the package, contract
+judgement in the runtime" is kept verbatim; only the runtime moves into the
+core.
+
+**What goes.**
+
+- Both internal HTTP surfaces: `core/app/api/internal/transports/*`,
+  `server/source/internal-client.ts`, the HTTP half of
+  `server/turn/source-outbound.ts`, the SDK's `http.ts`/`core-api.ts`,
+  `INTERNAL_API_TOKEN`, `SELF_URL`, `CORE_API_URL`, `PORT`, registration
+  retries, `/health`, `CONTRACT_MAJOR` and `transports.contract_major`.
+- MCP over HTTP: a transport's tools register on a core-built `McpServer`
+  joined over `InProcessTransport.createLinkedPair()`, exactly like the core's
+  own tools; the managed-connection fetch of `<transport>/mcp` goes.
+- Media bytes over HTTP (voice, photos, files): a direct port call.
+- The transport images, `docker/transport.Dockerfile`, both transport
+  services in the org-tree compose, both image release workflows, the
+  `hono`/`@hono/node-server`/`dotenv` dependencies in the transports.
+- `docs/api/transport/openapi.yaml`, `events.schema.json`, their generator and
+  CI check — there is no wire to document.
+
+**What stays (phase 1), deliberately.** The `transport-updates` queue remains
+the ingest's entrance and the bus remains how `reply.delivery`,
+`turn.lifecycle` and `transport.config.changed` reach the host: both are
+in-process-reachable (same Redis), so the pipeline side does not move at all
+in the first cut. Collapsing those hops into direct calls is phase 6, after
+everything else works. The `transports` table and the dashboard roster stay:
+loading a package is the registration (same row, `base_url` dropped).
+
+**Design.**
+
+- **Host** — `core/server/transports/host.ts`, started from
+  `server/boot/register-node.ts` next to the ingest: finds the installed
+  packages, imports each, validates its export (zod on the descriptor, the
+  four functions present), upserts the registration row, computes the desired
+  state, runs the SDK's `ConnectionManager` in-process, forwards inbound
+  events to the queue, consumes deliveries, drives typing, exposes an
+  in-process `SourceOutboundPort` per source id, and builds the per-transport
+  `McpServer`. Shutdown in order with the other consumers. A package that
+  fails to load is a roster row in error, never a boot failure.
+- **Install location** — a transports directory on the data volume
+  (`data/transports/`, bind-mounted like `traces` and `downloads`) with its
+  own `package.json`; the host imports each dependency listed there, resolved
+  from that directory (`createRequire` + `import()` with
+  `webpackIgnore`/`turbopackIgnore`, so the standalone trace neither bundles
+  nor needs them). Installs run **inside the container** (`docker compose
+  exec app ...`, a small CLI in the image that runs npm in that directory) —
+  native deps such as `sharp` must be built for the container's platform, not
+  the host's. Enable/disable per transport stays in the dashboard. A dashboard
+  "add transport" button is a later step on top of the same CLI, not phase 1.
+- **Compatibility** — the SDK's major is the contract: a transport declares
+  `@assistants-swarm-hub/transport-sdk` as a peer dependency; the host refuses
+  a package whose declared range excludes the core's SDK version and shows the
+  refusal on the roster, where the contract-major refusal shows today.
+- **SDK 5.0.0** — the runtime (`service`, `http`, `core-api`, `delivery`,
+  `updates`, `trace`, `mcp` over HTTP) leaves; what remains is the interface
+  types, the contracts, and the platform-neutral helpers a package still
+  calls (`normalizeImageForChat`, `splitMessage`, `reactToMessage`,
+  `SeenCache`). `ConnectionManager` and the delivery/send logic move to the
+  host (they are contract judgement, run by the core now).
+- **Dev workflow** — the author's checkout next to `ash-core/` is linked into
+  `data/transports/` as a `file:` dependency; a transport edit is boot-time
+  (restart the core), as the turn modules are.
+
+**Open decisions (ask, do not assume).**
+
+1. **Registry.** GitHub Packages demands a token even for public reads, which
+   now hits the operator at install time. Moving the SDK and the transport
+   packages to npmjs under the same scope removes the token entirely;
+   staying means an `NPM_TOKEN` in the operator's env for installs only.
+2. **Zod across copies.** A package installed under `data/transports/` resolves
+   its own `zod`; its tool input shapes then meet the core's `McpServer` from
+   a different copy. Step 1 verifies this on the real MCP SDK; if it breaks,
+   tool inputs cross the interface as JSON Schema, not zod.
+
+**Order of work.** The system works at the end of every step.
+
+1. **Spike** (`todo`) — one synthetic package (`acme`, as in the tests)
+   installed under `data/transports/`, loaded by the host in `next dev` and in
+   the standalone build, its tools registering on a core-built server, zod
+   cross-copy checked. Proof: a loader test with the fixture package.
+2. **Host** (`todo`) — the host above, running both transports from their
+   current repositories through a thin shim (the package export built from the
+   same four pieces `startTransportService` takes today), with the HTTP
+   surfaces still present but unused. Proof: a message in and a reply out on
+   both platforms, voice/photo/file/delete/menus/title through the in-process
+   port, the roster showing both.
+3. **SDK 5.0.0** (`todo`) — runtime removed, `defineTransport` added,
+   published; the wire generator and its CI check removed.
+4. **Transport repositories** (`todo`) — each becomes a package: `index.ts`
+   exports the transport, the service dependencies go, the image workflow
+   becomes a publish workflow. Published on SDK 5.
+5. **Core cleanup** (`todo`) — delete everything under "What goes", the
+   compose services here and in the org tree, `transport.Dockerfile`, the
+   env; migration drops `base_url`/`contract_major`; rewrite
+   `docs/development/adding-a-transport.md` (shorter: the interface, the
+   install command, the dev link), `docs/architecture/overview.md`,
+   `docs/operations/deployment.md`, `docs/PLAN.md`; CLAUDE.md in the org tree.
+6. **Collapse the hops** (`todo`, optional) — deliveries and lifecycle as
+   direct host calls instead of bus events; the ingest queue stays (it is
+   durability, not a boundary).
+
+## Transport SDK: a new transport with zero core edits (`deferred`, opened 2026-09-02 — superseded 2026-10-24)
+
+**Superseded (user, 2026-10-24).** Transports become packages the core hosts
+in-process; see the item above. What is `done` below stands (the core accepts
+any registered source, the roster, the split repositories, the published SDK);
+the remaining pushes and the image/compose/HTTP parts of the target flow are
+not happening in this shape.
+
 
 **Where it stands (2026-09-08):** all seven phases have landed and every check
 passes. The organization and every repository were renamed (item 12): the SDK
