@@ -33,7 +33,7 @@ export interface TransportSummary {
 
 /** Live poller state the transport reports for one connection. */
 export interface ConnectionStatus {
-  state: "running" | "error" | "stopped";
+  state: "starting" | "running" | "error" | "stopped";
   username: string | null;
   since: string | null;
   error: string | null;

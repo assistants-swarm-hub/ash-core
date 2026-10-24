@@ -4,8 +4,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { sourceIdSchema, transportConfigFieldSchema } from "@assistants-swarm-hub/contracts";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  sourceIdSchema,
+  transportConfigFieldSchema,
+  type TransportPackage,
+} from "@assistants-swarm-hub/contracts";
 import { z } from "zod";
 
 /**
@@ -31,9 +34,8 @@ import { z } from "zod";
  *   transport must not take the core down with it. The host puts the failure
  *   on the dashboard's roster, where a refused registration shows today.
  *
- * The functions are typed loosely for now: the core does not yet depend on
- * the SDK's interface types (`PlatformAdapter`, `Normalizer`,
- * `AddressingRule`); the host wires them against those when it lands.
+ * The shape is checked, not the behavior: a function is a function here, and
+ * the host calls it against the contracts' {@link TransportPackage} types.
  */
 
 /** The `keywords` entry that marks an installed package as a transport. */
@@ -43,13 +45,6 @@ const aFunction = <T>() =>
   z.custom<T>((value) => typeof value === "function", { message: "expected a function" });
 
 type AnyFunction = (...args: never[]) => unknown;
-
-/**
- * A transport's own tools join the server the host builds for it; the
- * second argument is the running context (`runtime.send`, `runtime.core`),
- * typed once the host exists.
- */
-type ToolRegistrar = (server: McpServer, runtime: unknown) => void;
 
 export const transportModuleSchema = z.object({
   descriptor: z.object({
@@ -66,12 +61,10 @@ export const transportModuleSchema = z.object({
   tools: z
     .object({
       platform: z.string().min(1),
-      register: aFunction<ToolRegistrar>().optional(),
+      register: aFunction<NonNullable<TransportPackage["tools"]>["register"]>().optional(),
     })
     .optional(),
 });
-
-export type TransportModule = z.infer<typeof transportModuleSchema>;
 
 export interface LoadedTransportPackage {
   /** The npm package name. */
@@ -79,7 +72,7 @@ export interface LoadedTransportPackage {
   version: string;
   /** Where it was found — a linked checkout shows as its real path's parent. */
   dir: string;
-  transport: TransportModule;
+  transport: TransportPackage;
 }
 
 export interface FailedTransportPackage {
@@ -208,7 +201,9 @@ async function loadTransportPackage(
     name: manifest.name,
     version: manifest.version ?? "0.0.0",
     dir: path.dirname(packageDir),
-    transport: parsed.data,
+    // Shape-checked above; the behavior is the package's. The host calls it
+    // against the interface, which is what the loose function checks stand for.
+    transport: parsed.data as unknown as TransportPackage,
   };
 }
 

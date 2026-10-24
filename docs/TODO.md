@@ -159,12 +159,74 @@ brings its own copies there — the case above.
    `npm install` would leave it) loaded under `node server.js`. `tsc`,
    `eslint` and `next build` clean (the build's one warning is the
    pre-existing dynamic-path one in `download.ts`).
-2. **Host** (`todo`) — the host above, running both transports from their
-   current repositories through a thin shim (the package export built from the
-   same four pieces `startTransportService` takes today), with the HTTP
-   surfaces still present but unused. Proof: a message in and a reply out on
-   both platforms, voice/photo/file/delete/menus/title through the in-process
-   port, the roster showing both.
+2. **Host** (`in-progress`, 2026-10-24 — built and booted; the live
+   round trip is the last check) — what landed:
+   - **The platform interface is the contracts'**:
+     `packages/contracts/src/transport-interface.ts` holds `TransportDescriptor`,
+     `PlatformAdapter`/`PlatformConnection`/`PlatformHooks`, `InboundMessage`,
+     the rules, `SendContext`, `UpdatePublisher`, `TransportCoreApi`,
+     `TransportRuntime` (what a package's own tools receive) and
+     `TransportPackage` (the default export). The SDK's `runtime/types.ts`
+     re-exports them, so a transport built on SDK 4 keeps its imports; the
+     SDK builds (`tsup` + dts) on it. Contracts gained the MCP SDK as a dev
+     dependency for the one `McpServer` type.
+   - **The runtime moved into the core** (`core/server/transports/host/`):
+     `connections.ts` (the manager), `inbound.ts`, `updates.ts`, `send.ts`,
+     `split.ts`, `delivery.ts`, `delivery-tools.ts`, `traced-tool.ts`, with
+     their tests, plus `core/lib/describe-error.ts`. The SDK's copies stay
+     until step 3 deletes them. New: `core-api.ts` (registration as a row,
+     the mirror lookup and the menu press as direct calls), `outbound.ts`
+     (the HTTP port's routes as an in-process `SourceOutboundPort` and
+     `CollectTransport`, same verdicts: missing action → `bad_request`,
+     platform refusal → `service_unavailable` in its words, voice falls
+     back to text, photos best-effort, deletes cosmetic), and `host.ts`
+     (`startTransportHostFromEnv`: load, register, reconcile, delivery
+     consumer, config watch on the bus, the per-transport `McpServer` over
+     the in-process pair, shutdown in order).
+   - **The hosted registry** (`core/server/transports/hosted.ts`): every
+     place the core reached a transport over HTTP asks it first —
+     `sourceOutbound`, `collectTransport`, `fetchTransportStatuses`, and the
+     managed tool connection, whose row for a hosted transport is kind
+     `in-process` (`TOOL_TRANSPORTS` + check constraint, migration
+     `0022_tool_connections_reach_in_process`), reached through the one
+     `toolConnectionClient` that discovery, the managed reconcile and the
+     turn's tool call now share. A transport still run as its own service
+     falls through to the HTTP paths unchanged.
+   - **Boot** (`register-node.ts`): the host starts next to the ingest and
+     the managed reconcile runs after it, so the hosted servers exist to be
+     asked; shutdown closes the connections first. The dashboard renders a
+     `starting` connection as such instead of "Not tracked".
+   - **The shim in both transport repositories**: `src/transport.ts` is the
+     default export (descriptor, adapter, normalizer, addressing, tools);
+     `index.ts` spreads it into `startTransportService` for the service
+     form; `package.json` carries the keyword, `exports` → `dist/transport.js`,
+     a `tsup` build and `tsup` as a dev dependency. **The lockfiles do not
+     have `tsup` yet**: `npm install` in either repository answers 401 from
+     GitHub Packages with the token in `~/.npmrc` (expired or wrong scope) —
+     run it once with a working `read:packages` token. Until then the build
+     runs with the SDK workspace's `tsup`.
+   - **Proof so far**: `tsc`, `eslint`, 1280 core unit tests (7 host, 10
+     outbound, 3 client, 6 loader, the moved suites) and both transports'
+     own suites pass. With both checkouts linked into the core's
+     `node_modules` and the dev database up, `next dev` registered
+     `discord` and `tg` (rows: `base_url` empty, `mcp_path` `in-process`,
+     contract 4), opened all three stored connections in the core's process
+     (the Discord gateway and both Telegram pollers report `running` with
+     their handles), and the boot reconcile discovered three tools per
+     transport (`reply_to_message`, `send_message`,
+     `set_message_reaction`) through the in-process client with no error.
+   - **Left**: the live round trip (a message in and a reply out on each
+     platform, voice/photo/file/delete/menus through the port) needs
+     someone to message a bot while the host runs; the SDK-major
+     compatibility check waits for step 3 (SDK 5 is what a package will
+     declare as a peer); the dev workflow's `npm link` is written up in
+     step 5.
+   - **Gotcha (Windows)**: when Docker Desktop's VM comes up, Hyper-V may
+     reserve dynamic port blocks that swallow 3200 (`netsh interface ipv4
+     show excludedportrange protocol=tcp`); `next dev` then fails with
+     `EACCES`. The org tree's `.claude/launch.json` has a `dev-4300`
+     entry for that case; a reboot (or an elevated `net stop winnat` /
+     `net start winnat`) gives 3200 back.
 3. **SDK 5.0.0** (`todo`) — runtime removed, `defineTransport` added,
    published; the wire generator and its CI check removed.
 4. **Transport repositories** (`todo`) — each becomes a package: `index.ts`

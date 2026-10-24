@@ -50,11 +50,14 @@ export function connectionStatusView(connection: Pick<ConnectionView, "enabled" 
   if (status?.state === "error") {
     return { tone: "danger", label: "Error", detail: status.error ?? "unknown error" };
   }
+  if (status?.state === "starting") {
+    return { tone: "warning", label: "Starting", detail: "connecting to the platform" };
+  }
   if (connection.enabled) {
     return {
       tone: "warning",
       label: "Not tracked",
-      detail: "enabled, but nothing is tracked — is the transport service running?",
+      detail: "enabled, but nothing is tracked — is the transport running?",
     };
   }
   return { tone: "neutral", label: "Stopped", detail: null };

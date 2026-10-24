@@ -14,6 +14,7 @@ import type { SourceId } from "@assistants-swarm-hub/contracts";
 import { webChatOutbound } from "@/features/web-chat/server/outbound";
 import { findMessageRefs } from "@/lib/message-refs";
 import { internalRequester, sourceApiConfig } from "@/server/source/internal-client";
+import { hostedTransport } from "@/server/transports/hosted";
 import {
   filterMirroredMessageIds,
   markSourceMessageDeleted,
@@ -104,16 +105,17 @@ export interface SourceOutboundPort {
  * app. Callers treat null exactly like v1 treated a stopped poller: the send
  * fails audibly and is recorded on the run/fire — never dropped.
  *
- * The web chat resolves to its in-process port since the dissolve (Phase 6).
- * A transport's port is the HTTP client wrapped with the mirror bookkeeping
- * that moved core-side in Phase 7: the `#id` link whitelist rides the send
- * request, and a performed delete lands as a soft delete on the mirror row
- * (deliveries themselves are mirrored off the transport's
+ * The web chat resolves to its in-process port since the dissolve (Phase 6),
+ * and a transport this core hosts to the port its host built. A transport
+ * still run as its own service gets the HTTP client. Either is wrapped with
+ * the mirror bookkeeping that moved core-side in Phase 7: the `#id` link
+ * whitelist rides the send, and a performed delete lands as a soft delete on
+ * the mirror row (deliveries themselves are mirrored off the transport's
  * `message.delivered` events).
  */
 export function sourceOutbound(source: SourceId): SourceOutboundPort | null {
   if (source === "chat") return webChatOutbound();
-  const port = sourceApiOutbound(source);
+  const port = hostedTransport(source)?.outbound ?? sourceApiOutbound(source);
   return {
     ...port,
     async sendMessage(chatId, opts) {

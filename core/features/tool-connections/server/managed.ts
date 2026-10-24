@@ -17,7 +17,8 @@ import {
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { withTrace } from "@/server/trace";
 import type { TraceRecorder } from "@/server/trace/recorder";
-import { listRemoteTools } from "@/server/mcp/http-client";
+import { hostedTransport } from "@/server/transports/hosted";
+import { toolConnectionClient } from "./client";
 import { describeDiff, diffToolsets } from "./diff";
 import {
   getToolConnectionBySlug,
@@ -27,6 +28,7 @@ import {
   updateToolConnection,
   type ToolConnectionRecord,
 } from "./repository";
+import type { ToolTransport } from "./schema";
 import { appliedTools } from "./service";
 
 /**
@@ -59,19 +61,34 @@ interface ManagedDesired {
   source: SourceId;
   slug: string;
   name: string;
+  transport: ToolTransport;
   endpointUrl: string;
   authHeaders: Record<string, string>;
 }
 
 /**
  * The desired connection for one source, or null when it has not registered
- * (or announces no MCP server, or speaks another contract major). Resolved
- * from the transport's registration row since Phase 7 — the endpoint is
- * `baseUrl + mcpPath` and the name is the one it announced.
+ * (or announces no MCP server, or speaks another contract major). A
+ * transport this core hosts is reached in-process — its endpoint is a
+ * marker, not an address. One run as its own service resolves from its
+ * registration row (Phase 7): the endpoint is `baseUrl + mcpPath` and the
+ * name is the one it announced.
  */
 export async function desiredManagedConnection(
   source: SourceId,
 ): Promise<ManagedDesired | null> {
+  const hosted = hostedTransport(source);
+  if (hosted) {
+    if (!hosted.tools) return null;
+    return {
+      source,
+      slug: source,
+      name: `${hosted.descriptor.name} tools`,
+      transport: "in-process",
+      endpointUrl: `in-process://${source}`,
+      authHeaders: {},
+    };
+  }
   const token = getEnv().INTERNAL_API_TOKEN;
   if (!token) return null;
   const row = await getTransport(source).catch(() => null);
@@ -80,6 +97,7 @@ export async function desiredManagedConnection(
     source,
     slug: source,
     name: `${row.name} tools`,
+    transport: "http",
     endpointUrl: `${row.baseUrl.replace(/[/]$/, "")}${row.mcpPath}`,
     authHeaders: { [INTERNAL_TOKEN_HEADER]: token },
   };
@@ -113,7 +131,7 @@ async function reconcileOne(
     const created = await insertToolConnection(db, randomUUID(), {
       slug: desired.slug,
       name: desired.name,
-      transport: "http",
+      transport: desired.transport,
       endpointUrl: desired.endpointUrl,
       authHeaders: desired.authHeaders,
       enabled: true,
@@ -128,6 +146,7 @@ async function reconcileOne(
   }
 
   const changed =
+    existing.transport !== desired.transport ||
     existing.endpointUrl !== desired.endpointUrl ||
     existing.name !== desired.name ||
     existing.appScope !== desired.source ||
@@ -137,6 +156,7 @@ async function reconcileOne(
 
   const updated = await updateToolConnection(db, existing.id, {
     name: desired.name,
+    transport: desired.transport,
     endpointUrl: desired.endpointUrl,
     authHeaders: desired.authHeaders,
     appScope: desired.source,
@@ -172,7 +192,7 @@ export async function reconcileManagedConnections(
           continue;
         }
         try {
-          const discovered = await listRemoteTools(record);
+          const discovered = await toolConnectionClient(record).listTools();
           const diff = diffToolsets(appliedTools(record), discovered);
           await recordDiscovery(db, record.id, {
             at: new Date(),

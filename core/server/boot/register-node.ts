@@ -37,7 +37,7 @@ import {
   type SourceEventsConsumer,
 } from "@/server/source/events-consumer";
 import { startTraceStore, stopTraceStore } from "@/server/trace";
-import { loadTransportPackages } from "@/server/transports/packages";
+import { startTransportHostFromEnv, type TransportHost } from "@/server/transports/host/host";
 import { startTurnConsumerFromEnv, type TurnConsumer } from "@/server/turn/consume";
 
 /**
@@ -57,9 +57,12 @@ export function registerNode(): void {
   let turnConsumer: TurnConsumer | null = null;
   let eventsConsumer: SourceEventsConsumer | null = null;
   let transportIngest: TransportIngest | null = null;
+  let transportHost: TransportHost | null = null;
   const shutdown = async (): Promise<void> => {
     if (shuttingDown) return;
     shuttingDown = true;
+    // Platform connections first, so nothing new enters the queues below.
+    await transportHost?.close().catch(() => undefined);
     await transportIngest?.close().catch(() => undefined);
     await turnConsumer?.close().catch(() => undefined);
     await eventsConsumer?.close().catch(() => undefined);
@@ -127,37 +130,42 @@ export function registerNode(): void {
       console.error("Source events consumer failed to start:", err);
     });
 
-  // Bring the source apps' own MCP servers in line with configuration and
-  // take their current toolsets. Their tools ship with the release, so the
-  // snapshot follows the code rather than waiting for an operator to apply it
-  // (see `managed.ts`). A source that is still starting keeps the tools it
-  // last offered, and the trace says which app did not answer.
-  void reconcileManagedConnections().catch((err) => {
-    console.error("Source tool connections could not be reconciled:", err);
-  });
-
-  // Find the transport packages installed into this core (docs/TODO.md,
-  // "Transports as packages the core hosts in-process"). Loading is the
-  // spike: each package is found by its keyword, imported and checked; the
-  // host that runs them is the next step. A package that does not load is
-  // reported and skipped — never a boot failure.
-  void loadTransportPackages()
-    .then(({ searched, loaded, failed }) => {
-      for (const pkg of loaded) {
+  // Run the transport packages installed into this core (docs/TODO.md,
+  // "Transports as packages the core hosts in-process"): each is found by
+  // its keyword, registered, and its connections reconciled from the desired
+  // state. Same env gate as the ingest. A package that does not load or
+  // start is reported and skipped — never a boot failure.
+  //
+  // Then bring the transports' own MCP servers in line with configuration
+  // and take their current toolsets — a hosted transport's in-process, a
+  // service's over its URL. Their tools ship with the release, so the
+  // snapshot follows the code rather than waiting for an operator to apply
+  // it (see `managed.ts`). A service still starting keeps the tools it last
+  // offered, and the trace says which one did not answer. After the host,
+  // so the hosted servers exist to be asked.
+  void startTransportHostFromEnv()
+    .then((host) => {
+      transportHost = host;
+      if (host) {
         console.log(
-          `Transport package ${pkg.name}@${pkg.version} loaded from ${pkg.dir}: ` +
-            `${pkg.transport.descriptor.name} (source ${pkg.transport.descriptor.id})`,
+          `Transport host started (${host.sources.length} transport(s)` +
+            (host.sources.length ? `: ${host.sources.join(", ")}` : "") +
+            ")",
         );
-      }
-      for (const pkg of failed) {
-        console.error(`Transport package ${pkg.name} in ${pkg.dir} not loaded: ${pkg.error}`);
-      }
-      if (loaded.length === 0 && failed.length === 0) {
-        console.log(`No transport packages installed (searched ${searched.join(", ")})`);
+      } else {
+        console.warn(
+          "Transport host NOT started — set REDIS_URL and DATABASE_URL; " +
+            "until then the installed transport packages stay idle.",
+        );
       }
     })
     .catch((err) => {
-      console.error("Transport packages could not be loaded:", err);
+      console.error("Transport host failed to start:", err);
+    })
+    .finally(() => {
+      void reconcileManagedConnections().catch((err) => {
+        console.error("Source tool connections could not be reconciled:", err);
+      });
     });
 
   // Start the in-process vision-backfill scheduler. It arms an initial run so any

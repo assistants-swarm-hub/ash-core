@@ -9,11 +9,12 @@ import {
 import type { ChatCompletionFunctionTool } from "openai/resources/chat/completions";
 
 import { tryGetToolContext } from "@/server/mcp/context";
-import { callRemoteTool, discoveredToolToOpenAi } from "@/server/mcp/http-client";
+import { discoveredToolToOpenAi } from "@/server/mcp/http-client";
 import { tracedToolCall } from "@/server/mcp/tool-trace";
 import type { McpToolCallResult } from "@/server/mcp/tool-result";
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { isSafePublicUrl } from "@/features/link-fetch/url-safety";
+import { toolConnectionClient } from "./client";
 import { connectionIsRestricted } from "./service";
 import { listToolConnections, type ToolConnectionRecord } from "./repository";
 import { prefixedToolName } from "./schema";
@@ -136,8 +137,7 @@ export async function resolveConnectionToolset(
       const onDelivered = tryGetToolContext()?.onDelivered;
       return tracedToolCall("connections", name, args, async () => {
         try {
-          const result = await callRemoteTool(
-            entry.connection,
+          const result = await toolConnectionClient(entry.connection).callTool(
             entry.toolName,
             args,
             meta ? turnMetaEnvelope(meta) : undefined,

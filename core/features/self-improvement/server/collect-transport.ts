@@ -6,6 +6,7 @@ import {
 } from "@assistants-swarm-hub/contracts";
 
 import { internalRequester, sourceApiConfig } from "@/server/source/internal-client";
+import { hostedTransport } from "@/server/transports/hosted";
 
 import type { CollectTransport } from "./collect-flows";
 
@@ -20,11 +21,14 @@ const REQUEST_TIMEOUT_MS = 30_000;
 
 /**
  * The menu transport for one source, or null for the web chat (no reactions
- * there). Config resolves per call from the transport's registration; an
- * unregistered transport's calls fail audibly and the flows degrade.
+ * there). A transport this core hosts answers in-process; for one run as its
+ * own service, config resolves per call from the transport's registration,
+ * and an unregistered transport's calls fail audibly and the flows degrade.
  */
 export function collectTransport(source: SourceId): CollectTransport | null {
   if (source === "chat") return null;
+  const hosted = hostedTransport(source);
+  if (hosted) return hosted.menus;
   const request = internalRequester({
     config: () => sourceApiConfig(source),
     label: `${source} internal API`,

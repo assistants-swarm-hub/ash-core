@@ -1,0 +1,2 @@
+ALTER TABLE "tool_connections" DROP CONSTRAINT "tool_connections_transport_check";--> statement-breakpoint
+ALTER TABLE "tool_connections" ADD CONSTRAINT "tool_connections_transport_check" CHECK ("tool_connections"."transport" in ('http', 'stdio', 'in-process'));

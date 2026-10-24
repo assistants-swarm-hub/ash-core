@@ -699,7 +699,7 @@ export const toolConnections = pgTable(
   },
   (t) => [
     uniqueIndex("tool_connections_slug_idx").on(t.slug),
-    check("tool_connections_transport_check", sql`${t.transport} in ('http', 'stdio')`),
+    check("tool_connections_transport_check", sql`${t.transport} in ('http', 'stdio', 'in-process')`),
   ],
 );
 

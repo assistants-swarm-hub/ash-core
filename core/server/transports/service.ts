@@ -19,6 +19,7 @@ import { publishEvent } from "@/server/realtime/hub";
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { withTrace } from "@/server/trace";
 import { silencedAssistantIds } from "@/server/ownership";
+import { hostedTransport } from "@/server/transports/hosted";
 
 import {
   assistantTransports,
@@ -404,9 +405,13 @@ export async function deleteAssistantTransport(
 
 // ---- Operator views --------------------------------------------------------
 
-/** Live poller state one transport reports for one connection. */
+/**
+ * Live connection state one transport reports for one connection.
+ * `starting` is a connection the platform is still handshaking — it has no
+ * identity to send as yet, and the dashboard says so rather than "stopped".
+ */
 export interface TransportConnectionStatus {
-  state: "running" | "error" | "stopped";
+  state: "starting" | "running" | "error" | "stopped";
   username: string | null;
   since: string | null;
   error: string | null;
@@ -426,10 +431,28 @@ export interface TransportConnectionView {
 
 const STATUS_TIMEOUT_MS = 5_000;
 
-/** The live statuses a transport reports (its /health), keyed by connection id. */
+/**
+ * The live statuses a transport reports, keyed by connection id: straight
+ * from the host for a transport this core runs, else from the service's
+ * `/health`. Unreachable means no statuses, never a failed listing.
+ */
 export async function fetchTransportStatuses(
   row: TransportRow,
 ): Promise<Map<string, TransportConnectionStatus>> {
+  const hosted = hostedTransport(row.id);
+  if (hosted) {
+    return new Map(
+      hosted.statuses().map((status) => [
+        status.connectionId,
+        {
+          state: status.state,
+          username: status.username,
+          since: status.since,
+          error: status.error,
+        },
+      ]),
+    );
+  }
   if (!row.baseUrl) return new Map();
   try {
     const res = await fetch(`${row.baseUrl.replace(/\/$/, "")}/health`, {

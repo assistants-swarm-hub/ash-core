@@ -9,6 +9,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import type { TransportRuntime } from "@assistants-swarm-hub/contracts";
+
 import { InProcessTransport } from "@/server/mcp/in-process-transport";
 
 import { loadTransportPackages, nodeModulesChain, TRANSPORT_KEYWORD } from "./packages";
@@ -99,7 +101,7 @@ describe("loadTransportPackages", () => {
   it("registers the package's tools on a core-built MCP server and validates their input across zod copies", async () => {
     const { loaded } = await loadTransportPackages([nodeModules]);
     const server = new McpServer({ name: "acme-transport", version: "1.0.0" });
-    loaded[0].transport.tools?.register?.(server, {});
+    loaded[0].transport.tools?.register?.(server, {} as TransportRuntime);
 
     const [serverSide, clientSide] = InProcessTransport.createLinkedPair();
     const client = new Client({ name: "test", version: "1.0.0" });

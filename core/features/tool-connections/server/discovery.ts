@@ -3,8 +3,8 @@ import "server-only";
 import { ApiError } from "@/lib/api-error";
 import { FEATURES } from "@/lib/features";
 import type { TraceTrigger } from "@/lib/trace";
-import { listRemoteTools } from "@/server/mcp/http-client";
 import { publishEvent } from "@/server/realtime/hub";
+import { toolConnectionClient } from "./client";
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { withTrace } from "@/server/trace";
 import { mayActOn, type Actor } from "@/server/ownership";
@@ -87,7 +87,7 @@ export async function discoverToolConnection(
 
       let discovered;
       try {
-        discovered = await listRemoteTools(record);
+        discovered = await toolConnectionClient(record).listTools();
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         await recordDiscovery(db, id, { at: record.lastDiscoveredAt ? new Date(record.lastDiscoveredAt) : null, error });

@@ -36,10 +36,13 @@ const slug = z
 const name = z.string().trim().min(1, "Name is required").max(MAX_NAME_LEN);
 
 /**
- * Only `http` is executed in v2; `stdio` is modeled so the discriminator and
- * UI need no rework when it lands, and the service refuses it.
+ * Only `http` is executed for an operator's own connection; `stdio` is
+ * modeled so the discriminator and UI need no rework when it lands, and the
+ * service refuses it. `in-process` is the managed row of a transport package
+ * the core hosts: its server lives in this process and is reached over the
+ * in-process client, never a URL. The service refuses it from an operator too.
  */
-export const TOOL_TRANSPORTS = ["http", "stdio"] as const;
+export const TOOL_TRANSPORTS = ["http", "stdio", "in-process"] as const;
 export const transportSchema = z.enum(TOOL_TRANSPORTS);
 export type ToolTransport = z.infer<typeof transportSchema>;
 

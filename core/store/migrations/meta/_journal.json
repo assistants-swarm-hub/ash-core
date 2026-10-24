@@ -155,6 +155,13 @@
       "when": 1788898293301,
       "tag": "0021_collections_carry_an_assistants_data",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792859322565,
+      "tag": "0022_tool_connections_reach_in_process",
+      "breakpoints": true
     }
   ]
 }
