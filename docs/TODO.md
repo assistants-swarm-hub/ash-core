@@ -32,7 +32,7 @@ the archive. Commit-on-main is back in force. Entries below dated before
 2026-08-21 predate the redesign — re-check their file paths against the
 current tree before acting on them.
 
-## Transports as packages the core hosts in-process (`todo`, opened 2026-10-24)
+## Transports as packages the core hosts in-process (`in-progress`, opened 2026-10-24)
 
 **Decision (user, 2026-10-24).** A transport is an **npm package, not a
 service**. It keeps its own repository and its own release (a package version
@@ -96,16 +96,16 @@ loading a package is the registration (same row, `base_url` dropped).
   in-process `SourceOutboundPort` per source id, and builds the per-transport
   `McpServer`. Shutdown in order with the other consumers. A package that
   fails to load is a roster row in error, never a boot failure.
-- **Install location** — a transports directory on the data volume
-  (`data/transports/`, bind-mounted like `traces` and `downloads`) with its
-  own `package.json`; the host imports each dependency listed there, resolved
-  from that directory (`createRequire` + `import()` with
-  `webpackIgnore`/`turbopackIgnore`, so the standalone trace neither bundles
-  nor needs them). Installs run **inside the container** (`docker compose
-  exec app ...`, a small CLI in the image that runs npm in that directory) —
-  native deps such as `sharp` must be built for the container's platform, not
-  the host's. Enable/disable per transport stays in the dashboard. A dashboard
-  "add transport" button is a later step on top of the same CLI, not phase 1.
+- **Install (user, 2026-10-24: "just `npm install`, links for local dev")**
+  — a transport is an ordinary dependency of the core: `npm install
+  <package>`, restart, done. No transports directory, no install manifest of
+  its own, no CLI. The core finds installed transports by the
+  `assistants-swarm-hub-transport` keyword in their `package.json`, walking
+  the `node_modules` chain Node itself searches from the working directory
+  (`core/server/transports/packages.ts`), and imports each by file URL with
+  `webpackIgnore`/`turbopackIgnore`, so the build neither bundles nor
+  traces them and an install after the image was built is found at boot.
+  Enable/disable per transport stays in the dashboard.
 - **Compatibility** — the SDK's major is the contract: a transport declares
   `@assistants-swarm-hub/transport-sdk` as a peer dependency; the host refuses
   a package whose declared range excludes the core's SDK version and shows the
@@ -116,27 +116,49 @@ loading a package is the registration (same row, `base_url` dropped).
   calls (`normalizeImageForChat`, `splitMessage`, `reactToMessage`,
   `SeenCache`). `ConnectionManager` and the delivery/send logic move to the
   host (they are contract judgement, run by the core now).
-- **Dev workflow** — the author's checkout next to `ash-core/` is linked into
-  `data/transports/` as a `file:` dependency; a transport edit is boot-time
-  (restart the core), as the turn modules are.
+- **Dev workflow** — `npm link` from the author's checkout next to
+  `ash-core/`; a linked package resolves its dependencies from its own
+  folder (its own `zod`), which the spike covers. A transport edit is
+  boot-time (restart the core), as the turn modules are.
 
-**Open decisions (ask, do not assume).**
+**Decided.**
 
-1. **Registry.** GitHub Packages demands a token even for public reads, which
-   now hits the operator at install time. Moving the SDK and the transport
-   packages to npmjs under the same scope removes the token entirely;
-   staying means an `NPM_TOKEN` in the operator's env for installs only.
-2. **Zod across copies.** A package installed under `data/transports/` resolves
-   its own `zod`; its tool input shapes then meet the core's `McpServer` from
-   a different copy. Step 1 verifies this on the real MCP SDK; if it breaks,
-   tool inputs cross the interface as JSON Schema, not zod.
+- **Registry stays GitHub Packages** (user, 2026-10-24); the operator sets
+  `NPM_TOKEN` for installs.
+- **Zod across copies works** (spike, 2026-10-24): a package that resolves its
+  own `zod` (a linked checkout, or an install next to a standalone build that
+  bundled the core's copy) registers tools on a core-built `McpServer` and
+  the server validates with them — `tools/list` carries the JSON schema,
+  a bad argument is refused. No JSON-Schema fallback needed.
+
+**Open decision (ask, do not assume).** Who runs `npm install` for the
+**published image**: an entrypoint that installs from an env list at boot
+(network and `NPM_TOKEN` at runtime, a writable `/app`), or the operator's
+own derived image (`FROM ghcr.io/assistants-swarm-hub/ash-core` +
+`RUN npm install …`). Note the standalone output carries no top-level
+`zod`/MCP SDK (Turbopack bundles them), so an installed transport always
+brings its own copies there — the case above.
 
 **Order of work.** The system works at the end of every step.
 
-1. **Spike** (`todo`) — one synthetic package (`acme`, as in the tests)
-   installed under `data/transports/`, loaded by the host in `next dev` and in
-   the standalone build, its tools registering on a core-built server, zod
-   cross-copy checked. Proof: a loader test with the fixture package.
+1. **Spike** (`done`, 2026-10-24) — the loader
+   (`core/server/transports/packages.ts`: keyword discovery over the
+   `node_modules` chain, ESM entry resolution, import by file URL, zod
+   validation of the default export, duplicate source ids and broken packages
+   reported not thrown), booted from `server/boot/register-node.ts` (logs
+   each loaded/failed package; the host comes next). Fixture package
+   `core/test/fixtures/transports/acme` (keyword-marked, a tool whose input
+   shape comes from its own `zod`). Proof: `packages.test.ts` (6 tests: the
+   keyword-marked package loads, the unmarked one is ignored, the broken one
+   is reported, nothing installed is an empty result, the nearest
+   `node_modules` wins a name, the package's own zod is a different copy,
+   and its tool registers on a core-built `McpServer` and validates); the
+   fixture linked into the root `node_modules` loaded in `next dev`
+   ("Transport package @acme/transport-acme@0.1.0 loaded from …"); the same
+   copied into `.next/standalone/node_modules` (with a `zod` next to it, as
+   `npm install` would leave it) loaded under `node server.js`. `tsc`,
+   `eslint` and `next build` clean (the build's one warning is the
+   pre-existing dynamic-path one in `download.ts`).
 2. **Host** (`todo`) — the host above, running both transports from their
    current repositories through a thin shim (the package export built from the
    same four pieces `startTransportService` takes today), with the HTTP

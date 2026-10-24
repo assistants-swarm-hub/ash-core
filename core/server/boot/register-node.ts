@@ -37,6 +37,7 @@ import {
   type SourceEventsConsumer,
 } from "@/server/source/events-consumer";
 import { startTraceStore, stopTraceStore } from "@/server/trace";
+import { loadTransportPackages } from "@/server/transports/packages";
 import { startTurnConsumerFromEnv, type TurnConsumer } from "@/server/turn/consume";
 
 /**
@@ -134,6 +135,30 @@ export function registerNode(): void {
   void reconcileManagedConnections().catch((err) => {
     console.error("Source tool connections could not be reconciled:", err);
   });
+
+  // Find the transport packages installed into this core (docs/TODO.md,
+  // "Transports as packages the core hosts in-process"). Loading is the
+  // spike: each package is found by its keyword, imported and checked; the
+  // host that runs them is the next step. A package that does not load is
+  // reported and skipped — never a boot failure.
+  void loadTransportPackages()
+    .then(({ searched, loaded, failed }) => {
+      for (const pkg of loaded) {
+        console.log(
+          `Transport package ${pkg.name}@${pkg.version} loaded from ${pkg.dir}: ` +
+            `${pkg.transport.descriptor.name} (source ${pkg.transport.descriptor.id})`,
+        );
+      }
+      for (const pkg of failed) {
+        console.error(`Transport package ${pkg.name} in ${pkg.dir} not loaded: ${pkg.error}`);
+      }
+      if (loaded.length === 0 && failed.length === 0) {
+        console.log(`No transport packages installed (searched ${searched.join(", ")})`);
+      }
+    })
+    .catch((err) => {
+      console.error("Transport packages could not be loaded:", err);
+    });
 
   // Start the in-process vision-backfill scheduler. It arms an initial run so any
   // media left `pending` from before boot is captioned during the first quiet
