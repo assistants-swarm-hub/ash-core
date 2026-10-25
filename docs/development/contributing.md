@@ -42,7 +42,7 @@ Clean, readable, DRY. Concretely:
   platform's API belongs in that platform's transport; the core stays
   platform-agnostic. A change to what crosses the boundary is a change to
   `packages/contracts`, to the SDK's version, and to both sides — and, when
-  it is incompatible, to `CONTRACT_MAJOR`.
+  it is incompatible, to the SDK's major and `TRANSPORT_SDK_MAJOR`.
 
 ## Layer discipline
 

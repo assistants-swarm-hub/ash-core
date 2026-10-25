@@ -11,10 +11,9 @@ The **Access** column is the route's level on `defineRoute`:
 | **public** | No session |
 | **account** | Any signed-in, active account - ownership-scoped for a user-role account (see [What a user-role account sees](README.md#what-a-user-role-account-sees)) |
 | **admin** | A signed-in admin (the default) |
-| **internal** | The `x-internal-token` header, no session - the transport services only |
 
 Success bodies are shown *unwrapped* — the wire format is `{ "data": … }` (the
-internal routes, the health probe, downloads and streams excepted).
+health probe, downloads and streams excepted).
 
 ---
 
@@ -133,8 +132,8 @@ The dashboard-facing side of the transport contract: the registered transports
 and each assistant's connection on them. `{id}` is a source id — any slug of
 the right shape (`^[a-z][a-z0-9-]{0,31}$`); a malformed one is `bad_request`,
 a well-formed one that never registered `not_found`.
-The transport itself registers and reconciles over the
-[internal transport API](#internal-transport-api).
+The transport itself is registered by the core that hosts it, from the
+installed package's descriptor at boot.
 
 | Method | Path | Access | Body/Query | Returns |
 | --- | --- | --- | --- | --- |
@@ -145,24 +144,24 @@ The transport itself registers and reconciles over the
 | `PATCH` | `/api/transports/{id}/connections/{connectionId}` | account | `{ config?: object (shallow merge), enabled?: boolean }`, ≥1 | `{ connection: { id, enabled } }` |
 | `DELETE` | `/api/transports/{id}/connections/{connectionId}` | account | — | `{ deleted: true }` |
 
-`TransportView` = `{ id, name, enabled, registered, contractMajor, compatible,
-refusedReason, lastSeenAt, connectionConfigSchema, transportConfigSchema,
-configPreview, updatedAt }`; `registered` is false until the transport has
-announced itself, `compatible` is false (and `refusedReason` names both
-majors) when it announced a contract major this core does not speak. The two
-schemas are lists of `TransportConfigField` =
+`TransportView` = `{ id, name, enabled, hosted, lastSeenAt,
+connectionConfigSchema, transportConfigSchema, configPreview, updatedAt }`;
+`hosted` is whether this core runs the transport now (its package loaded at
+boot). A package the core refused — its transport-sdk major is not this
+core's — never registers; it appears on the dashboard roster by package name
+with the reason. The two schemas are lists of `TransportConfigField` =
 `{ key, label, kind: "text" \| "secret" \| "boolean", help?, required? }` -
 the dashboard renders its forms from them, and the `config` blobs a caller
 sends are keyed by them. The core never interprets a blob; secrets are never
 read back — every `configPreview` reduces a `secret` field to `…last4`.
 
 `TransportConnectionView` = `{ id, assistantId, enabled, configPreview,
-createdAt, updatedAt, status }` where `status` is the live poller state the
-transport reports on its own `/health` (`{ state: "running" \| "error" \|
+createdAt, updatedAt, status }` where `status` is the live connection state the
+hosted transport reports (`{ state: "running" \| "error" \|
 "stopped", username, since, error }`) or `null` when it reports none.
 
-Every write here announces `transport.config.changed` on the bus; the transport
-refetches its desired state and reconciles.
+Every write here announces `transport.config.changed` on the bus; the host
+refetches the transport's desired state and reconciles its connections.
 
 ## Backends
 
@@ -545,31 +544,6 @@ Handle accordingly.
 
 ---
 
-## Internal transport API
-
-Token-authenticated (`x-internal-token: <INTERNAL_API_TOKEN>`), no session,
-bare JSON bodies, errors as `{ "error": { "message" } }`. These are the core's
-half of the transport contract; the transport's half (its `/internal/*` HTTP
-surface, its MCP server, the queue and bus events) is in
-[Adding a transport](../development/adding-a-transport.md). `{id}` is a source
-id (a transport's, or `chat`).
-
-| Method | Path | Access | Body/Query | Returns |
-| --- | --- | --- | --- | --- |
-| `POST` | `/api/internal/transports/register` | internal | `{ id, name, baseUrl, mcpPath, connectionConfigSchema, transportConfigSchema }` | `TransportDesiredState`. Upserts the registration (the admin's `enabled` and config blobs survive) and kicks the managed tool-connection reconcile |
-| `GET` | `/api/internal/transports/{id}/desired` | internal | — | `TransportDesiredState`. `404` for a transport that never registered |
-| `PATCH` | `/api/internal/transports/{id}/config` | internal | A partial config blob (any object) | `{ config }` — the transport-level blob after a shallow merge |
-| `GET` | `/api/internal/transports/messages` | internal | `?source=&chatId=&sourceMessageId=` (required), `&assistantId=`, `&direct=true` | `{ found, role: "user" \| "assistant" \| null, assistantId }` — the reaction tool's pre-check against the mirror |
-| `POST` | `/api/internal/transports/callback` | internal | `{ source, assistantId, chat: { id, kind, title?, type? }, user: { userId, username, firstName, lastName }, menuSourceMessageId, data }` | `{ toast: string \| null }` — the answer to a feedback-menu button press. Never a 5xx: a failed flow answers `toast: null` |
-
-`TransportDesiredState` = `{ transport: { enabled, config }, connections: [{
-id, assistantId, config, enabled }] }`; a connection's `enabled` already folds
-in the transport switch and the owning account's deactivation. A `400` is a
-body or `{id}` that does not parse (`{ "error": { "message": "unknown transport" } }`
-and the like).
-
----
-
 ## Quick reference: all routes
 
 ```
@@ -701,12 +675,6 @@ GET    /api/traces/{id}                                       account
 GET    /api/traces/bundle                                     account
 GET    /api/traces/{id}/bundle                                account
 POST   /api/traces/prune                                      admin
-
-POST   /api/internal/transports/register                      internal
-GET    /api/internal/transports/{id}/desired                  internal
-PATCH  /api/internal/transports/{id}/config                   internal
-GET    /api/internal/transports/messages                      internal
-POST   /api/internal/transports/callback                      internal
 ```
 
-87 route files, 114 operations.
+82 route files, 109 operations.

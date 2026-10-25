@@ -293,11 +293,12 @@ response can never erase a document that took months to build.
 ## MCP: how tools work here
 
 Tools are exposed through the Model Context Protocol in two ways. The feature
-tools are **in-process** — no sockets, no HTTP. Everything else is a remote MCP
-server over Streamable HTTP: the tool connections an operator adds on the Tools
-page, and the managed connection the core provisions for every registered
-transport's own server (a transport serves its reply, send and reaction tools at
-its `mcpPath`).
+tools are **in-process** — no sockets, no HTTP. Everything else is a tool
+connection: the remote MCP servers over Streamable HTTP an operator adds on the
+Tools page, and the managed connection the core provisions for every registered
+transport's own server (a transport serves its reply, send and reaction tools on
+a server of its own that the host reaches in-process — the connection's kind is
+`in-process`).
 
 ```
 BotMcpRegistry ── in-memory transport pair ── McpServer
@@ -308,7 +309,7 @@ BotMcpRegistry ── in-memory transport pair ── McpServer
       │
       └─► one trace per call, feature `mcp-tools-<owner>`
 
-resolveConnectionToolset(scope) ── http-client.ts ── remote McpServer (tool connection / a transport's /mcp)
+resolveConnectionToolset(scope) ── http-client.ts ── remote McpServer (tool connection) / a hosted transport's own server (in-process)
       │  applied snapshot, `<slug>__<tool>` names, turn binding as `_meta`
       └─► one trace per call, feature `mcp-tools-connections`
 ```
@@ -324,7 +325,7 @@ resolveConnectionToolset(scope) ── http-client.ts ── remote McpServer (t
 | `server/mcp/tool-result.ts` | The normalized result type the tool loop consumes |
 | `server/mcp/http-client.ts` | The MCP client for remote servers: discovery (`listRemoteTools`) and calls (`callRemoteTool`) over Streamable HTTP with the connection's auth headers |
 | `features/tool-connections/server/toolset.ts` | Turns the stored connections into the tools one turn may call: enabled, in the turn's source-app scope, open to this assistant. Offers the **applied snapshot**, never a live listing |
-| `features/tool-connections/server/managed.ts` | Provisions and reconciles the transports' own servers as managed connections at boot and on every registration |
+| `features/tool-connections/server/managed.ts` | Provisions and reconciles the hosted transports' own servers as managed connections (kind `in-process`) at boot and on every registration |
 
 ### Per-turn context — the security boundary
 
@@ -451,7 +452,7 @@ the usual one:
 | `set_message_reaction` | `message_id`, `emoji`, `big` | Put one of the platform's reaction emoji on a message of this chat (empty `emoji` takes it back off) |
 
 All three act on **the bound chat** only. `set_message_reaction` asks the
-core's mirror before touching the platform (`GET /api/internal/transports/messages`),
+core's mirror before touching the platform (a direct in-process lookup),
 so the model can aim neither at another conversation nor at an id it invented,
 and it refuses one target the platform would happily accept — **the bot's own
 messages** (an `assistant` row in the mirror), because a badge the bot puts on

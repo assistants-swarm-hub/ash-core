@@ -120,7 +120,7 @@ describe("listDirectoryUsers", () => {
 
     expect(listing.entries).toEqual([]);
     expect(listing.unavailable).toHaveLength(1);
-    expect(listing.unavailable[0].reason).toContain("not configured");
+    expect(listing.unavailable[0].reason).toContain("not hosted");
   });
 });
 

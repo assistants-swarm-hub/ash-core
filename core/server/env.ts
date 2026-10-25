@@ -56,11 +56,6 @@ const envSchema = z.object({
   // Redis (bus + inbound queue). Unset → the queue consumer stays off.
   REDIS_URL: optionalString,
 
-  // The shared secret the transports and the core present to each other
-  // (registration, sends, menu operations). Base URLs are NOT env: a
-  // transport announces its own at registration (Phase 7).
-  INTERNAL_API_TOKEN: optionalString,
-
   // Runtime
   TZ: optionalString,
   NODE_ENV: z.enum(["development", "production", "test"]).optional(),

@@ -1,19 +1,9 @@
 import "server-only";
 
-import {
-  internalDeleteMessageResponseSchema,
-  internalSentFileResponseSchema,
-  internalSentMessageResponseSchema,
-  internalSentPhotosResponseSchema,
-  internalSentVoiceResponseSchema,
-  internalSetTitleResponseSchema,
-} from "@assistants-swarm-hub/contracts";
-
 import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 import { webChatOutbound } from "@/features/web-chat/server/outbound";
 import { findMessageRefs } from "@/lib/message-refs";
-import { internalRequester, sourceApiConfig } from "@/server/source/internal-client";
 import { hostedTransport } from "@/server/transports/hosted";
 import {
   filterMirroredMessageIds,
@@ -21,19 +11,18 @@ import {
 } from "@/server/source-store/repository";
 
 /**
- * Outbound sends to the owning source over its internal API — the calls that
- * need something back (a delivered message id, a mirror-checked refusal) or
- * carry bytes, which the fire-and-forget bus events cannot do: browsing
- * acknowledgements (their id is registered for deletion), voice replies (TTS
- * audio), generated images, and deletes. Plain
- * text replies keep travelling as reply-delivery bus events; the source
- * persists both kinds itself.
+ * Outbound sends to the owning source — the calls that need something back
+ * (a delivered message id, a mirror-checked refusal) or carry bytes, which
+ * the fire-and-forget bus events cannot do: browsing acknowledgements (their
+ * id is registered for deletion), voice replies (TTS audio), generated
+ * images, and deletes. Plain text replies keep travelling as reply-delivery
+ * bus events; the source persists both kinds itself.
  *
- * ONE port, every source: which app answers is resolved from the source id
- * (Phase 4), so the sends below are written once and a new source app needs
- * an entry in the env lookup, not a branch here. An action a platform does
- * not have at all is not a port method with an "unsupported" answer: it is a
- * tool that app's own MCP server simply does not offer (Phase 5).
+ * ONE port, every source: which one answers is resolved from the source id,
+ * so the sends below are written once and a new source needs nothing here.
+ * An action a platform does not have at all is not a port method with an
+ * "unsupported" answer: it is a tool that source's own MCP server simply
+ * does not offer.
  */
 
 /**
@@ -102,20 +91,20 @@ export interface SourceOutboundPort {
 
 /**
  * One source's outbound port, or null when this deployment does not run that
- * app. Callers treat null exactly like v1 treated a stopped poller: the send
- * fails audibly and is recorded on the run/fire — never dropped.
+ * source. Callers treat null exactly like v1 treated a stopped poller: the
+ * send fails audibly and is recorded on the run/fire — never dropped.
  *
  * The web chat resolves to its in-process port since the dissolve (Phase 6),
- * and a transport this core hosts to the port its host built. A transport
- * still run as its own service gets the HTTP client. Either is wrapped with
- * the mirror bookkeeping that moved core-side in Phase 7: the `#id` link
+ * and a transport to the port its host built. Either is wrapped with the
+ * mirror bookkeeping that moved core-side in Phase 7: the `#id` link
  * whitelist rides the send, and a performed delete lands as a soft delete on
  * the mirror row (deliveries themselves are mirrored off the transport's
  * `message.delivered` events).
  */
 export function sourceOutbound(source: SourceId): SourceOutboundPort | null {
   if (source === "chat") return webChatOutbound();
-  const port = hostedTransport(source)?.outbound ?? sourceApiOutbound(source);
+  const port = hostedTransport(source)?.outbound;
+  if (!port) return null;
   return {
     ...port,
     async sendMessage(chatId, opts) {
@@ -141,104 +130,3 @@ export function sourceOutbound(source: SourceId): SourceOutboundPort | null {
   };
 }
 
-const REQUEST_TIMEOUT_MS = 60_000;
-
-/**
- * File sends carry tens of megabytes and wait on the platform's own upload,
- * so the port allows 500s.
- */
-const FILE_REQUEST_TIMEOUT_MS = 500_000;
-
-export function sourceApiOutbound(source: SourceId): SourceOutboundPort {
-  // The requester keeps the source's own verdict: a platform refusal comes
-  // back as a 502 carrying the platform's words, and the tool relays them.
-  // Config resolves per call from the transport's registration row.
-  const request = internalRequester({
-    config: () => sourceApiConfig(source),
-    label: `${source} internal API`,
-    timeoutMs: REQUEST_TIMEOUT_MS,
-  });
-
-  const chatPath = (chatId: string, rest: string) =>
-    `/internal/chats/${encodeURIComponent(chatId)}${rest}`;
-
-  return {
-    async sendMessage(chatId, opts) {
-      const query = opts.assistantId
-        ? `?assistantId=${encodeURIComponent(opts.assistantId)}`
-        : "";
-      const body = internalSentMessageResponseSchema.parse(
-        await request(chatPath(chatId, `/messages${query}`), {
-          method: "POST",
-          body: JSON.stringify({
-            text: opts.text,
-            replyToSourceMessageId: opts.replyToSourceMessageId ?? null,
-            threadId: opts.threadId ?? null,
-            silent: opts.silent ?? false,
-            linkableSourceMessageIds: opts.linkableSourceMessageIds ?? [],
-          }),
-        }),
-      );
-      return { sourceMessageId: body.sourceMessageId };
-    },
-    async sendVoice(chatId, opts) {
-      const body = internalSentVoiceResponseSchema.parse(
-        await request(chatPath(chatId, "/voice"), {
-          method: "POST",
-          body: JSON.stringify({
-            audioBase64: opts.audioBase64,
-            text: opts.text,
-            replyToSourceMessageId: opts.replyToSourceMessageId ?? null,
-            threadId: opts.threadId ?? null,
-          }),
-        }),
-      );
-      return { sourceMessageId: body.sourceMessageId, asVoice: body.asVoice };
-    },
-    async sendPhotos(chatId, opts) {
-      const body = internalSentPhotosResponseSchema.parse(
-        await request(chatPath(chatId, "/photos"), {
-          method: "POST",
-          body: JSON.stringify({
-            images: opts.images,
-            threadId: opts.threadId ?? null,
-          }),
-        }),
-      );
-      return { delivered: body.delivered };
-    },
-    async sendFile(chatId, opts) {
-      const body = internalSentFileResponseSchema.parse(
-        await request(chatPath(chatId, "/files"), {
-          method: "POST",
-          timeoutMs: FILE_REQUEST_TIMEOUT_MS,
-          body: JSON.stringify({
-            dataBase64: opts.buffer.toString("base64"),
-            filename: opts.filename,
-            mime: opts.mime ?? null,
-            caption: opts.caption ?? null,
-            threadId: opts.threadId ?? null,
-          }),
-        }),
-      );
-      return { sourceMessageId: body.sourceMessageId };
-    },
-    async deleteMessage(chatId, sourceMessageId) {
-      const body = internalDeleteMessageResponseSchema.parse(
-        await request(chatPath(chatId, `/messages/${encodeURIComponent(sourceMessageId)}`), {
-          method: "DELETE",
-        }),
-      );
-      return { deleted: body.deleted };
-    },
-    async setChatTitle(chatId, title) {
-      const body = internalSetTitleResponseSchema.parse(
-        await request(chatPath(chatId, "/title"), {
-          method: "PUT",
-          body: JSON.stringify({ title }),
-        }),
-      );
-      return { title: body.title };
-    },
-  };
-}

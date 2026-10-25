@@ -31,8 +31,8 @@ the picture it acknowledges.
 ## Delivery and recognition
 
 The pipeline delivers the collected images after the reply through the owning
-source's outbound port (`server/turn/source-outbound.ts` — the transport's
-`POST /internal/chats/:chatId/photos`, or the web chat's in-process port). Each
+source's outbound port (`server/turn/source-outbound.ts` — the transport
+host's in-process port, `sendPhotos`, or the web chat's own). Each
 delivered photo becomes the same pair of rows an incoming media message
 produces (user decision, 2026-07-17):
 

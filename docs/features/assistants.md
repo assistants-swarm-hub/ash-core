@@ -101,9 +101,9 @@ free. A typical schema is one required secret, the bot token.
 | Stop / Start | `PATCH` with `enabled` — the desired state the transport receives folds this with the transport's own switch and the owner account's activity, so `false` there means "do not run this" whatever the row says |
 | Disconnect | `DELETE …/connections/{connectionId}` — the row and its stored config go; the assistant is untouched |
 
-The section shows the connection's live state as the transport reports it on
-`/health` — **Running** (with the bot's username), **Error**, **Stopped**, or
-**Not tracked** (enabled, but the transport service is not answering) — and
+The section shows the connection's live state as the hosted transport reports
+it — **Running** (with the bot's username), **Error**, **Stopped**, or
+**Not tracked** (enabled, but this core is not hosting the transport) — and
 re-reads on every `status` event the transport publishes. The Overview's bot
 status card (`features/bot-messaging/ui/BotControl.tsx`) offers the same
 Start/Stop per connection.

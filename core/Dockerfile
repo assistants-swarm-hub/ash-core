@@ -125,7 +125,14 @@ RUN cd migrate && npm install --omit=dev --no-audit --no-fund && npm cache clean
 # made writable by that user on the host side. `bin` is deliberately not
 # mounted: a recreated container falls back to the pinned binary above and the
 # updater re-fetches on boot.
-RUN mkdir -p /app/core/data/traces /app/core/data/downloads /app/core/data/bin
+#
+# /app/transports is where the entrypoint installs the transport packages the
+# operator names in TRANSPORTS (see docker/entrypoint.sh). It gets a manifest
+# of its own, which is what makes it npm's project root: without one npm walks
+# up, takes /app for the project, and prunes the traced node_modules above as
+# extraneous.
+RUN mkdir -p /app/core/data/traces /app/core/data/downloads /app/core/data/bin /app/transports \n    && echo '{ "name": "transports", "private": true }' > /app/transports/package.json
+COPY --chmod=0755 core/docker/entrypoint.sh /app/entrypoint.sh
 
 # Run as non-root.
 RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
@@ -133,6 +140,7 @@ USER app
 
 EXPOSE 3200
 
-# Apply pending migrations, then serve. Migrations complete before the app
-# accepts traffic; a failed migration fails the start.
-CMD ["sh", "-c", "node migrate/migrate.mjs && node core/server.js"]
+# Install the transports named in TRANSPORTS, apply pending migrations, then
+# serve — see docker/entrypoint.sh. Migrations complete before the app accepts
+# traffic; a failed migration fails the start.
+CMD ["/app/entrypoint.sh"]

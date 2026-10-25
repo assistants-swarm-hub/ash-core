@@ -16,8 +16,8 @@ docker compose up -d
 ```
 
 Three services, every one of them a **released image** — nothing is built on
-the host. Transports are not here: the core knows none, and each is one
-service you add (below).
+the host. Transports are not services: the core knows none, and each is an
+npm package the core installs at boot from the `TRANSPORTS` you name (below).
 
 | Service | Image | Notes |
 | --- | --- | --- |
@@ -29,65 +29,52 @@ service you add (below).
 known-good core rather than a moving `latest`. Set it in `.env` to run another
 one; `npm run release:*` rewrites the default when the version is bumped, and
 the release workflow refuses to ship if the two ever drift. A transport's
-version is its own repository's and pinned in the service you add; the only
-thing the two sides must agree on is the wire's `CONTRACT_MAJOR`.
+version is its own repository's and pinned in the spec you name; the only
+thing the two sides must agree on is the transport SDK's major, which the
+core checks when it loads the package.
 
 To build the working tree instead of pulling, add the dev override — it adds a
 `build:` to the core and changes nothing else. A transport is never built here:
-to run one from source, start it from its own checkout against this stack.
+to run one from source, pack it (`npm pack`), mount the tarball, and name the
+mounted path in `TRANSPORTS`.
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
 `app` waits for `db` (healthcheck `pg_isready`) and `redis` (`redis-cli ping`) to be
-**healthy**. It waits for **no transport at all**: the core boots without any, and a
-transport registers itself whenever it comes up — which is what lets an operator add
-one without touching the core's service. All three restart `unless-stopped`.
+**healthy**. The core boots with no transport at all; a transport is a package it
+loads at boot. All three restart `unless-stopped`.
 
 ### Adding a transport
 
-A transport is its own repository and its own image. Running one is **one
-service**, and no change to anything else in the file — the placeholders below
-are yours to fill from the transport's own README:
+A transport is an npm package in its own repository, published to the org's
+registry on GitHub Packages. Running one is **two lines in `.env`**, and no
+change to the compose file — the package name and version are the transport's
+own README's to give:
 
-```yaml
-  <transport>:
-    image: <registry>/<transport-image>:<version>
-    depends_on:
-      redis: { condition: service_healthy }
-    environment:
-      NODE_ENV: production
-      PORT: <port>
-      # What the transport ANNOUNCES at registration — the core calls it here.
-      SELF_URL: http://<transport>:<port>
-      REDIS_URL: redis://redis:6379
-      CORE_API_URL: http://app:3200
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-change-me}
-      TZ: ${TZ:-UTC}
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:<port>/health >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    restart: unless-stopped
+```
+TRANSPORTS=<package>@<version>
+NPM_TOKEN=<a token with read:packages>
 ```
 
-Three things that are easy to get wrong:
+`TRANSPORTS` is a space-separated list of npm specs, so several transports are
+several entries. On every boot the image's entrypoint installs what is named
+into a directory of its own (`/app/transports`), away from the traced
+`node_modules` the server runs on, and the core finds the packages there. The
+token is what the registry wants for the install — a package published there
+is readable by any account, but not anonymously — and is removed from the
+container's environment before the server starts. Nothing is cached across
+recreations: the install happens on each boot, which is what keeps "which
+version runs" a fact of the environment rather than of a layer.
 
-- **The same `INTERNAL_API_TOKEN` as the core.** It authenticates both
-  directions; a mismatch shows as a transport that never finishes registering.
-- **No published port.** Its internal API is the core's alone.
-- **Do not add it to `app`'s `depends_on`.** The core has no dependency on any
-  transport by design, and adding one only makes the stack's startup order your
-  problem.
-
-Then `docker compose up -d <transport>`. It registers itself, the dashboard grows a
-connection section built from the config fields it announced, and its platform
-actions appear as tools. Nothing in the core is edited — if something has to be,
-that is a core bug (see
-[Adding a transport](../development/adding-a-transport.md)).
+Then `docker compose up -d app`. The core registers the package, the dashboard
+grows a connection section built from the config fields it declares, and its
+platform actions appear as tools. Nothing in the core is edited — if something
+has to be, that is a core bug (see
+[Adding a transport](../development/adding-a-transport.md)). A package the
+core refused — built for another SDK major, or not a transport at all — shows
+on the Overview by its package name with the reason, and the rest run.
 
 ### Volumes
 
@@ -127,15 +114,7 @@ and downloads fail per-run, reported on the run row.
 
 Compose has working defaults; a root `.env` is optional and is read only for the
 `${…}` substitutions in `docker-compose.yml`. There is no root `.env.example`:
-`core/.env.example` documents local (non-Docker) development, and each
-transport ships its own.
-
-**One variable is not optional in production: `INTERNAL_API_TOKEN`.** It is the shared
-secret the core and the transport present to each other (registration, desired state,
-sends, menu operations). Compose defaults it to `change-me` on both services; set a real
-value in `.env`, and set the **same** value for both — a mismatch makes the transport's
-registration fail with `401` and retry every 10 seconds forever, and the dashboard says
-the transport "has not announced itself yet".
+`core/.env.example` documents local (non-Docker) development.
 
 The core (`core/server/env.ts`) reads:
 
@@ -143,28 +122,21 @@ The core (`core/server/env.ts`) reads:
 | --- | --- | --- |
 | `DATABASE_URL` | Composed from `POSTGRES_*`, pointing at the bundled `db` | Override to use an external database |
 | `REDIS_URL` | `redis://redis:6379` | Unset → the core boots **without** its turn consumer and ingest and processes no messages (it logs `Inbound turn consumer NOT started`) |
-| `INTERNAL_API_TOKEN` | `${INTERNAL_API_TOKEN:-change-me}` | Must match the transport's |
 | `TZ` | `${TZ:-UTC}` | Container timezone only — the *operator* timezone used for rendering and scheduling is a database setting |
 | `NODE_ENV` | `production` | |
 
 Every core variable also accepts a `<NAME>_FILE` variant pointing at a file whose
-contents are used instead (Docker secrets). Transport base URLs are **not** env on the
-core side: a transport announces its own at registration.
+contents are used instead (Docker secrets).
 
-A transport reads — these are the contract's variables, whatever the
-platform:
+The image's entrypoint (`core/docker/entrypoint.sh`), not the app, reads two more:
 
 | Variable | Compose sets it to | Notes |
 | --- | --- | --- |
-| `REDIS_URL` | `redis://redis:6379` | Required; the service does not start without it |
-| `INTERNAL_API_TOKEN` | `${INTERNAL_API_TOKEN:-change-me}` | Required; must match the core's |
-| `PORT` | its own | Its HTTP surface: `/health`, `/internal/*`, `/mcp` |
-| `CORE_API_URL` | `http://app:3200` | Where it registers and fetches desired state; defaults to `http://localhost:3200` outside Compose |
-| `SELF_URL` | `http://<transport>:<port>` | The base URL it **announces** at registration — what the core uses to reach it for status and sends. Defaults to `http://localhost:<PORT>`; set it whenever the core cannot reach the service on localhost |
-| `TZ` | `${TZ:-UTC}` | |
+| `TRANSPORTS` | `${TRANSPORTS:-}` | Space-separated npm specs of the transport packages to install at boot: a name, a `name@version`, or a path to a tarball mounted into the container. Empty: a core with no transports |
+| `NPM_TOKEN` | `${NPM_TOKEN:-}` | The token the org's registry on GitHub Packages wants for the install (`read:packages`). Written to a temporary `.npmrc` for the install, then removed; the server never sees it |
 
-The transport has no database and no files: bot tokens and everything else it needs
-arrive from the core at registration.
+A transport has no environment of its own: bot tokens and everything else it
+needs arrive from the core when it is loaded.
 
 Full variable reference: [Configuration](../configuration.md#environment-variables).
 
@@ -172,17 +144,15 @@ Full variable reference: [Configuration](../configuration.md#environment-variabl
 
 ```
 GET /api/health   (core, :3200)  → 200 when ready, 503 when the database is unreachable
-GET /health       (a transport)  → { ok: true, connections: [...] } — every connection's live state
 ```
 
-The transport's `/health` is unauthenticated (it carries no secrets) and is what the
-dashboard's status surfaces read: the core fetches it at the base URL the transport
-announced, with a 5 s timeout, whenever it renders connection state.
+A transport's connections have no endpoint of their own: their live state is
+the host's, in the core's process, and the dashboard's status surfaces read it
+directly.
 
-The container healthchecks poll these every 10 s (start period 40 s for the core, 20 s
-for the transport). Both use `127.0.0.1`, not `localhost`, deliberately: the servers
-bind IPv4 `0.0.0.0`, and `localhost` can resolve to IPv6 `::1`, which would refuse the
-connection.
+The container healthcheck polls this every 10 s (start period 40 s). It uses
+`127.0.0.1`, not `localhost`, deliberately: the server binds IPv4 `0.0.0.0`, and
+`localhost` can resolve to IPv6 `::1`, which would refuse the connection.
 
 ## The images
 
@@ -207,16 +177,20 @@ Deliberate choices worth knowing before you change them:
 | `chromium` + `nss`/`freetype`/`harfbuzz`/fonts from apk | Playwright's own download is a glibc build that will not run on Alpine (musl). `CHROMIUM_EXECUTABLE_PATH` points at the distro browser |
 | `playwright` and `playwright-core` copied **whole** over the traced copies | They are `serverExternalPackages`, so Next's file tracer copies only statically resolvable JS and misses runtime data files like `playwright-core/browsers.json` |
 | `sharp` needs no apk package | It ships its own musl libvips binary via npm |
-| Non-root `app` user | Standard hardening; `data/traces`, `data/downloads` and `data/bin` are created and chowned up front |
+| Non-root `app` user | Standard hardening; `data/traces`, `data/downloads`, `data/bin` and `transports` are created and chowned up front |
+| `npm` stays in the image | The entrypoint installs the transport packages the operator names at boot; nothing else in the runner needs it |
 
 #### Startup command
 
 ```sh
-node migrate/migrate.mjs && node core/server.js
+/app/entrypoint.sh      # core/docker/entrypoint.sh
 ```
 
-Migrations complete **before** the app accepts traffic, and a failed migration fails
-the start — so the app never serves against an unmigrated database.
+Three steps: install the packages named in `TRANSPORTS` into `/app/transports`
+(skipped when it is empty; a failed install is logged and the core starts
+without them), apply pending migrations, serve. Migrations complete **before**
+the app accepts traffic, and a failed migration fails the start — so the app
+never serves against an unmigrated database.
 
 The migration runner is isolated on purpose: `packages/db/migrate/` has its own tiny
 `package.json` and uses drizzle's **programmatic** migrator
@@ -226,14 +200,14 @@ intentionally absent from the slim image. The image copies the SQL chain from
 directory so they never touch the app's traced `node_modules`. With `DATABASE_URL`
 unset it warns and exits 0 rather than failing the container.
 
-### A transport's image
+### A transport has no image
 
-Not built here — each transport builds its own, in its own repository, and this
-repo's release workflow has one entry: the core. The shape every transport
-follows: `node:24-alpine`, `npm install` (its own manifest, no workspace
-context), the SDK pulled from GitHub Packages, whatever system packages its
-platform needs, a non-root user, one exposed port, and its entrypoint. No
-migrations and no volumes: stateless is the contract.
+A transport is an npm package, published from its own repository to the org's
+registry on GitHub Packages; this repo's release workflow has one image: the
+core. The core's image installs the transports at boot (above). Whatever a
+platform library needs at runtime it must bring as an npm dependency — the
+image has `ffmpeg`, Chromium and `sharp`'s own libvips, and nothing else a
+transport could count on.
 
 ## Upgrading
 
@@ -269,10 +243,11 @@ docker compose stop app && docker compose exec -T db psql -U bot -d postgres -c 
 
 Nothing in the store depends on the name; the rename is instant.
 
-A transport upgrades on **its own** schedule — its image and version are its
-repository's, not this one's. The only thing the two sides must agree on is the
-wire's `CONTRACT_MAJOR`; when they do not, the core refuses that transport by
-name and says so on the dashboard rather than failing quietly.
+A transport upgrades on **its own** schedule — its package and version are its
+repository's, not this one's: change the version in `TRANSPORTS` and recreate
+`app`. The only thing the two sides must agree on is the transport SDK's
+major; when they do not, the core refuses that package by name and says so on
+the dashboard rather than failing quietly.
 
 During the overlap window two core processes may briefly co-exist. That is handled:
 
@@ -283,10 +258,10 @@ During the overlap window two core processes may briefly co-exist. That is handl
 - The trace store flushes buffered traces on graceful shutdown, so at most one flush
   interval (60s) of settled traces is at risk on a hard kill.
 
-On the transport side, each connection releases its platform session on `SIGTERM`
-(the stop drain is capped at 3 s), so a replacement container does not collide with
-the old one. Anything the transport had forwarded but the core had not consumed
-waits in the Redis queue across the restart.
+The host closes every platform connection first on `SIGTERM`, so a replacement
+container does not collide with the old one's sessions. Anything a transport
+had forwarded but the pipeline had not consumed waits in the Redis queue across
+the restart.
 
 ## Releases
 
@@ -353,16 +328,16 @@ And, for the SDK:
 5. **publish-sdk** — builds `packages/transport-sdk` (ESM + `.d.ts`, with the
    private workspace packages bundled in), publishes it, and then **pulls it
    back out of the registry** into a scratch project that has none of this
-   repository: the package must import and run, announce the same
-   `CONTRACT_MAJOR` the source declares, carry declarations that name no
-   private workspace package, and typecheck for a consumer. That is the
-   position every transport author is in, and it is where this package's two
-   real failures showed up. The tag goes up last.
+   repository: the package must import and run, carry declarations that name
+   no private workspace package, and typecheck for a `defineTransport`
+   consumer. That is the position every transport author is in, and it is
+   where this package's two real failures showed up. The tag goes up last.
 
 The SDK carries its own semver because a transport author pins the package,
 not a core release, and the two move at different speeds. The number the two
-sides must actually agree on is neither version: it is `CONTRACT_MAJOR` in the
-code, announced at registration and refused by name on a mismatch.
+sides must actually agree on is the SDK's **major**: a transport declares it
+as a peer dependency, the core compares that range against the major it hosts
+(`TRANSPORT_SDK_MAJOR` in the contracts), and refuses a mismatch by name.
 
 No registry secrets: the publish jobs authenticate with the workflow's own
 `GITHUB_TOKEN` (`packages: write` for the push, `contents: write` for the tag).
@@ -377,8 +352,8 @@ reason as the Dockerfiles.
 
 ## Running behind a reverse proxy
 
-Only the core is exposed; a transport talks to its platform outbound and to the core
-over the Compose network. Two things need care on the core:
+Only the core is exposed; a transport runs inside it and talks to its platform
+outbound. Two things need care on the core:
 
 - **SSE.** `/api/events` sets `X-Accel-Buffering: no` and
   `Cache-Control: no-cache, no-transform`, which nginx honours. Make sure your proxy
@@ -390,7 +365,8 @@ over the Compose network. Two things need care on the core:
 
 ## Production checklist
 
-- [ ] `INTERNAL_API_TOKEN` is a real secret, identical on `app` and every transport.
+- [ ] `TRANSPORTS` names each transport at a pinned version, and `NPM_TOKEN` is a
+      token with nothing but `read:packages`.
 - [ ] Claim `/setup` and create the first admin account before exposing the port.
       `/setup` self-seals the moment any account exists; further accounts come from
       the Accounts page.
@@ -432,8 +408,8 @@ Running multiple replicas is not, without the API-level replacements above.
 
 ## Adding a transport
 
-A new transport is one more container next to `app`: it registers with the
-core at boot, announces the config fields its connections need, and the dashboard
-renders them — no core change and no new Compose wiring beyond the service itself, the
-`REDIS_URL`, the `INTERNAL_API_TOKEN` and its own `SELF_URL`. The contract, step by
-step, is in [Adding a transport](../development/adding-a-transport.md).
+A new transport is one more package in `TRANSPORTS`: the core installs it at
+boot, registers it from its descriptor, announces the config fields its
+connections need, and the dashboard renders them — no core change and no
+Compose wiring at all. The interface, step by step, is in
+[Adding a transport](../development/adding-a-transport.md).

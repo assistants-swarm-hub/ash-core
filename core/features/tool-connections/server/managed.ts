@@ -6,14 +6,8 @@ import type { SourceId } from "@assistants-swarm-hub/contracts";
 
 import { FEATURES } from "@/lib/features";
 import type { TraceTrigger } from "@/lib/trace";
-import { INTERNAL_TOKEN_HEADER } from "@assistants-swarm-hub/service";
 import { publishEvent } from "@/server/realtime/hub";
-import { getEnv } from "@/server/env";
-import {
-  getTransport,
-  listCompatibleTransports,
-  transportCompatible,
-} from "@/server/transports/service";
+import { listTransports } from "@/server/transports/service";
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { withTrace } from "@/server/trace";
 import type { TraceRecorder } from "@/server/trace/recorder";
@@ -32,18 +26,17 @@ import type { ToolTransport } from "./schema";
 import { appliedTools } from "./service";
 
 /**
- * The transport apps' own MCP servers, as tool connections (PLAN.md: each
- * transport "hosts an MCP server" for its platform's outbound actions, which
- * the core registers as a managed connection).
+ * The transports' own MCP servers, as tool connections: the host builds one
+ * per transport (the delivery tools plus the platform's own actions), and
+ * the core registers it as a managed connection reached in-process.
  *
- * Only sources served by a separate app are reconciled. The web chat left
- * this list with the dissolve (Phase 6): its delivery tools are in-process
- * registry tools now, and its old managed row is deleted by store migration
- * 0006.
+ * The web chat is not among them: its delivery tools are in-process registry
+ * tools since the dissolve (Phase 6), and its old managed row is deleted by
+ * store migration 0006.
  *
- * They are reconciled from configuration rather than typed in by an operator:
- * their endpoint is the app's own URL, their scope is the app itself, and
- * **their snapshot follows the code**. That is the one place the
+ * They are reconciled from what is hosted rather than typed in by an
+ * operator: their endpoint is a marker for the host's server, their scope is
+ * the transport itself, and **their snapshot follows the code**. That is the one place the
  * discover-then-apply rule does not apply, and deliberately so: the rule
  * exists to keep a third party from changing what the model is offered
  * mid-conversation, while these tools ship with the release and change when it
@@ -67,39 +60,20 @@ interface ManagedDesired {
 }
 
 /**
- * The desired connection for one source, or null when it has not registered
- * (or announces no MCP server, or speaks another contract major). A
- * transport this core hosts is reached in-process — its endpoint is a
- * marker, not an address. One run as its own service resolves from its
- * registration row (Phase 7): the endpoint is `baseUrl + mcpPath` and the
- * name is the one it announced.
+ * The desired connection for one source, or null when this core does not
+ * host it (or it hosts no tools). The endpoint is a marker, not an address:
+ * the connection is reached through the host's in-process server.
  */
-export async function desiredManagedConnection(
-  source: SourceId,
-): Promise<ManagedDesired | null> {
+export function desiredManagedConnection(source: SourceId): ManagedDesired | null {
   const hosted = hostedTransport(source);
-  if (hosted) {
-    if (!hosted.tools) return null;
-    return {
-      source,
-      slug: source,
-      name: `${hosted.descriptor.name} tools`,
-      transport: "in-process",
-      endpointUrl: `in-process://${source}`,
-      authHeaders: {},
-    };
-  }
-  const token = getEnv().INTERNAL_API_TOKEN;
-  if (!token) return null;
-  const row = await getTransport(source).catch(() => null);
-  if (!row || !row.baseUrl || !row.mcpPath || !transportCompatible(row)) return null;
+  if (!hosted?.tools) return null;
   return {
     source,
     slug: source,
-    name: `${row.name} tools`,
-    transport: "http",
-    endpointUrl: `${row.baseUrl.replace(/[/]$/, "")}${row.mcpPath}`,
-    authHeaders: { [INTERNAL_TOKEN_HEADER]: token },
+    name: `${hosted.descriptor.name} tools`,
+    transport: "in-process",
+    endpointUrl: `in-process://${source}`,
+    authHeaders: {},
   };
 }
 
@@ -109,19 +83,19 @@ async function reconcileOne(
   source: SourceId,
   trace: Pick<TraceRecorder, "event">,
 ): Promise<ToolConnectionRecord | null> {
-  const desired = await desiredManagedConnection(source);
+  const desired = desiredManagedConnection(source);
   const existing = await getToolConnectionBySlug(db, source);
 
   if (!desired) {
-    // The app is not deployed here. The row stays (its scope and assistant
-    // selection are the operator's), but nothing may be offered from an
-    // endpoint that no longer exists.
+    // The transport is not hosted here. The row stays (its scope and
+    // assistant selection are the operator's), but nothing may be offered
+    // from a server that does not exist.
     if (existing?.enabled) {
       await updateToolConnection(db, existing.id, { enabled: false });
       await trace.event({
         type: "step",
         level: "warn",
-        message: `${source} is not configured in this deployment — its tools are disabled`,
+        message: `${source} is not hosted by this core — its tools are disabled`,
       });
     }
     return null;
@@ -167,14 +141,14 @@ async function reconcileOne(
 }
 
 /**
- * Bring every source app's connection in line with configuration and take its
- * current toolset — one trace for the whole pass, so a boot that could not
- * reach an app says which one and why instead of failing silently.
+ * Bring every transport's connection in line with what is hosted and take
+ * its current toolset — one trace for the whole pass, so a boot that could
+ * not list a server says which one and why instead of failing silently.
  *
- * A source that cannot be reached keeps its last snapshot: the tools it
+ * A server that does not answer keeps its last snapshot: the tools it
  * offered a minute ago are the ones this release ships, and dropping them
- * because the app is still starting would make the first turns after a
- * restart quietly less capable.
+ * over a hiccup would make the first turns after a restart quietly less
+ * capable.
  */
 export async function reconcileManagedConnections(
   trigger: TraceTrigger = { kind: "system" },
@@ -184,11 +158,11 @@ export async function reconcileManagedConnections(
     { feature: FEATURE.id, action: "reconcile-managed", trigger, inputSummary: "source apps" },
     async (trace) => {
       const summary: string[] = [];
-      // Whatever registered on this contract major — no compiled-in list.
-      for (const { id: source } of await listCompatibleTransports(db)) {
+      // Whatever registered — no compiled-in list.
+      for (const { id: source } of await listTransports(db)) {
         const record = await reconcileOne(db, source, trace);
         if (!record) {
-          summary.push(`${source}: not deployed`);
+          summary.push(`${source}: not hosted`);
           continue;
         }
         try {
@@ -215,7 +189,7 @@ export async function reconcileManagedConnections(
           await trace.event({
             type: "external_call",
             level: "warn",
-            message: `${source} did not answer — keeping the ${record.tools.length} tools it last offered`,
+            message: `${source}'s server did not answer — keeping the ${record.tools.length} tools it last offered`,
             data: { error },
           });
           summary.push(`${source}: unreachable`);

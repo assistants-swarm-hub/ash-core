@@ -332,7 +332,6 @@ jobs:
             -e PORT=3200 \
             -e DATABASE_URL=postgres://bot:bot@127.0.0.1:5432/core \
             -e REDIS_URL=redis://127.0.0.1:6379 \
-            -e INTERNAL_API_TOKEN=smoke-test \
             "$ref"
           # Generous: migrations run before the server binds, on a cold image.
           for attempt in $(seq 1 60); do

@@ -56,19 +56,19 @@ describe("summarizeTransports", () => {
   it("reports a refused transport before anything else", () => {
     const summary = summarizeTransports([
       roster({ connections: [connection()] }),
-      roster({ id: "beta", name: "Beta Chat", refusedReason: "Beta Chat speaks contract major 2" }),
+      roster({ id: "@acme/transport-beta", name: "@acme/transport-beta", refusedReason: "built for transport-sdk 4; this core hosts 5" }),
     ]);
-    expect(summary.status).toMatchObject({ state: "error", error: "Beta Chat speaks contract major 2" });
+    expect(summary.status).toMatchObject({ state: "error", error: "built for transport-sdk 4; this core hosts 5" });
     expect(summary.configured).toBe(true);
   });
 
-  it("names the transport whose enabled connection has no tracked poller", () => {
+  it("names the transport whose enabled connection has nothing tracked", () => {
     const summary = summarizeTransports([
       roster({ connections: [connection({ status: null })] }),
     ]);
     expect(summary.status.state).toBe("error");
     expect(summary.status.error).toBe(
-      "connection is enabled but no poller is tracked — is the Signal transport running?",
+      "connection is enabled but nothing is tracked — is the Signal package installed and loaded?",
     );
   });
 

@@ -16,9 +16,9 @@
 # are unambiguous — a locally built `ash-core:1.48.0` simply shadows the
 # registry's until you pull again.
 #
-# Only the core is here, because the core is all this repository builds. Every
-# transport lives in its own repository and is pulled as a released image either
-# way; to run one from source, start it on the host against this stack (see
+# Only the core is here, because the core is all this repository builds. A
+# transport is a package the image installs at boot from TRANSPORTS; to run
+# one from source, pack it and point TRANSPORTS at the mounted tarball (see
 # docs/development/adding-a-transport.md).
 services:
   app:

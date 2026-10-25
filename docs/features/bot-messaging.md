@@ -254,7 +254,7 @@ rather than being sent the notes or left in silence.
   gets one reaction per message, so reacting again replaces it). Available in
   every transport turn — a reply turn and a task fire alike — because a
   reaction is not a message and cannot double-deliver. The transport asks the
-  core's mirror first (`GET /api/internal/transports/messages`) so a guessed
+  core's mirror first (a direct in-process lookup) so a guessed
   id is refused without a platform call, and the bot's **own** messages are
   refused there — the platform would allow the reaction, but a badge on its own
   message says nothing to anyone (another bot's message is an ordinary
@@ -271,7 +271,7 @@ rather than being sent the notes or left in silence.
   [Adding a transport](../development/adding-a-transport.md#step-6--the-mcp-server)
   for the contract.
 - A voice reply is synthesized when a speech endpoint is configured
-  ([Voice](voice.md)); the audio crosses the transport's internal API.
+  ([Voice](voice.md)); the audio crosses the host's in-process outbound port.
 - Generated images are delivered after the text ([Image generation](image-generation.md)).
 - A conversation whose source has no name for it (a web thread) is named from
   its first exchange after the reply is delivered

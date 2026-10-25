@@ -30,26 +30,15 @@ rather than crash-looping.
 | --- | --- | --- |
 | `DATABASE_URL` | — | Postgres (with `vector` and `pg_trgm`) connection string. Required for anything that touches persistence, which is nearly everything |
 | `REDIS_URL` | — | The queue every incoming message travels on and the bus the apps talk over. Unset, the core boots but starts no queue consumers and processes **no messages** — the log says so loudly |
-| `INTERNAL_API_TOKEN` | — | The shared secret authenticating every core ↔ transport HTTP call (`x-internal-token`). Must equal the transports'. Unset, every internal route answers 401 and no transport can register |
 | `TZ` | `UTC` | Process timezone. The *operator* timezone used for rendering and scheduling is the DB setting, not this |
 | `NODE_ENV` | — | `development` \| `production` \| `test` |
 
 ### A transport
 
-Every transport is its own service and its own repository; these are the
-variables the contract gives them, read straight from the environment (the
-SDK's `requireEnv` / `optionalEnv`; no `_FILE` variants).
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `REDIS_URL` | — | Required. Same Redis as the core |
-| `INTERNAL_API_TOKEN` | — | Required. Must equal the core's |
-| `PORT` | the transport's own | The service's HTTP port (health, the internal API, the MCP server) |
-| `CORE_API_URL` | `http://localhost:3200` | Where the core's internal API is |
-| `SELF_URL` | `http://localhost:<PORT>` | The base URL the service **announces** at registration — what the core calls back. Set it whenever the core cannot reach the service on localhost (compose: `http://<service>:<PORT>`) |
-
-Everything else the service needs — bot tokens, which assistants to run —
-comes from the core at registration and on every change event.
+A transport is an npm package the core hosts in its own process; it reads no
+environment at all. Bot tokens, which assistants to run — everything comes
+from the core when it is loaded and on every change event. Which packages a
+containerized core installs is the image's `TRANSPORTS` (below).
 
 ### Compose-only variables
 
@@ -59,7 +48,8 @@ Read by `docker-compose.yml`, not by application code:
 | --- | --- | --- |
 | `ASH_VERSION` | The version this checkout releases | Which released image tag the `app` service runs (`ghcr.io/assistants-swarm-hub/ash-core`). The default is rewritten by `npm run release:*`, so a clone runs a known-good set rather than a moving `latest` |
 | `PORT` | `3200` | Host port published for the core |
-| `INTERNAL_API_TOKEN` | `change-me` | Passed to every app. **Set a real value** — it is what a transport authenticates with too |
+| `TRANSPORTS` | empty | Space-separated npm specs of the transport packages the image installs at boot (a name, `name@version`, or a mounted tarball's path). Read by the entrypoint, not the app |
+| `NPM_TOKEN` | empty | The `read:packages` token the org's registry on GitHub Packages wants for that install. Removed from the environment before the server starts |
 | `POSTGRES_USER` | `bot` | Bundled Postgres user |
 | `POSTGRES_PASSWORD` | `bot` | Bundled Postgres password |
 | `POSTGRES_DB` | `core` | Bundled Postgres database |
@@ -68,12 +58,11 @@ Read by `docker-compose.yml`, not by application code:
 | `TZ` | `UTC` | Process timezone for every service |
 
 Under Compose, `DATABASE_URL` is built from the `POSTGRES_*` variables and points
-at the bundled `db` service, `REDIS_URL` points at the bundled `redis`, and the
-transport's `SELF_URL` / `CORE_API_URL` are the compose service names. Set
+at the bundled `db` service, and `REDIS_URL` points at the bundled `redis`. Set
 `DATABASE_URL` explicitly to use an external database instead.
 
-`docker-compose.dev.yml` is the override that builds the two application images
-from the working tree instead of pulling them; it changes nothing else.
+`docker-compose.dev.yml` is the override that builds the core image from the
+working tree instead of pulling it; it changes nothing else.
 
 ### Runtime variables set by the core image
 
@@ -280,7 +269,7 @@ Nothing in this system reports "configured" from the presence of a variable.
 | Change | How |
 | --- | --- |
 | Any runtime setting | Settings page, or `PATCH /api/settings`. Effective immediately |
-| A bot token, starting or stopping a bot | The assistant editor; the transport reconciles within a second of the change event |
-| Database or Redis location | `DATABASE_URL` / `REDIS_URL`, then restart the app(s) that read them |
-| The internal token | `INTERNAL_API_TOKEN` in **both** apps, then restart both |
+| A bot token, starting or stopping a bot | The assistant editor; the host reconciles within a second of the change event |
+| Database or Redis location | `DATABASE_URL` / `REDIS_URL`, then restart the core |
+| Which transports run | `npm install`/`npm uninstall` the package (in Docker: `TRANSPORTS`), then restart the core — a transport is loaded at boot |
 | Your password | `/profile` (requires the current password). An admin resets another account from `/accounts` with a temporary password. A locked-out sole admin: see [Security](architecture/security.md#recovery-for-a-locked-out-sole-admin) |

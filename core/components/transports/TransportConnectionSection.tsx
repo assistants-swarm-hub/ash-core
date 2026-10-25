@@ -57,7 +57,7 @@ export function connectionStatusView(connection: Pick<ConnectionView, "enabled" 
     return {
       tone: "warning",
       label: "Not tracked",
-      detail: "enabled, but nothing is tracked — is the transport running?",
+      detail: "enabled, but nothing is tracked — is the transport's package installed and loaded?",
     };
   }
   return { tone: "neutral", label: "Stopped", detail: null };
@@ -152,10 +152,11 @@ export function TransportConnectionSection({
     </Field>
   );
 
-  if (!transport.registered) {
+  if (!transport.hosted) {
     return (
       <p className="text-sm text-muted">
-        {transport.name} has not announced itself yet — is its service running?
+        {transport.name} is not loaded in this core — is its package installed, and did the
+        core restart since?
       </p>
     );
   }

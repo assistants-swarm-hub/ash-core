@@ -66,27 +66,6 @@ export {
   type DocumentFormat,
 } from "./documents";
 export {
-  internalDeleteMessageResponseSchema,
-  internalEditMenuRequestSchema,
-  internalSendFileRequestSchema,
-  internalSendMenuRequestSchema,
-  internalSendMessageRequestSchema,
-  internalSetTitleRequestSchema,
-  internalSetTitleResponseSchema,
-  internalSendPhotosRequestSchema,
-  internalSendVoiceRequestSchema,
-  internalSentFileResponseSchema,
-  internalSentMenuResponseSchema,
-  internalSentMessageResponseSchema,
-  internalSentPhotosResponseSchema,
-  internalSentVoiceResponseSchema,
-  type InternalDeleteMessageResponse,
-  type InternalSentFileResponse,
-  type InternalSentMessageResponse,
-  type InternalSentPhotosResponse,
-  type InternalSentVoiceResponse,
-} from "./internal-api";
-export {
   operatorChatMemberSchema,
   operatorChatMembersResponseSchema,
   operatorChatResponseSchema,
@@ -144,7 +123,7 @@ export {
   type SenderInfo,
   type TurnLifecycleEvent,
 } from "./source-events";
-export { CONTRACT_MAJOR } from "./contract-version";
+export { TRANSPORT_SDK_MAJOR } from "./transport-interface";
 export {
   REF_KINDS,
   SOURCE_ID_PATTERN,
@@ -192,7 +171,7 @@ export {
   transportConfigFieldSchema,
   transportDesiredConnectionSchema,
   transportDesiredStateSchema,
-  transportRegistrationRequestSchema,
+  transportRegistrationSchema,
   type MessageDeliveredEvent,
   type TransportBotReactionEvent,
   type TransportCallbackRequest,
@@ -212,7 +191,7 @@ export {
   type TransportConfigField,
   type TransportDesiredConnection,
   type TransportDesiredState,
-  type TransportRegistrationRequest,
+  type TransportRegistration,
 } from "./transport-events";
 export type {
   AddressingRule,

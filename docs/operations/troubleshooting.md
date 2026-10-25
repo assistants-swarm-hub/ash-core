@@ -24,52 +24,49 @@ because guessing is exactly what the trace archive exists to avoid.
 
 | Check | Fix |
 | --- | --- |
-| Overview → Bots says "No transport" | No transport has registered with the core. Check the transport container is up and its `CORE_API_URL` / `INTERNAL_API_TOKEN` point at this core |
+| Overview → Bots says "No transport" | No transport package has loaded. Check it is installed in the core (in Docker: named in `TRANSPORTS`, and the boot log's `installing transport packages` line succeeded) and that the core restarted since |
 | Says "Not configured" | No bot connection exists. Create an assistant on `/assistants` and connect a bot token in its editor |
 | Says "Stopped" | Every connection is parked. Start it from the assistant's editor (or the row under Overview's status grid) |
-| Says "Error" ending in `no poller is tracked — is the <transport> transport running?` | The transport reports nothing for an enabled connection — see [A connection reads "Not tracked"](#a-connection-reads-not-tracked) |
-| Says "Error" naming a contract major | The transport was built against another contract major and this core refused it — rebuild one side on the same major |
-| Says "Error" ending in `reconnecting automatically` | The network dropped and the transport is retrying every 15s — nothing to do but restore the connection |
+| Says "Error" ending in `nothing is tracked — is the <transport> package installed and loaded?` | The host runs nothing for an enabled connection — see [A connection reads "Not tracked"](#a-connection-reads-not-tracked) |
+| Says "Refused" naming a package and an SDK major | The package was built for another transport-sdk major and this core refused it — update whichever side is behind |
+| Says "Error" ending in `reconnecting automatically` | The network dropped and the host is retrying every 15s — nothing to do but restore the connection |
 | Says "Error" with anything else | The platform refused: an invalid token, or another process holding the same token's session |
 | Says "Running" but nothing happens | Continue below |
 | Overview → LLM endpoint is red | Fix the backend on `/backends`; its **Test connection** shows the real error |
 | Overview → Model says none selected | Pick one in Settings → Models → Chat |
 
 Another process holding the token is a real possibility during a redeploy or if you
-have a dev transport and a container running against the same token. A platform that
+have a dev core and a container running against the same token. A platform that
 permits one session per token errors the second one.
 
 If the poller is running and the LLM is reachable, either the message never opened a
 turn — the next three sections — or it was not considered addressed — the one after.
 
-## The assistant editor says the transport "has not announced itself yet"
+## The assistant editor says the transport "is not loaded in this core"
 
-That transport has never registered with this core, so its connection section
-cannot render; with no transport registered at all the editor says "No transport
-has registered with this core yet". A transport registers at boot and retries
-every 10 s until the core accepts it, so read its log:
+That transport was registered once but its package did not load at the last
+start, so its connection section cannot render; with no transport registered
+at all the editor says "No transport is installed in this core yet". The host
+loads packages at boot, so read the core's log:
 
 | Log line | Cause / fix |
 | --- | --- |
-| `registration with the core failed (core /api/internal/transports/register answered 401) — retrying in 10s` | `INTERNAL_API_TOKEN` differs between `app` and the transport. Set one value for both and restart both |
-| `… failed (fetch failed …)` or a timeout, repeating | `CORE_API_URL` is wrong or the core is not up yet. Inside Compose it must be `http://app:3200`; the retry loop resolves itself once the core answers |
-| `registered with the core — N connection(s) desired` | Registration succeeded. The core log carries the matching `transport '<id>' registered from <SELF_URL>` |
-| Nothing — the service exits at once | `REDIS_URL` or `INTERNAL_API_TOKEN` is unset; both are required for the transport to start |
-
-Once registered the section appears by itself (the registration publishes a `status`
-event).
+| `No transport packages installed (searched …)` | No installed package carries the transport keyword. Install it (`npm install <package>`; in Docker, name it in `TRANSPORTS`) and restart |
+| `transport packages could not be installed; the core starts without them` | The entrypoint's `npm install` failed: a wrong `NPM_TOKEN`, a misspelled spec, no network. The npm error above it says which |
+| `Transport package <name> … not loaded: built for … transport-sdk N; this core hosts M` | The package declares another SDK major. Update whichever side is behind |
+| `Transport package <name> … not loaded: default export is not a transport` | The package is not a transport (or its build is stale) — rebuild it, or drop it from `TRANSPORTS` |
+| `Transport <id> (<name>@<version>) registered — N connection(s) desired` | Loaded. The section appears by itself (the registration publishes a `status` event) |
 
 ## A connection reads "Not tracked"
 
-The connection is enabled in the core, but the transport's `/health` reports nothing
-for it. Overview folds the same state into its Error card as `connection is enabled
-but no poller is tracked — is the <transport> transport running?`.
+The connection is enabled in the core, but the host runs nothing for it. Overview
+folds the same state into its Error card as `connection is enabled but nothing is
+tracked — is the <transport> package installed and loaded?`.
 
 | Cause | Fix |
 | --- | --- |
-| The transport service is down or restarting | `docker compose ps`; bring it up. It re-registers and reconciles its connections from the desired state at boot |
-| The core cannot reach the transport at the URL it announced | The status probe fetches `<SELF_URL>/health` with a 5 s timeout and reports nothing on failure. `SELF_URL` must be reachable **from the core** — `http://<service>:<port>` inside Compose, never `localhost` |
-| The transport has not reconciled yet | Connect/Start/Stop announce a `transport.config.changed` bus event and the transport refetches. If the core log says `transport.config.changed for '<id>' was NOT published (bus unconfigured?)`, Redis is down — next section — and the transport picks the change up only on its next restart |
+| The transport's package did not load at the last start | The section above: install it, fix what the log names, restart. A package that loads registers and reconciles its connections from the desired state at boot |
+| The host has not reconciled yet | Connect/Start/Stop announce a `transport.config.changed` bus event and the host refetches. If the core log says `transport.config.changed for '<id>' was NOT published (bus unconfigured?)`, Redis is down — next section — and the host picks the change up only on its next restart |
 
 The connection's real state, once tracked, is on the same badge: Running, Error with the
 message, or Stopped.

@@ -4,9 +4,9 @@ Full documentation for **assistants-swarm-hub** — a multi-user assistant platf
 accounts run their own AI assistants (personas, chat bots, standing tasks,
 tools) on one shared brain (an OpenAI-compatible chat completions API, or a
 native Anthropic, Google or Z.ai backend), with a web chat and a
-control/observability dashboard. The platform is two apps: the **core**
-(dashboard, web chat, the whole pipeline, one Postgres database) and
-stateless **transports** that register with it, one per messaging platform.
+control/observability dashboard. The platform is one app, the **core**
+(dashboard, web chat, the whole pipeline, one Postgres database), hosting
+stateless **transports** installed as npm packages, one per messaging platform.
 The core names none of them.
 
 Everything here describes the code in this repository. Pending and upcoming
@@ -47,19 +47,19 @@ by step.
 | Document | What it covers |
 | --- | --- |
 | [Getting started](getting-started.md) | Prerequisites, local install, database and Redis, first run, the first admin, connecting a bot |
-| [Configuration](configuration.md) | The two config layers: bootstrap env vars for both apps, and every DB-backed setting |
+| [Configuration](configuration.md) | The two config layers: the core's bootstrap env vars, and every DB-backed setting |
 
 ### Architecture
 
 | Document | What it covers |
 | --- | --- |
-| [Overview](architecture/overview.md) | The two apps and the shared packages, layers, the cross-app message lifecycle, process singletons, boot |
+| [Overview](architecture/overview.md) | The app, the hosted transports and the shared packages, layers, the message lifecycle, process singletons, boot |
 | [Data model](architecture/data-model.md) | Every Postgres table and column, relationships, migrations |
 | [The message pipeline](architecture/message-pipeline.md) | An incoming message end to end: transport → ingest → addressing → context → tools → delivery |
 | [Background jobs](architecture/background-jobs.md) | The three scheduler primitives, advisory locks, progress, the Jobs board |
 | [LLM and MCP](architecture/llm-and-mcp.md) | The provider clients, the tool loop, in-process and remote MCP tools, the tool catalog |
 | [Observability](architecture/observability.md) | The trace contract across apps, the file-backed trace store, Debug UI, live SSE updates |
-| [Security](architecture/security.md) | Accounts and roles, the internal token, secret handling, SSRF defense, prompt-injection posture, data sensitivity |
+| [Security](architecture/security.md) | Accounts and roles, the hosted transports, secret handling, SSRF defense, prompt-injection posture, data sensitivity |
 
 ### Features
 
@@ -70,7 +70,7 @@ its behavior, configuration, data, traces and tests.
 
 | Document | What it covers |
 | --- | --- |
-| [Conventions](api/README.md) | Response envelope, error codes, access levels, the internal token, downloads, SSE |
+| [Conventions](api/README.md) | Response envelope, error codes, access levels, downloads, SSE |
 | [Endpoint reference](api/endpoints.md) | Every route grouped by feature, with request/response shapes |
 | [`openapi.yaml`](api/openapi.yaml) | OpenAPI 3.1 description of the whole HTTP surface |
 
@@ -78,7 +78,7 @@ its behavior, configuration, data, traces and tests.
 
 | Document | What it covers |
 | --- | --- |
-| [Deployment](operations/deployment.md) | Docker Compose (core, Redis, Postgres, plus the transports you add), the images, migrations on start, health checks, releases |
+| [Deployment](operations/deployment.md) | Docker Compose (core, Redis, Postgres), the transport packages the image installs at boot, migrations on start, health checks, releases |
 | [Operator guide](operations/operator-guide.md) | Every dashboard page and what to do on it |
 | [Using the bot in chat](operations/using-the-bot.md) | What end users can do in a chat, and how an assistant decides to answer |
 | [Backup and restore](operations/backup-and-restore.md) | What state exists, where, and how to back each part up |
@@ -89,7 +89,7 @@ its behavior, configuration, data, traces and tests.
 | Document | What it covers |
 | --- | --- |
 | [Contributing](development/contributing.md) | Engineering standards, the feature contract, where code goes |
-| [Adding a transport](development/adding-a-transport.md) | The transport contract, for an author with no access to this repository: registration, events, delivery, the HTTP surface, MCP tools, shipping an image |
+| [Adding a transport](development/adding-a-transport.md) | The transport contract, for an author with no access to this repository: the descriptor, events, delivery, the outbound port, MCP tools, publishing the package |
 | [Testing](development/testing.md) | Unit tests, Testcontainers integration tests, exercising the pipeline without a transport |
 | [UI kit](development/ui-kit.md) | The design system, shared components, and the UI conventions features must follow |
 | [TODO](TODO.md) | The working tracker: pending features with their agreed specs, and open items |
@@ -104,7 +104,7 @@ its behavior, configuration, data, traces and tests.
   belong to the assistant's owning account (resolved through identity links)
   and to every admin; there is no single global owner.
 - A **source** is where a conversation lives — a transport's id (`acme`,
-  say) or `chat` (the web chat) — and a **transport** is the service that
+  say) or `chat` (the web chat) — and a **transport** is the package that
   connects a platform source. Cross-app pointers are scoped refs,
   `acme:user:123`.
 - Times shown in the dashboard are always rendered in the configured operator

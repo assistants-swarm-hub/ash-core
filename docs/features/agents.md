@@ -359,8 +359,8 @@ file-then-recap flow repeated the same filename twice and spammed the chat):
   agent has to say. On an owner-started run, files over the limit are announced
   (silently, by name) the moment they land.
 - The runner hands each file to the owning source's outbound port
-  (`sendFile` in `server/turn/source-outbound.ts` — the transport's
-  `POST /internal/chats/:chatId/files`, allowed 500 s for the platform's own
+  (`sendFile` in `server/turn/source-outbound.ts` — for a transport, the
+  host's in-process outbound port, allowed 500 s for the platform's own
   upload; the web chat keeps the file on the message). The transport sends
   files **as the media they are**: an
   MP4/QuickTime video goes out as a video (playable straight in the chat,
@@ -410,7 +410,7 @@ file-then-recap flow repeated the same filename twice and spammed the chat):
   is treated as a **transient acknowledgement** (user decision, 2026-08-01): it is
   delivered silently (no notification ping; the run's report is the notification)
   and **deleted from the chat once the run settles** through the port's
-  `deleteMessage` (the transport's `DELETE /internal/chats/:chatId/messages/:messageId`),
+  `deleteMessage` (for a transport, a direct call through the host's outbound port),
   its mirror row soft-deleted by the core with it. A run that finishes before the acknowledgement is even
   delivered deletes it on arrival. The tracking is in-memory (`server/ack.ts`,
   the same `globalThis` pattern as the enqueue signal); a restart mid-run merely

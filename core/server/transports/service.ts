@@ -4,11 +4,10 @@ import { randomUUID } from "node:crypto";
 
 import { and, asc, eq } from "drizzle-orm";
 import {
-  CONTRACT_MAJOR,
   type SourceId,
   type TransportConfigChangedEvent,
   type TransportDesiredState,
-  type TransportRegistrationRequest,
+  type TransportRegistration,
 } from "@assistants-swarm-hub/contracts";
 
 import { ApiError } from "@/lib/api-error";
@@ -29,21 +28,21 @@ import {
 } from "../../store/schema";
 
 /**
- * Transport registrations and per-assistant connections (redesign Phase 7,
- * PLAN.md "The transport contract"): a transport self-registers at boot with
- * its id, name, base URL, MCP path and config schemas; the row is what every
- * core→transport call resolves against, and the opaque config blobs — the
- * transport-level one (an owner identity, say) and the per-assistant
- * connection sections (bot tokens) — are the transport's to interpret, never
- * the core's. Desired-state changes are announced on the bus
- * (`transport.config.changed`); the transport refetches and reconciles.
+ * Transport registrations and per-assistant connections: the host registers
+ * every transport package it loads at boot — its id, name and config schemas,
+ * from the package's descriptor — and the opaque config blobs the row and
+ * its connections carry (an owner identity, say; bot tokens) are the
+ * transport's to interpret, never the core's. Desired-state changes are
+ * announced on the bus (`transport.config.changed`); the host refetches and
+ * reconciles. A row outlives its package: a transport that was installed
+ * once stays listed, with no connections tracked, until its package is back.
  */
 
 const FEATURE = FEATURES["tool-connections"];
 
-/** Registration: upsert the announced identity, keep the admin's decisions. */
+/** Registration: upsert the package's identity, keep the admin's decisions. */
 export async function registerTransport(
-  request: TransportRegistrationRequest,
+  request: TransportRegistration,
   db: StoreDb = getStoreDb(),
 ): Promise<TransportDesiredState> {
   await db
@@ -51,9 +50,6 @@ export async function registerTransport(
     .values({
       id: request.id,
       name: request.name,
-      baseUrl: request.baseUrl,
-      mcpPath: request.mcpPath,
-      contractMajor: request.contractMajor,
       connectionConfigSchema: request.connectionConfigSchema,
       transportConfigSchema: request.transportConfigSchema,
       lastSeenAt: new Date(),
@@ -61,13 +57,10 @@ export async function registerTransport(
     })
     .onConflictDoUpdate({
       target: transports.id,
-      // The announced identity follows the code; `enabled` and `config` are
-      // the admin's and survive every re-registration.
+      // The identity follows the code; `enabled` and `config` are the
+      // admin's and survive every re-registration.
       set: {
         name: request.name,
-        baseUrl: request.baseUrl,
-        mcpPath: request.mcpPath,
-        contractMajor: request.contractMajor,
         connectionConfigSchema: request.connectionConfigSchema,
         transportConfigSchema: request.transportConfigSchema,
         lastSeenAt: new Date(),
@@ -75,25 +68,7 @@ export async function registerTransport(
       },
     });
   publishEvent("status");
-  // Registered either way — the roster must be able to say WHY a transport
-  // is refused — but a mismatched contract gets no state and no events.
-  if (request.contractMajor !== CONTRACT_MAJOR) {
-    throw ApiError.conflict(incompatibilityReason(request.id, request.contractMajor));
-  }
   return desiredTransportState(request.id, db);
-}
-
-/** Whether this core speaks the contract major a transport announced. */
-export function transportCompatible(row: Pick<TransportRow, "contractMajor">): boolean {
-  return row.contractMajor === CONTRACT_MAJOR;
-}
-
-/** The reason a refused transport sees, and the roster shows. */
-export function incompatibilityReason(id: string, contractMajor: number): string {
-  return (
-    `transport "${id}" speaks contract major ${contractMajor}; this core speaks ${CONTRACT_MAJOR} — ` +
-    "update whichever side is behind"
-  );
 }
 
 /** The desired state one transport reconciles from. */
@@ -103,9 +78,6 @@ export async function desiredTransportState(
 ): Promise<TransportDesiredState> {
   const row = await getTransport(id, db);
   if (!row) throw ApiError.notFound(`transport "${id}" is not registered`);
-  if (!transportCompatible(row)) {
-    throw ApiError.conflict(incompatibilityReason(row.id, row.contractMajor));
-  }
   const connections = await db
     .select()
     .from(assistantTransports)
@@ -140,24 +112,16 @@ export async function listTransports(db: StoreDb = getStoreDb()): Promise<Transp
 }
 
 /**
- * The transports this core can actually run: registered AND on its contract
- * major. Every runtime lookup over "the sources" (managed tool connections,
- * the directory roster, the media fan-out, the ingest's source check) reads
- * this — a source id is whatever registered, never a compiled-in list.
+ * Whether events tagged with this source may be ingested. Every runtime
+ * lookup over "the sources" (managed tool connections, the directory roster,
+ * the media fan-out, this check) reads the registration table — a source id
+ * is whatever registered, never a compiled-in list.
  */
-export async function listCompatibleTransports(
-  db: StoreDb = getStoreDb(),
-): Promise<TransportRow[]> {
-  return (await listTransports(db)).filter(transportCompatible);
-}
-
-/** Whether events tagged with this source may be ingested. */
 export async function isRegisteredTransport(
   source: string,
   db: StoreDb = getStoreDb(),
 ): Promise<boolean> {
-  const row = await getTransport(source, db);
-  return row !== null && transportCompatible(row);
+  return (await getTransport(source, db)) !== null;
 }
 
 /** Announce a desired-state change; the transport refetches and reconciles. */
@@ -429,59 +393,28 @@ export interface TransportConnectionView {
   status: TransportConnectionStatus | null;
 }
 
-const STATUS_TIMEOUT_MS = 5_000;
-
 /**
- * The live statuses a transport reports, keyed by connection id: straight
- * from the host for a transport this core runs, else from the service's
- * `/health`. Unreachable means no statuses, never a failed listing.
+ * The live statuses of a transport's connections, keyed by connection id,
+ * from the host. A transport this process does not run — its package is
+ * gone, or failed to load — has none: an enabled connection with no status
+ * is what the dashboard flags as not tracked.
  */
-export async function fetchTransportStatuses(
-  row: TransportRow,
-): Promise<Map<string, TransportConnectionStatus>> {
+export function fetchTransportStatuses(
+  row: Pick<TransportRow, "id">,
+): Map<string, TransportConnectionStatus> {
   const hosted = hostedTransport(row.id);
-  if (hosted) {
-    return new Map(
-      hosted.statuses().map((status) => [
-        status.connectionId,
-        {
-          state: status.state,
-          username: status.username,
-          since: status.since,
-          error: status.error,
-        },
-      ]),
-    );
-  }
-  if (!row.baseUrl) return new Map();
-  try {
-    const res = await fetch(`${row.baseUrl.replace(/\/$/, "")}/health`, {
-      signal: AbortSignal.timeout(STATUS_TIMEOUT_MS),
-    });
-    if (!res.ok) return new Map();
-    const body = (await res.json()) as {
-      connections?: {
-        connectionId: string;
-        state: TransportConnectionStatus["state"];
-        username: string | null;
-        since: string | null;
-        error: string | null;
-      }[];
-    };
-    return new Map(
-      (body.connections ?? []).map((status) => [
-        status.connectionId,
-        {
-          state: status.state,
-          username: status.username,
-          since: status.since,
-          error: status.error,
-        },
-      ]),
-    );
-  } catch {
-    return new Map();
-  }
+  if (!hosted) return new Map();
+  return new Map(
+    hosted.statuses().map((status) => [
+      status.connectionId,
+      {
+        state: status.state,
+        username: status.username,
+        since: status.since,
+        error: status.error,
+      },
+    ]),
+  );
 }
 
 /** Mask one config blob against the transport's field schema. */
@@ -507,10 +440,8 @@ export async function listConnectionViews(
 ): Promise<TransportConnectionView[]> {
   const row = await getTransport(transport, db);
   if (!row) return [];
-  const [connections, statuses] = await Promise.all([
-    listAssistantTransports(transport, db),
-    fetchTransportStatuses(row),
-  ]);
+  const connections = await listAssistantTransports(transport, db);
+  const statuses = fetchTransportStatuses(row);
   return connections
     .filter((connection) => !assistantId || connection.assistantId === assistantId)
     .map((connection) => ({

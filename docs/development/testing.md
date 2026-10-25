@@ -245,9 +245,8 @@ to skip them** — run the jobs.
 A transport is its own repository and runs its own suite; nothing here executes
 it. What the core guarantees about any transport is proved on this side by the
 ingest suite above, which drives the whole event contract against a real store —
-so a transport author can validate their events against
-[`events.schema.json`](../api/transport/events.schema.json) and trust that the
-core's half is covered.
+so a transport author can validate their events against the zod schemas the
+SDK exports and trust that the core's half is covered.
 
 A transport's own suite is the same shape: a plain `vitest.config.ts`
 (no aliases, no `server-only` guard) and five unit files under `src/` covering
@@ -281,16 +280,6 @@ Migrations do get one CI check, and it is not a test: before the image is
 pushed, the release workflow boots it against a clean pgvector database and
 waits for `/api/health`. A migration that was generated but never committed
 fails there — visibly, in the release, rather than on an operator's server.
-
-`npm run test` also carries the **wire-contract drift check**
-(`packages/transport-sdk/src/wire.test.ts`): it regenerates
-`docs/api/transport/{events.schema.json,openapi.yaml}` from the zod schemas and
-fails when the committed copies differ. When it does, the fix is to run the
-generator and commit its output:
-
-```bash
-npm run wire:generate -w @assistants-swarm-hub/transport-sdk
-```
 
 `npm run typecheck` and `npm run test` declare `dependsOn: ["^typecheck"]` in
 `turbo.json`, so a change to a package invalidates the cached result of every

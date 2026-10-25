@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
-import { CONTRACT_MAJOR, TURN_META_KEY } from "@assistants-swarm-hub/contracts";
+import { TURN_META_KEY } from "@assistants-swarm-hub/contracts";
 import {
   applyMigrations,
   startTestPostgres,
@@ -16,6 +16,8 @@ import * as storeSchema from "../../../store/schema";
 import { createAssistant } from "@/features/assistants/server/service";
 import { startFakeMcpServer, type FakeMcpServer } from "@/test/fake-mcp-server";
 import { runWithToolContext } from "@/server/mcp/context";
+import type { DiscoveredTool } from "@/server/mcp/http-client";
+import { registerHostedTransport, unregisterHostedTransport } from "@/server/transports/hosted";
 import { listTraces } from "@/server/trace";
 import { getTraceDetail } from "@/server/trace/service";
 import type { StoreDb } from "@/server/store/db";
@@ -44,23 +46,13 @@ const STORE_MIGRATIONS = fileURLToPath(new URL("../../../store/migrations", impo
  * two things.
  */
 
-/** Where the managed reconciler believes the transport lives, per test. */
-const { config } = vi.hoisted(() => ({ config: { url: null as string | null } }));
-
-process.env.INTERNAL_API_TOKEN = "secret-token";
 vi.mock("@/server/transports/service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/server/transports/service")>();
   return {
     ...actual,
-    getTransport: async (source: string) =>
-      source === "acme" && config.url
-        ? { id: "acme", name: "Acme Chat", baseUrl: config.url, mcpPath: "/mcp", enabled: true, contractMajor: CONTRACT_MAJOR }
-        : null,
     // The roster the reconcile walks: acme is always registered here; whether
-    // it is reachable is `config.url` (null = never announced a URL).
-    listCompatibleTransports: async () => [
-      { id: "acme", name: "Acme Chat", baseUrl: config.url ?? "", mcpPath: "/mcp", enabled: true, contractMajor: CONTRACT_MAJOR },
-    ],
+    // it is hosted is the hosted registry, per test.
+    listTransports: async () => [{ id: "acme", name: "Acme Chat", enabled: true }],
   };
 });
 
@@ -480,25 +472,33 @@ describe("connection toolset", () => {
 });
 
 describe("managed source connections", () => {
-  let remote: FakeMcpServer;
+  /** What the hosted transport's own server offers, or why it does not answer. */
+  const hosted = { tools: [] as DiscoveredTool[], failWith: null as string | null };
 
-  beforeAll(async () => {
-    remote = await startFakeMcpServer();
-  });
+  function host() {
+    registerHostedTransport({
+      descriptor: { id: "acme", name: "Acme Chat", connectionConfigSchema: [], maxMessageLength: 1, typingRefreshMs: 1 },
+      outbound: {} as never,
+      menus: {} as never,
+      statuses: () => [],
+      tools: {
+        async listTools() {
+          if (hosted.failWith) throw new Error(hosted.failWith);
+          return hosted.tools;
+        },
+        callTool: async () => ({ text: "", isError: false }),
+      },
+    });
+  }
 
-  afterAll(async () => {
-    await remote?.close();
-  });
-
-  beforeEach(async () => {
-    remote.failWith(null);
-    remote.setTools([{ name: "set_message_reaction", description: "React to a message" }]);
-    // The fake serves at `<base>/mcp`, which is where the reconciler points.
-    config.url = remote.url.replace(/\/mcp$/, "");
+  beforeEach(() => {
+    hosted.failWith = null;
+    hosted.tools = [{ name: "set_message_reaction", description: "React to a message", inputSchema: {} }];
+    host();
   });
 
   afterEach(() => {
-    config.url = null;
+    unregisterHostedTransport("acme");
   });
 
   it("registers a deployed source and applies its toolset without an operator", async () => {
@@ -520,17 +520,12 @@ describe("managed source connections", () => {
     expect((await resolveConnectionToolset({ source: "chat" }, db)).tools).toEqual([]);
   });
 
-  it("sends the internal token, so the app's guard lets it in", async () => {
+  it("follows the code when the release changes what the transport offers", async () => {
     await reconcileManagedConnections({ kind: "system" }, db);
-    expect(remote.lastHeaders()["x-internal-token"]).toBe("secret-token");
-  });
-
-  it("follows the code when the release changes what the app offers", async () => {
-    await reconcileManagedConnections({ kind: "system" }, db);
-    remote.setTools([
-      { name: "set_message_reaction", description: "React to a message" },
-      { name: "send_message", description: "Say something in this chat" },
-    ]);
+    hosted.tools = [
+      { name: "set_message_reaction", description: "React to a message", inputSchema: {} },
+      { name: "send_message", description: "Say something in this chat", inputSchema: {} },
+    ];
     await reconcileManagedConnections({ kind: "system" }, db);
 
     const connection = await getToolConnectionBySlug(db, "acme");
@@ -540,23 +535,23 @@ describe("managed source connections", () => {
     ]);
   });
 
-  it("keeps the last toolset when the app is still starting", async () => {
+  it("keeps the last toolset when the transport's server does not answer", async () => {
     await reconcileManagedConnections({ kind: "system" }, db);
-    remote.failWith(503);
+    hosted.failWith = "server not ready";
     await reconcileManagedConnections({ kind: "system" }, db);
 
     const connection = await getToolConnectionBySlug(db, "acme");
     expect(connection!.tools.map((tool) => tool.name)).toEqual(["set_message_reaction"]);
-    expect(connection!.lastError).toMatch(/streamable-http/);
+    expect(connection!.lastError).toMatch(/server not ready/);
 
     const traces = await listTraces({ feature: "tool-connections" });
     const trace = traces.traces.find((t) => t.action === "reconcile-managed");
     expect(trace?.outputSummary).toContain("unreachable");
   });
 
-  it("disables a source this deployment does not run", async () => {
+  it("disables a source this core does not host", async () => {
     await reconcileManagedConnections({ kind: "system" }, db);
-    config.url = null;
+    unregisterHostedTransport("acme");
     await reconcileManagedConnections({ kind: "system" }, db);
 
     const connection = await getToolConnectionBySlug(db, "acme");

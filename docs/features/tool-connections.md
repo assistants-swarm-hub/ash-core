@@ -77,8 +77,8 @@ Each transport hosts an MCP server for its platform's actions (the SDK's
 `reply_to_message` and `send_message`, plus its own such as
 `set_message_reaction`), and the core
 registers it as a **managed** connection (`server/managed.ts`): slug = the
-source id, name "<Transport> tools", endpoint = the registered `baseUrl` +
-`mcpPath`, auth header = the shared internal token, app scope = the source,
+source id, name "<Transport> tools", kind `in-process` (reached through the
+host's own server, no endpoint and no auth header), app scope = the source,
 every assistant, `managed = true`, owned by nobody. The reconcile runs at core
 boot and again on every transport registration, discovers the tools and
 applies them **without an operator pressing Apply** — the one place the

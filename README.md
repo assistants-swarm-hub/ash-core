@@ -6,8 +6,8 @@ on one shared brain (an OpenAI-compatible chat completions API, or a native
 Anthropic, Google or Z.ai backend), with a web chat and a control/observability
 dashboard. This repository is the core: the dashboard, the web chat, the whole
 pipeline and one Postgres database. Messaging platforms connect as
-**transports** — separate services in their own repositories that register
-themselves; the core names none of them. Grown out of the
+**transports** — npm packages from their own repositories that the core
+installs and hosts in its own process; the core names none of them. Grown out of the
 [ollama-tg-bot](https://github.com/drumslave-git/ollama-tg-bot) MVP through a
 full Next.js rewrite and the v2 redesign (see [docs/PLAN.md](docs/PLAN.md)).
 Pending work is tracked in [`docs/TODO.md`](docs/TODO.md).
@@ -46,10 +46,10 @@ docker compose up -d
 # dashboard: http://localhost:3200  ·  health: http://localhost:3200/api/health
 ```
 
-That runs **released images** — the core on `ASH_VERSION` (pinned, so a clone
+That runs the **released image** — the core on `ASH_VERSION` (pinned, so a clone
 runs a known-good build). No toolchain on the host and no build to wait for.
-Transports are not in this file: each is one service you add, on its own
-version from its own repository. To build
+Transports are npm packages the image installs at boot, named in the
+`TRANSPORTS` variable, each on its own version from its own repository. To build
 this working tree's core instead, add the dev override:
 
 ```bash
@@ -61,12 +61,12 @@ The core container applies pending migrations
 (the programmatic drizzle migrator in `packages/db/migrate/`) before it serves,
 so it never runs against an unmigrated database. `DATABASE_URL` is built from
 the `POSTGRES_*` vars and points at the bundled `db` service; override it to use
-an external database. Set a real `INTERNAL_API_TOKEN` in a root `.env` — it is
-the shared secret the apps present to each other, and the default `change-me`
-is a placeholder. Postgres persists into `./data/pg`, Redis into `./data/redis`.
+an external database. Name the transport packages to install in `TRANSPORTS`
+in a root `.env`, with an `NPM_TOKEN` that can read the org's registry on
+GitHub Packages. Postgres persists into `./data/pg`, Redis into `./data/redis`.
 Stop with `docker compose down`; to reset, delete those directories.
 
-Adding a transport is **one more service** and no change to the core — see
+Adding a transport is **one more package** and no change to the core — see
 the recipe in
 [Deployment](docs/operations/deployment.md#adding-a-transport).
 
@@ -76,7 +76,7 @@ Root scripts fan out across the workspaces through turbo.
 
 | Script | Purpose |
 | --- | --- |
-| `npm run dev` | The core's dev server on 3200 (a transport runs from its own checkout) |
+| `npm run dev` | The core's dev server on 3200 (a transport under development is `npm link`ed in and loads at boot) |
 | `npm run build` | Production build of every workspace (`next build`, standalone output, for the core) |
 | `npm run start` | Serve the core's production build |
 | `npm run lint` | ESLint |
@@ -109,14 +109,14 @@ to the core.
 | `core/store/` | THE database module: the Drizzle schema (`schema.ts`) and the one migration chain (`migrations/`). |
 | `core/lib/` | Small shared utilities and pure contracts importable by both client and server. |
 | `core/test/` | Test support (stubs, fixtures, the Testcontainers database helper). |
-| — | Transports are **not** in this repository. Each is its own repository and its own image, built on `packages/transport-sdk` and connected by registration alone — see [adding a transport](docs/development/adding-a-transport.md). |
-| `packages/contracts/` | Cross-app zod schemas (`@assistants-swarm-hub/contracts`): scoped refs, transport events, reply delivery and turn lifecycle, the internal APIs, the trace contract, realtime topics. |
+| — | Transports are **not** in this repository. Each is its own repository publishing an npm package built on `packages/transport-sdk`; the core finds installed ones by the package keyword `assistants-swarm-hub-transport` and hosts them in its own process (`server/transports/host/`) — see [adding a transport](docs/development/adding-a-transport.md). |
+| `packages/contracts/` | Cross-app zod schemas (`@assistants-swarm-hub/contracts`): scoped refs, transport events, reply delivery and turn lifecycle, the trace contract, realtime topics — plus the platform interface a transport implements (`transport-interface.ts`) and `TRANSPORT_SDK_MAJOR`. |
 | `packages/bus/` | Redis plumbing (`@assistants-swarm-hub/bus`): BullMQ queues with `attempts: 1` and the pub/sub bus. |
-| `packages/service/` | What every transport service needs once (`@assistants-swarm-hub/service`): env access, the internal-token guard, serving an MCP server over Hono, the bus trace client. |
+| `packages/service/` | The bus helpers (`@assistants-swarm-hub/service`): the trace client and the dashboard-refresh ping. |
 | `packages/media/` | Image normalization to a bounded JPEG (`@assistants-swarm-hub/media`), shared by the core and the transports. |
 | `packages/db/` | Shared database tooling (`@assistants-swarm-hub/db`): pool helpers, the production migration runner (`migrate/`), Testcontainers helpers (`/testing`). |
 | `packages/ui/` | Shared dashboard components and the live-event hook (`@assistants-swarm-hub/ui`). |
-| `packages/transport-sdk/` | The one **published** package (`@assistants-swarm-hub/transport-sdk`): the wire half of the four packages above, bundled into built output so a transport in its own repository resolves nothing private. Also generates the language-neutral wire contract in [`docs/api/transport/`](docs/api/transport/). |
+| `packages/transport-sdk/` | The one **published** package (`@assistants-swarm-hub/transport-sdk`): the transport interface plus a few helpers, no runtime — bundled into built output so a transport in its own repository resolves nothing private. A transport declares it as a peer dependency; its major is the compatibility check. |
 
 ### Import boundary
 
@@ -140,8 +140,8 @@ created by the migrations; the compose `pgvector` image ships them).
   core never serves against an unmigrated database.
 - Ids are generated in application code.
 
-A transport has no database: everything it needs comes from the core at
-registration.
+A transport has no database: everything it needs comes from the core that
+hosts it.
 
 ### Backups
 
@@ -166,8 +166,9 @@ way. See [Backup and restore](docs/operations/backup-and-restore.md).
 
 ## Configuration
 
-Env is bootstrap-only: `DATABASE_URL`, `REDIS_URL` and `INTERNAL_API_TOKEN` for
-the core; `REDIS_URL`, `INTERNAL_API_TOKEN` and its own URLs for a transport. Every core variable also accepts a `<NAME>_FILE` Docker-secret variant.
+Env is bootstrap-only: `DATABASE_URL` and `REDIS_URL` for the core, plus — in
+Docker — `TRANSPORTS` and `NPM_TOKEN` for the packages the image installs at
+boot; a hosted transport has no env of its own. Every core variable also accepts a `<NAME>_FILE` Docker-secret variant.
 Required values are enforced at the point of use rather than at process boot, so
 the dashboard can run and report what is missing. Everything a person configures
 — LLM backends and models, bot tokens, personas, tasks — lives in the database

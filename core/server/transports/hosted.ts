@@ -69,3 +69,23 @@ export function registerHostedTransport(transport: HostedTransport): void {
 export function unregisterHostedTransport(source: string): void {
   registry().delete(source);
 }
+
+/** A package the host found but could not run, as the roster reports it. */
+export interface TransportLoadFailure {
+  /** The npm package name. */
+  name: string;
+  error: string;
+}
+
+const FAILURES_KEY = Symbol.for("assistants-swarm-hub.core.transports.load-failures");
+
+/** What the host could not load at its last start; the roster shows each by name. */
+export function transportLoadFailures(): TransportLoadFailure[] {
+  const g = globalThis as typeof globalThis & { [FAILURES_KEY]?: TransportLoadFailure[] };
+  return g[FAILURES_KEY] ?? [];
+}
+
+export function recordTransportLoadFailures(failures: TransportLoadFailure[]): void {
+  const g = globalThis as typeof globalThis & { [FAILURES_KEY]?: TransportLoadFailure[] };
+  g[FAILURES_KEY] = failures;
+}

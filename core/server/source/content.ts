@@ -36,7 +36,7 @@ import {
   getSourceMessagesInWindow,
   listSourceChatMessages,
 } from "@/server/source-store/repository";
-import { listCompatibleTransports } from "@/server/transports/service";
+import { listTransports } from "@/server/transports/service";
 import type { SourceMessageRow } from "../../store/schema";
 
 /**
@@ -49,7 +49,7 @@ import type { SourceMessageRow } from "../../store/schema";
  * every other surface of the core speaks — and messages by their source-local
  * id as TEXT (one platform's ids are small integers; another's 64-bit snowflakes would not survive
  * a `Number()`). A read across chats sees the transports registered on this
- * core's contract major and tags every row with the chat it belongs to; the
+ * core and tags every row with the chat it belongs to; the
  * web chat keeps its own thread store and is not part of this plane.
  */
 
@@ -222,9 +222,9 @@ export interface SourceContentClient {
   countEmbedded(chatRef: string): Promise<number>;
 }
 
-/** The sources this plane reads across: every transport on this core's contract major. */
+/** The sources this plane reads across: every transport registered with this core. */
 export async function contentSources(): Promise<SourceId[]> {
-  return (await listCompatibleTransports()).map((row) => row.id);
+  return (await listTransports()).map((row) => row.id);
 }
 
 /** A chat ref as the store keys it. */

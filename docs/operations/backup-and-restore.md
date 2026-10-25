@@ -112,12 +112,12 @@ every backend API key, the Tavily key and every bot token in plaintext**, plus t
 accounts' password hashes and session secrets. Which is another reason to protect the
 dump.
 
-What is *not* in the dump: `DATABASE_URL`, `REDIS_URL`, `INTERNAL_API_TOKEN`, `TZ`,
-the transport's `CORE_API_URL`/`SELF_URL` and the Compose variables. Keep your `.env`
+What is *not* in the dump: `DATABASE_URL`, `REDIS_URL`, `TZ`, `TRANSPORTS`,
+`NPM_TOKEN` and the Compose variables. Keep your `.env`
 (or your secret files) under the same backup regime, and remember `<NAME>_FILE`
 Docker-secret variants exist on the core if you would rather they never appear in a
-compose file at all. A restored stack with a *different* `INTERNAL_API_TOKEN` on one
-side simply never registers its transport — set it once, for both.
+compose file at all. A restored stack with a *different* `TRANSPORTS` list simply
+hosts different transports — the connections in the dump wait for theirs.
 
 ## Recommended routine
 
@@ -138,7 +138,7 @@ tar czf "/backups/traces-$(date +%F).tar.gz" -C /srv/assistants-swarm-hub/data t
 
 ## Disaster recovery
 
-1. Bring up a fresh stack (`docker compose up -d`) with the same `INTERNAL_API_TOKEN`
+1. Bring up a fresh stack (`docker compose up -d`) with the same `TRANSPORTS`
    and, if you override it, the same `POSTGRES_DB`, so the database the dump
    names exists.
    Do **not** visit `/setup` yet.

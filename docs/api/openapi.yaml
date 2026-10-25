@@ -4,21 +4,20 @@ info:
   title: assistants-swarm-hub dashboard API
   version: 1.48.0
   description: |
-    HTTP surface of the assistants-swarm-hub core: the dashboard, the web chat, and
-    the internal API the transport services call back into.
+    HTTP surface of the assistants-swarm-hub core: the dashboard and the web
+    chat. Transports are packages the core hosts in-process and have no HTTP
+    of their own.
 
     Conventions:
       * Every JSON success body is wrapped as `{ "data": ... }`. The exceptions are
         `/api/health` (bare object), the bundle/export routes (file attachments),
-        the screenshot and web-chat media routes (image bytes), `/api/events`
-        (SSE) and the `/api/internal/transports/*` routes (bare objects).
-      * Every failure body is `{ "error": { code, message, details? } }` - except
-        on the internal routes, whose errors carry only `{ "error": { message } }`.
+        the screenshot and web-chat media routes (image bytes) and `/api/events`
+        (SSE).
+      * Every failure body is `{ "error": { code, message, details? } }`.
       * Access is per route, declared on `defineRoute` and echoed here as
         `x-access`: `public` (no session), `account` (any signed-in active
         account; ownership-scoped for a user-role account), `admin` (a
-        signed-in admin - the default), `internal` (the `x-internal-token`
-        header, no session). A user-role account on an admin route is 403;
+        signed-in admin - the default). A user-role account on an admin route is 403;
         an account still holding its temporary password is 403 everywhere
         but `/api/auth/change-password`; an id outside an account's scope
         is 404, never 403.
@@ -72,8 +71,6 @@ tags:
   - name: agents
   - name: analytics
   - name: traces
-  - name: internal
-    description: Token-authenticated routes the transport services call
 
 security:
   - cookieAuth: []
@@ -672,8 +669,8 @@ paths:
       description: |
         `assistantId` narrows to one assistant. A user-role account MUST pass
         it (400 otherwise) and it must name one of its own assistants (404
-        otherwise). `status` is what the transport reports on its own
-        `/health`, or null when it reports nothing for the row.
+        otherwise). `status` is the live connection state the hosted
+        transport reports, or null when it reports nothing for the row.
       parameters:
         - name: assistantId
           in: query
@@ -3296,172 +3293,6 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
-  # ------------------------- internal transport API ---------------
-  # Called by the transport services, never by the dashboard.
-  # No session, no `data` wrapper, errors as `{ "error": { message } }`. The
-  # whole contract lives in docs/development/adding-a-transport.md.
-  /api/internal/transports/register:
-    post:
-      tags: [internal]
-      x-access: internal
-      security:
-        - internalToken: []
-      summary: Transport self-registration
-      description: |
-        A transport announces itself at boot: its id (any slug of the right
-        shape - there is no list in the core to extend), name, base URL, MCP
-        path, contract major and config-field schemas. The core upserts the
-        registration (the admin's `enabled` flag and stored config blobs
-        survive every re-registration), kicks the managed tool-connection
-        reconcile, and answers with the transport's desired state - so
-        registration doubles as the boot-time fetch. A contract major this
-        core does not speak is refused with 409 naming both majors; the row
-        is kept so the dashboard shows the refusal.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/TransportRegistrationRequest" }
-      responses:
-        "200":
-          description: The transport's desired state (bare object)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/TransportDesiredState" }
-        "400": { $ref: "#/components/responses/InternalBadRequest" }
-        "401": { $ref: "#/components/responses/InternalUnauthorized" }
-        "409":
-          description: The transport announced a contract major this core does not speak (the message names both)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/InternalError" }
-
-  /api/internal/transports/{id}/desired:
-    parameters:
-      - $ref: "#/components/parameters/TransportId"
-    get:
-      tags: [internal]
-      x-access: internal
-      security:
-        - internalToken: []
-      summary: Refetch the desired state
-      description: |
-        Called whenever the bus carries `transport.config.changed` for this
-        transport (or `assistant.deleted`). A connection's `enabled` already
-        folds in the transport switch and the owning account's deactivation.
-      responses:
-        "200":
-          description: Desired state (bare object)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/TransportDesiredState" }
-        "400": { $ref: "#/components/responses/InternalBadRequest" }
-        "401": { $ref: "#/components/responses/InternalUnauthorized" }
-        "404": { $ref: "#/components/responses/InternalNotFound" }
-
-  /api/internal/transports/{id}/config:
-    parameters:
-      - $ref: "#/components/parameters/TransportId"
-    patch:
-      tags: [internal]
-      x-access: internal
-      security:
-        - internalToken: []
-      summary: Write back into the transport-level config
-      description: |
-        A transport persisting something it resolved (an owner id, say,
-        it just looked up). Shallow merge - the keys are the transport's own.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/ConfigBlob" }
-      responses:
-        "200":
-          description: The transport-level blob after the merge (bare object)
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [config]
-                properties:
-                  config: { $ref: "#/components/schemas/ConfigBlob" }
-        "400": { $ref: "#/components/responses/InternalBadRequest" }
-        "401": { $ref: "#/components/responses/InternalUnauthorized" }
-        "404": { $ref: "#/components/responses/InternalNotFound" }
-
-  /api/internal/transports/messages:
-    get:
-      tags: [internal]
-      x-access: internal
-      security:
-        - internalToken: []
-      summary: Ask the mirror about one message
-      description: |
-        The reaction tool's pre-check: does the target exist, and is it the
-        bot's own? `assistantId` and `direct=true` pick the per-assistant
-        direct stream; a group chat is one shared stream.
-      parameters:
-        - name: source
-          in: query
-          required: true
-          schema: { $ref: "#/components/schemas/SourceId" }
-        - name: chatId
-          in: query
-          required: true
-          schema: { type: string }
-        - name: sourceMessageId
-          in: query
-          required: true
-          schema: { type: string }
-        - name: assistantId
-          in: query
-          required: false
-          schema: { type: string }
-        - name: direct
-          in: query
-          required: false
-          description: Literal `true` selects the assistant's direct stream.
-          schema: { type: string, enum: ["true", "false"] }
-      responses:
-        "200":
-          description: Lookup result (bare object)
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/TransportMessageLookup" }
-        "400": { $ref: "#/components/responses/InternalBadRequest" }
-        "401": { $ref: "#/components/responses/InternalUnauthorized" }
-
-  /api/internal/transports/callback:
-    post:
-      tags: [internal]
-      x-access: internal
-      security:
-        - internalToken: []
-      summary: A feedback-menu button was pressed
-      description: |
-        The one transport update that is request/response rather than a
-        queue event: the platform's button spinner wants a toast only the
-        flow's outcome can word. Never a 5xx - a source with no feedback flow,
-        or a flow that failed, answers `toast: null`.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/TransportCallbackRequest" }
-      responses:
-        "200":
-          description: The toast to answer the platform's callback query with (bare object)
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [toast]
-                properties:
-                  toast: { type: [string, "null"] }
-        "400": { $ref: "#/components/responses/InternalBadRequest" }
-        "401": { $ref: "#/components/responses/InternalUnauthorized" }
-
 components:
   securitySchemes:
     cookieAuth:
@@ -3473,15 +3304,6 @@ components:
         `/api/auth/setup` and (rotated) `/api/auth/change-password`. Value
         shape `<accountId>.<expiresMs>.<nonce>.<sig>`, signed with that
         account's own session secret; valid 30 days.
-    internalToken:
-      type: apiKey
-      in: header
-      name: x-internal-token
-      description: |
-        The shared secret between the core and its transport services - the
-        core's `INTERNAL_API_TOKEN`. Only the `/api/internal/transports/*`
-        routes accept it; a missing or wrong value (or an unset token on the
-        core) is `401 { "error": { "message": "unauthorized" } }`.
 
   parameters:
     PeriodUnit:
@@ -3609,21 +3431,6 @@ components:
               - $ref: "#/components/schemas/ApiOk"
               - properties:
                   data: { $ref: "#/components/schemas/ProbeReport" }
-    InternalBadRequest:
-      description: The body or the transport id did not parse
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/InternalError" }
-    InternalUnauthorized:
-      description: Missing or wrong `x-internal-token`
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/InternalError" }
-    InternalNotFound:
-      description: The transport never registered
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/InternalError" }
 
   schemas:
     # -- envelopes --
@@ -3658,16 +3465,6 @@ components:
             message: { type: string }
             details:
               description: Machine-readable detail. Never contains secrets.
-    InternalError:
-      type: object
-      description: The reduced error shape of the internal transport routes - no `code`.
-      required: [error]
-      properties:
-        error:
-          type: object
-          required: [message]
-          properties:
-            message: { type: string }
     OkFlag:
       allOf:
         - $ref: "#/components/schemas/ApiOk"
@@ -3985,15 +3782,12 @@ components:
     TransportView:
       type: object
       required:
-        [id, name, enabled, registered, contractMajor, compatible, refusedReason, lastSeenAt, connectionConfigSchema, transportConfigSchema, configPreview, updatedAt]
+        [id, name, enabled, hosted, lastSeenAt, connectionConfigSchema, transportConfigSchema, configPreview, updatedAt]
       properties:
         id: { $ref: "#/components/schemas/SourceId" }
         name: { type: string }
         enabled: { type: boolean }
-        registered: { type: boolean, description: Whether the transport has announced itself (a never-registered row has no base URL). }
-        contractMajor: { type: integer, description: The wire-contract major the transport announced. }
-        compatible: { type: boolean, description: False when this core speaks another contract major; the transport is registered but refused. }
-        refusedReason: { type: [string, "null"], description: Why the transport is refused, naming both majors; null when compatible. }
+        hosted: { type: boolean, description: Whether this core runs the transport now (its package loaded at boot). }
         lastSeenAt: { type: string, format: date-time }
         connectionConfigSchema:
           type: array
@@ -4007,7 +3801,7 @@ components:
         updatedAt: { type: string, format: date-time }
     TransportConnectionStatus:
       type: object
-      description: Live poller state the transport reports on its own `/health` for one connection.
+      description: Live connection state the hosted transport reports for one connection.
       required: [state, username, since, error]
       properties:
         state:
@@ -4030,84 +3824,6 @@ components:
           oneOf:
             - $ref: "#/components/schemas/TransportConnectionStatus"
             - type: "null"
-    TransportRegistrationRequest:
-      type: object
-      required: [id, name, contractMajor, baseUrl, mcpPath, connectionConfigSchema, transportConfigSchema]
-      properties:
-        id: { $ref: "#/components/schemas/SourceId" }
-        name: { type: string, minLength: 1, description: What the dashboard calls the transport. }
-        contractMajor: { type: integer, minimum: 1, description: "The contract major the transport was built against (`CONTRACT_MAJOR` of the contracts package; `2` today). A core that speaks another major refuses with 409." }
-        baseUrl: { type: string, minLength: 1, description: "The transport's internal API base URL, reachable from the core." }
-        mcpPath: { type: [string, "null"], description: "Path of the transport's MCP server on that base, or null." }
-        connectionConfigSchema:
-          type: array
-          items: { $ref: "#/components/schemas/TransportConfigField" }
-        transportConfigSchema:
-          type: array
-          items: { $ref: "#/components/schemas/TransportConfigField" }
-    TransportDesiredConnection:
-      type: object
-      description: "One desired connection: run this assistant on this opaque config."
-      required: [id, assistantId, config, enabled]
-      properties:
-        id: { type: string }
-        assistantId: { type: string }
-        config: { $ref: "#/components/schemas/ConfigBlob" }
-        enabled:
-          type: boolean
-          description: Already folds in the transport switch and the owning account's deactivation - false means "do not run this".
-    TransportDesiredState:
-      type: object
-      required: [transport, connections]
-      properties:
-        transport:
-          type: object
-          required: [enabled, config]
-          properties:
-            enabled: { type: boolean }
-            config: { $ref: "#/components/schemas/ConfigBlob" }
-        connections:
-          type: array
-          items: { $ref: "#/components/schemas/TransportDesiredConnection" }
-    TransportUser:
-      type: object
-      description: A platform user's raw profile, as the transport saw it on the wire.
-      required: [userId, username, firstName, lastName]
-      properties:
-        userId: { type: string, minLength: 1, description: Source-local user id. }
-        username: { type: [string, "null"], description: "Platform handle (normalized lowercase, no `@`)." }
-        firstName: { type: [string, "null"] }
-        lastName: { type: [string, "null"] }
-    TransportChat:
-      type: object
-      description: The chat an update belongs to, as the transport saw it.
-      required: [id, kind]
-      properties:
-        id: { type: string, minLength: 1, description: Source-local chat id. }
-        kind:
-          type: string
-          enum: [direct, group]
-        title: { type: [string, "null"] }
-        type: { type: [string, "null"], description: The platform's own chat type string (`group` / `supergroup`). }
-    TransportCallbackRequest:
-      type: object
-      required: [source, assistantId, chat, user, menuSourceMessageId, data]
-      properties:
-        source: { $ref: "#/components/schemas/SourceId" }
-        assistantId: { type: string, minLength: 1, description: The receiving connection's assistant. }
-        chat: { $ref: "#/components/schemas/TransportChat" }
-        user: { $ref: "#/components/schemas/TransportUser" }
-        menuSourceMessageId: { type: string, minLength: 1, description: Source-local id of the menu message the button lives on. }
-        data: { type: string, minLength: 1, description: The raw callback payload the button carried. }
-    TransportMessageLookup:
-      type: object
-      required: [found, role, assistantId]
-      properties:
-        found: { type: boolean }
-        role:
-          type: [string, "null"]
-          enum: [user, assistant, null]
-        assistantId: { type: [string, "null"], description: "The assistant that authored an assistant row, when stamped." }
 
     # -- backends --
     Backend:

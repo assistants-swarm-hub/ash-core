@@ -40,8 +40,8 @@ export function TransportSections({
   if (transports.length === 0) {
     return (
       <p className="text-sm text-muted">
-        No transport has registered with this core yet — start one and it appears here by
-        itself.
+        No transport is installed in this core yet — install a transport package, restart,
+        and it appears here by itself.
       </p>
     );
   }
@@ -53,18 +53,11 @@ export function TransportSections({
           <h3 className="text-sm font-semibold tracking-tight">
             {transport.name} connection
           </h3>
-          {transport.compatible ? (
-            <TransportConnectionSection
-              transport={transport}
-              assistantId={assistantId}
-              refreshSignal={refreshSignal}
-            />
-          ) : (
-            <p className="text-sm text-danger">
-              Refused: {transport.refusedReason}. Nothing can connect through it until the
-              versions agree.
-            </p>
-          )}
+          <TransportConnectionSection
+            transport={transport}
+            assistantId={assistantId}
+            refreshSignal={refreshSignal}
+          />
         </div>
       ))}
     </>

@@ -729,12 +729,12 @@ export async function processTransportUpdate(payload: unknown): Promise<void> {
   const event = transportUpdateEventSchema.parse(payload);
   // The source id is whatever registered (open ids, 2026-09-02): the shape
   // was checked by the schema, the registration is checked here. An update
-  // from a transport that never registered, or that speaks another contract
-  // major, fails its job rather than seeding rows under an unknown source.
+  // from a transport that never registered fails its job rather than seeding
+  // rows under an unknown source.
   if (!(await isRegisteredTransport(event.source))) {
     throw new Error(
       `transport update from "${event.source}" dropped: no transport with that id is registered ` +
-        "with this core on its contract major",
+        "with this core",
     );
   }
   switch (event.type) {

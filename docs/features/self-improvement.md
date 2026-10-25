@@ -12,9 +12,9 @@ did, is distilled nightly into two artifacts that go straight back into the prom
 ```
 👍/👎 on a bot reply         (transport.reaction event, forwarded by the transport)
         ↓
-feedback row opened + options menu posted     (core → the transport's menu API)
+feedback row opened + options menu posted     (core → the hosted transport's sendMenu)
         ↓
-button press ──► POST /api/internal/transports/callback ──► option recorded, toast answered
+button press ──► processCallbackPress (a direct in-process call) ──► option recorded, toast answered
         │                                                        ↓
         └── "Other" ──► status=awaiting_text ──► the reactor's reply to the menu is captured by the ingest
                                                                  ↓
@@ -31,8 +31,8 @@ platform-shaped, the core owns the rows and the state machine
 | Step | Where | What |
 | --- | --- | --- |
 | Someone adds 👍/👎 to a message | The transport | Maps its platform's reactions to `up` / `down` — a freshly **added** 👍/👎; removals and other emoji are ignored — and forwards `transport.reaction` once per group |
-| Open the row, post the menu | Core: the ingest (`server/ingest/consumer.ts`) → `processReactionUpdate` | Checks the mirror for a bot reply, upserts `source_feedbacks`, builds the keyboard and posts it through `POST /internal/chats/:chatId/menu?assistantId=` on the receiving connection's bot; the menu's id lands in `menu_message_id`. Traced as `self-improvement` / `collect-feedback`, on the reacted reply's correlation |
-| A button press | The transport → `POST /api/internal/transports/callback` → `processCallbackPress` | The one transport update that is a synchronous request/response (internal token): the platform's spinner wants a toast only the flow's outcome can word. The core records the option, rewrites or removes the menu through the transport's `PATCH` / `DELETE …/menu/:messageId`, and answers `{ toast }` |
+| Open the row, post the menu | Core: the ingest (`server/ingest/consumer.ts`) → `processReactionUpdate` | Checks the mirror for a bot reply, upserts `source_feedbacks`, builds the keyboard and posts it through the host's outbound port (`sendMenu`) on the receiving connection's bot; the menu's id lands in `menu_message_id`. Traced as `self-improvement` / `collect-feedback`, on the reacted reply's correlation |
+| A button press | The transport → the host's in-process core API → `processCallbackPress` | The one transport update that is a synchronous call rather than a queue event: the platform's spinner wants a toast only the flow's outcome can word. The core records the option, rewrites or removes the menu through the port's `editMenu` / `deleteMenu`, and answers `{ toast }` |
 | "Other" | Core | The row goes `awaiting_text`; the next message from the reactor that **replies to the menu** is captured by the ingest (`captureFeedbackReply`) as the free-text answer — mirrored, but it never opens a turn |
 | Completion | Core | Publishes `feedback.recorded` on the bus; the core's own events consumer (`recorded-consumer.ts`) stamps the reacted reply's clean model from its trace, then reflects (`quality`) or files an exclusion (`addressing`) |
 

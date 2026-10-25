@@ -17,8 +17,7 @@ sensitive data in the system), and the assistants' ability to act in chats. The
 adversaries considered are: anyone who can reach the port before the first admin
 claims it, a chat participant trying to make an assistant do something on their
 behalf, one account reaching into another's world, a web page the model was
-asked to read, and anything on the network that can reach the internal
-service-to-service surfaces.
+asked to read, and a transport package the core is asked to host.
 
 ## Authentication: accounts
 
@@ -79,24 +78,20 @@ Public routes, and only these: `POST /api/auth/login`, `POST /api/auth/logout`,
 session-gated, including `GET /api/events` (which carries its own check because
 it streams) and the screenshot byte route.
 
-### The service-to-service surfaces
+### The hosted transports
 
-Two HTTP surfaces carry no session at all and are authenticated by one shared
-secret, `INTERNAL_API_TOKEN`, sent as the `x-internal-token` header (user
-decision, 2026-08-23 — a shared secret rather than network topology, since dev
-runs everything on localhost):
+There is no service-to-service surface: a transport is an npm package the
+core hosts in its own process, so nothing between core and transport crosses
+the network and no shared secret exists. A menu press, the mirror lookup and
+every send are direct calls (the host's in-process core API and outbound
+port); only the queue and bus events travel over Redis, as before.
 
-| Surface | Serves | Called by |
-| --- | --- | --- |
-| The core's `app/api/internal/transports/**` | Transport registration, desired state, the feedback-menu callback, the mirror lookup, a config writeback | Transport services |
-| A transport's `/internal/*` and `/mcp` | Sends that carry bytes or need an id back, the feedback menus, the platform's MCP tools | The core |
-
-Set a real token in both apps' environments; the compose default `change-me`
-is a placeholder. The transport's port is not published by compose, and the
-core's internal routes answer 401 to anything without the token. A missing
-token on the core side leaves every internal route refusing — a transport then
-retries registration forever and the assistant editor says it has not
-announced itself.
+What that means for trust: an installed transport package runs with the
+core's own privileges — it sees the bot tokens handed to its connections and
+everything the host's core API exposes. Install only packages you trust, pin
+their versions (`TRANSPORTS` in Docker), and keep `NPM_TOKEN` to a token that
+can only read packages. The core refuses a package whose transport-sdk major
+is not its own, by package name, with the reason on the dashboard roster.
 
 ### The first-run window
 
@@ -138,12 +133,12 @@ username = '<other>'`) and let it issue a reset. No restart is needed.
 | Secret | Stored | Exposure |
 | --- | --- | --- |
 | Backend endpoint API keys | `backends.api_key` | **Write-only.** Accepted on input, never returned. The client-facing schema exposes only `apiKeyConfigured: boolean` |
-| Bot tokens | `assistant_transports.config` — the opaque connection blob the transport's field schema marks `secret` | Write-only. The dashboard receives a `…last4` preview and hands the whole blob only to the transport, over the internal API |
+| Bot tokens | `assistant_transports.config` — the opaque connection blob the transport's field schema marks `secret` | Write-only. The dashboard receives a `…last4` preview; the whole blob reaches only the hosted transport, in-process |
 | Tool-connection auth headers | `tool_connections.auth_headers` | Header **names** are listed; values never leave the server |
 | Tavily API key | `settings.tavily_api_key` | Write-only, `…Configured: boolean` |
 | Account passwords | `accounts.password_hash` | Hash only |
 | Session secrets | `accounts.session_secret` | Never leave the server |
-| The internal token | `INTERNAL_API_TOKEN` env in both apps | Never stored; never in a trace |
+| The registry token | `NPM_TOKEN` env on the core (Docker only) | Read by the image's entrypoint to install the transport packages; never stored; never in a trace |
 
 Rules that keep it that way:
 
@@ -159,7 +154,7 @@ Rules that keep it that way:
   become a generic `internal_error` body and the real cause goes to the server log
   and the trace.
 - Env vars support `<NAME>_FILE` Docker-secret variants so `DATABASE_URL` and
-  `INTERNAL_API_TOKEN` need not appear in a compose file.
+  `NPM_TOKEN` need not appear in a compose file.
 
 ## Data sensitivity
 
@@ -314,8 +309,8 @@ one.
 ## Operational recommendations
 
 - Claim `/setup` before exposing the port.
-- Set a real `INTERNAL_API_TOKEN` in both apps. Do not publish the transport's
-  port; it serves only the core.
+- Host only transport packages you trust, pinned to a version: they run inside
+  the core process.
 - Put the dashboard behind a reverse proxy with TLS if it is reachable from
   outside your LAN. The session cookie is `HttpOnly` and `SameSite=Lax` but is not
   marked `Secure`, so it will be sent over plain HTTP.

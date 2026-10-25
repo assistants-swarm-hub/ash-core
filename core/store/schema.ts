@@ -1270,10 +1270,6 @@ export const transports = pgTable("transports", {
   id: text("id").primaryKey(),
   /** Human name, as the transport announced it. */
   name: text("name").notNull(),
-  /** The transport's announced internal API base URL. */
-  baseUrl: text("base_url").notNull(),
-  /** Path of the transport's MCP server on that base, or null when none. */
-  mcpPath: text("mcp_path"),
   /**
    * Field descriptors for the per-assistant connection section the dashboard
    * renders (schema-driven forms — no build-time UI package).
@@ -1291,15 +1287,8 @@ export const transports = pgTable("transports", {
   config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
   /** Admin switch: a disabled transport's events are ignored and it gets no state. */
   enabled: boolean("enabled").notNull().default(true),
-  /**
-   * The wire-contract major the transport announced (`CONTRACT_MAJOR` of the
-   * SDK it was built with). A row whose major differs from this core's is
-   * registered but refused: it gets no desired state, its events are dropped,
-   * and the roster shows why (user decision, 2026-09-02).
-   */
-  contractMajor: integer("contract_major").notNull().default(1),
   registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
-  /** Stamped on every registration/heartbeat — the reachability signal. */
+  /** Stamped on every registration — when the host last loaded the package. */
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

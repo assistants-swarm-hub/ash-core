@@ -16,6 +16,7 @@ import { getEnv } from "@/server/env";
 import { InProcessTransport } from "@/server/mcp/in-process-transport";
 import { toToolCallResult, type McpListedTool } from "@/server/mcp/openai-tools";
 import {
+  recordTransportLoadFailures,
   registerHostedTransport,
   unregisterHostedTransport,
   type HostedTransportTools,
@@ -72,6 +73,8 @@ export async function startTransportHost(input: { redisUrl: string }): Promise<T
   for (const pkg of packages.failed) {
     console.error(`Transport package ${pkg.name} in ${pkg.dir} not loaded: ${pkg.error}`);
   }
+  // The roster names each by package, with the reason, next to what runs.
+  recordTransportLoadFailures(packages.failed.map(({ name, error }) => ({ name, error })));
   if (packages.loaded.length === 0 && packages.failed.length === 0) {
     console.log(`No transport packages installed (searched ${packages.searched.join(", ")})`);
   }

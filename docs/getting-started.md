@@ -42,12 +42,11 @@ Each app reads its own `.env`:
 cp core/.env.example core/.env
 ```
 
-In `core/.env` set `DATABASE_URL`, `REDIS_URL` and `INTERNAL_API_TOKEN`.
-That token is what lets a transport register with the core — with it unset,
-every internal route answers 401 and any transport retries registration
-forever. A transport is a separate service with its own checkout and its own
-`.env` carrying the **same** token; the core runs fine with none, it just has
-no platform to speak on. Then apply the schema:
+In `core/.env` set `DATABASE_URL` and `REDIS_URL`. A transport is an npm
+package the core hosts: install one into the core (`npm install <package>`,
+or `npm link` a checkout next door) and it loads at the next start. The core
+runs fine with none — it just has no platform to speak on. Then apply the
+schema:
 
 ```bash
 npm run db:migrate
@@ -92,22 +91,24 @@ docker compose up -d
 
 That starts three services: `db` (the `pgvector/pgvector:pg17` image), `redis`
 and `app` (the core). The core runs a **released image** pinned to one
-version, so this needs nothing on the host but Docker. A transport is one
-more service you add — see [Deployment](operations/deployment.md#adding-a-transport). Building this working tree instead is the dev override:
+version, so this needs nothing on the host but Docker. A transport is a
+package you name in `TRANSPORTS` — see
+[Deployment](operations/deployment.md#adding-a-transport). Building this
+working tree instead is the dev override:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
 Compose has working defaults, so a `.env` at the repo root is optional — create
-one to set a real `INTERNAL_API_TOKEN` (the default is the placeholder
-`change-me`), to pin a different `ASH_VERSION`, or to change credentials, ports,
-or the host data directories.
+one to name the transports to install (`TRANSPORTS`, with an `NPM_TOKEN` for
+the registry), to pin a different `ASH_VERSION`, or to change credentials,
+ports, or the host data directories.
 
-The core container runs pending migrations before it serves, so it never answers
-requests against an unmigrated database. A transport has no database; it
-registers with the core and retries until the core answers. Details, volumes
-and the upgrade procedure are in [Deployment](operations/deployment.md).
+The core container installs the named transports, runs pending migrations and
+then serves, so it never answers requests against an unmigrated database.
+Details, volumes and the upgrade procedure are in
+[Deployment](operations/deployment.md).
 
 - Dashboard: <http://localhost:3200>
 - Health probe: <http://localhost:3200/api/health>

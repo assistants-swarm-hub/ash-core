@@ -14,7 +14,7 @@ import { pingThreads } from "./service";
 
 /**
  * The web chat's outbound port — what used to be the chat app's
- * `/internal/chats/*` send API, as direct store writes since the dissolve.
+ * outbound port, as direct store writes since the dissolve.
  * "Delivering" to a web thread is storing the line and pinging the dashboard,
  * because the thread is already on screen — there is no platform to hand it
  * to. The port shape is every transport's, so every caller (voice replies,

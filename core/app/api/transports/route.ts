@@ -1,10 +1,6 @@
 import { defineRoute, ok } from "@/server/http";
-import {
-  incompatibilityReason,
-  listTransports,
-  previewConfig,
-  transportCompatible,
-} from "@/server/transports/service";
+import { hostedTransport } from "@/server/transports/hosted";
+import { listTransports, previewConfig } from "@/server/transports/service";
 
 /**
  * The registered transports, for the dashboard's schema-driven sections:
@@ -20,12 +16,8 @@ export const GET = defineRoute(async () => {
       id: row.id,
       name: row.name,
       enabled: row.enabled,
-      /** Whether the transport has announced itself (an empty URL = never). */
-      registered: row.baseUrl !== "",
-      contractMajor: row.contractMajor,
-      /** False when the transport speaks another contract major — `refusedReason` says so. */
-      compatible: transportCompatible(row),
-      refusedReason: transportCompatible(row) ? null : incompatibilityReason(row.id, row.contractMajor),
+      /** Whether this core runs the transport now (its package loaded at boot). */
+      hosted: hostedTransport(row.id) !== null,
       lastSeenAt: row.lastSeenAt.toISOString(),
       connectionConfigSchema: row.connectionConfigSchema,
       transportConfigSchema: row.transportConfigSchema,

@@ -90,8 +90,8 @@ distinction before anyone could ask for it.
 
 `features/voice/server/speak.ts`: reply text → MP3 on the configured speech
 endpoint → OGG/Opus. The audio then crosses the owning source's outbound port
-(`server/turn/source-outbound.ts`): for a transport, `POST /internal/chats/:chatId/voice`
-on the transport, which performs its platform's voice send and
+(`server/turn/source-outbound.ts`): for a transport, the host's in-process
+port (`sendVoice`), where the transport performs its platform's voice send and
 falls back to a text send of the spoken words when the platform refuses the voice
 bubble, reporting `asVoice: false`; the web chat stores the audio on the
 assistant message and plays it in the thread (`asVoice` is always true there).

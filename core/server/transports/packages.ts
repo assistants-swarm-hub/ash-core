@@ -5,10 +5,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
+  TRANSPORT_SDK_MAJOR,
   sourceIdSchema,
   transportConfigFieldSchema,
   type TransportPackage,
 } from "@assistants-swarm-hub/contracts";
+import { minVersion } from "semver";
 import { z } from "zod";
 
 /**
@@ -32,7 +34,12 @@ import { z } from "zod";
  *   transport in this repository.
  * - A package that will not load is reported, never thrown: one broken
  *   transport must not take the core down with it. The host puts the failure
- *   on the dashboard's roster, where a refused registration shows today.
+ *   on the dashboard's roster by package name.
+ * - The SDK major is the compatibility contract: a package declares the
+ *   `@assistants-swarm-hub/transport-sdk` it was built against as a peer
+ *   dependency, and one whose lowest accepted version is on another major
+ *   than {@link TRANSPORT_SDK_MAJOR} is refused by name — the interface moved
+ *   incompatibly, and importing it would fail in stranger ways.
  *
  * The shape is checked, not the behavior: a function is a function here, and
  * the host calls it against the contracts' {@link TransportPackage} types.
@@ -88,10 +95,13 @@ export interface TransportPackages {
   failed: FailedTransportPackage[];
 }
 
+const SDK_PACKAGE = "@assistants-swarm-hub/transport-sdk";
+
 const packageManifestSchema = z.object({
   name: z.string().min(1),
   version: z.string().optional(),
   keywords: z.array(z.string()).optional(),
+  peerDependencies: z.record(z.string(), z.string()).optional(),
   exports: z.unknown().optional(),
   module: z.string().optional(),
   main: z.string().optional(),
@@ -134,16 +144,26 @@ export async function loadTransportPackages(
   return { searched, loaded, failed };
 }
 
-/** The `node_modules` directories Node searches from `from` upward. */
-export function nodeModulesChain(from: string): string[] {
+/**
+ * The `node_modules` directories Node searches from `from` upward, then the
+ * entries of `NODE_PATH`, as Node's own resolver takes them — which is how
+ * the image hands the host the packages its entrypoint installed into a
+ * directory of their own, away from the traced `node_modules` the server
+ * runs on.
+ */
+export function nodeModulesChain(from: string, nodePath = process.env.NODE_PATH): string[] {
   const chain: string[] = [];
   let current = path.resolve(from);
   for (;;) {
     if (path.basename(current) !== "node_modules") chain.push(path.join(current, "node_modules"));
     const parent = path.dirname(current);
-    if (parent === current) return chain;
+    if (parent === current) break;
     current = parent;
   }
+  for (const entry of (nodePath ?? "").split(path.delimiter)) {
+    if (entry) chain.push(path.resolve(entry));
+  }
+  return chain;
 }
 
 /**
@@ -179,11 +199,17 @@ async function packageDirs(nodeModules: string): Promise<string[]> {
   return dirs;
 }
 
-/** Import one package directory and check that its default export is a transport. */
+/**
+ * Import one package directory and check that its default export is a
+ * transport — after checking the SDK major it declares, so a package built
+ * for another interface is refused with the reason rather than imported.
+ */
 async function loadTransportPackage(
   packageDir: string,
   manifest: PackageManifest,
 ): Promise<LoadedTransportPackage> {
+  const refusal = sdkMajorRefusal(manifest);
+  if (refusal) throw new Error(refusal);
   const entry = path.resolve(packageDir, entryOf(manifest));
   // Left alone by both bundlers: the package is not part of the build, and
   // the file URL keeps Node's own resolution (a link resolves to its target,
@@ -205,6 +231,23 @@ async function loadTransportPackage(
     // against the interface, which is what the loose function checks stand for.
     transport: parsed.data as unknown as TransportPackage,
   };
+}
+
+/**
+ * Why the package's declared SDK range cannot be hosted here, or null. A
+ * package that declares no SDK peer is not judged: it may be built on the
+ * types alone, and the export check below is what then protects the host.
+ */
+function sdkMajorRefusal(manifest: PackageManifest): string | null {
+  const range = manifest.peerDependencies?.[SDK_PACKAGE];
+  if (!range) return null;
+  const lowest = minVersion(range, true);
+  if (!lowest) return `declares an unreadable ${SDK_PACKAGE} range "${range}"`;
+  if (lowest.major === TRANSPORT_SDK_MAJOR) return null;
+  return (
+    `built for ${SDK_PACKAGE} ${lowest.major} ("${range}"); this core hosts ${TRANSPORT_SDK_MAJOR} — ` +
+    "update whichever side is behind"
+  );
 }
 
 async function readPackageManifest(packageDir: string): Promise<PackageManifest> {

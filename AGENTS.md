@@ -24,15 +24,17 @@ in.
 One app in a Turborepo: **core** (Next.js — dashboard, web chat, the
 whole brain/pipeline, ONE Postgres database whose schema and migration
 chain live in `core/store/`). Transports are **not** in this
-repository: each is its own repository and image, self-registering with the
-core at boot, forwarding every update as transport events over the Redis
-queue, performing sends, and hosting its platform's MCP tools. Shared zod
-contracts live in `packages/contracts`
-and reach transport authors as the published
-`packages/transport-sdk` (built output, with the private packages bundled
-in) plus a generated language-neutral copy under `docs/api/transport/`;
+repository: each is its own repository publishing an npm package that the
+core installs and hosts in its own process — found by the package keyword
+`assistants-swarm-hub-transport`, registered from its descriptor at boot,
+its connections run by the core, its updates put on the Redis queue as
+transport events, its sends performed in-process, and its platform's MCP
+tools served on an in-process server of its own. Shared zod contracts and
+the platform interface live in `packages/contracts` and reach transport
+authors as the published `packages/transport-sdk` (the interface plus a
+few helpers, no runtime; its major is the compatibility check);
 a new transport (Signal, …) connects without core changes:
-registration announces its config-field schemas, the dashboard renders
+its descriptor announces its config-field schemas, the dashboard renders
 them, and platform actions are the transport's own MCP tools. Accounts
 (admin/user roles) own assistants; owner rights, memory and identity
 resolve through the person-link graph. `docs/PLAN.md` holds the full

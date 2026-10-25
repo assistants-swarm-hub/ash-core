@@ -9,26 +9,15 @@ is hidden:
 | --- | --- | --- |
 | `GET /api/events` | Streams a `ReadableStream` | Nothing visible: the same session check, the same error envelope on failure |
 | `GET /api/chat/media/{id}` | Streams image bytes | A failure is a plain-text body with the right status, not JSON |
-| `/api/internal/transports/*` (five routes) | Called by transport services, never by the dashboard | Token-authenticated (no session), bare JSON bodies (no `data` wrapper), a reduced error shape - see [Internal transport routes](#internal-transport-routes) |
 
 - [Endpoint reference](endpoints.md) - every route, grouped by feature.
 - [`openapi.yaml`](openapi.yaml) - OpenAPI 3.1 description of the whole surface.
 
-Those two are hand-maintained and describe the **dashboard's** API. The
-transport wire contract is a separate, **generated** pair, because a transport
-author works in another repository and often another language:
-
-- [`transport/events.schema.json`](transport/events.schema.json) - JSON Schema
-  for every event that crosses the Redis queue and bus, in both directions.
-- [`transport/openapi.yaml`](transport/openapi.yaml) - the HTTP in both
-  directions: the surface the core calls on a transport, and the core's own
-  `/api/internal/transports/*`.
-
-Both are generated from the zod schemas of
-`@assistants-swarm-hub/transport-sdk` by `npm run wire:generate -w
-@assistants-swarm-hub/transport-sdk`, and the SDK's test suite regenerates them
-and fails when the committed copies differ - so the shapes cannot drift from
-the code, and `npm run test` is where you find out.
+Those two are hand-maintained and describe the **dashboard's** API. A
+transport has no HTTP of its own and calls none of the core's: it is an npm
+package the core hosts in its own process, and its contract is the typed
+interface of `@assistants-swarm-hub/transport-sdk` - see
+[Adding a transport](../development/adding-a-transport.md).
 
 ## Base URL
 
@@ -59,7 +48,6 @@ because the body *is* the artifact:
 | `GET /api/agents/{id}/screenshot/{seq}` | `image/jpeg` bytes |
 | `GET /api/chat/media/{id}` | The stored image bytes, in the stored mime type (`image/jpeg` when none was recorded) |
 | `GET /api/events` | `text/event-stream` |
-| `/api/internal/transports/*` | Bare JSON objects |
 
 ## Error envelope
 
@@ -143,26 +131,6 @@ owns.
 
 A scoped route answers `not_found`, not `forbidden`, for an id outside the scope.
 
-### Internal transport routes
-
-The five `/api/internal/transports/*` routes are how a transport service (the
-any platform's transport) talks back to the core: register at
-boot, refetch desired state, write back into its own config, ask the mirror
-about a message, and answer a feedback-menu button press. They ignore the
-session cookie and require the shared secret instead:
-
-```
-x-internal-token: <INTERNAL_API_TOKEN>
-```
-
-A missing or wrong header - or an unset `INTERNAL_API_TOKEN` on the core - is
-`401 {"error":{"message":"unauthorized"}}`. Their error bodies carry only a
-`message` (no `code`): `400` for a body or transport id that does not parse,
-`404` for a transport that never registered. Success bodies are bare objects.
-The whole contract - registration, desired state, the queue and bus events
-around it, and the transport-side `/internal/*` surface - is in
-[Adding a transport](../development/adding-a-transport.md).
-
 ## Input validation
 
 | Source | Helper |
@@ -207,8 +175,8 @@ is a **scoped ref** - `source:kind:id` with a transport's id or `chat` as the so
 `{id}` of `/api/users/{id}` and `/api/groups/{id}` (`acme:user:123`,
 `acme:chat:42`), as the `{userId}` of `/api/memory/users/{userId}` and the
 `userId` query of `DELETE /api/profile/memory`, and as person-link `members`.
-The `{id}` of `/api/transports/{id}` and `/api/internal/transports/{id}/*` is a
-bare source id (a transport's, or `chat`).
+The `{id}` of `/api/transports/{id}` is a bare source id (a transport's, or
+`chat`).
 
 ## Pagination
 

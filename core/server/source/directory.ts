@@ -14,7 +14,7 @@ import { ApiError, isApiError } from "@/lib/api-error";
 
 import { webChatDirectoryClient } from "@/features/web-chat/server/directory";
 import { sourceDirectoryClient } from "@/server/source-store/directory-client";
-import { listCompatibleTransports } from "@/server/transports/service";
+import { listTransports } from "@/server/transports/service";
 
 import type { SourceDirectoryClient } from "./operator-client";
 
@@ -43,14 +43,14 @@ export interface DirectorySource {
 
 /**
  * The sources this deployment runs, in the order the dashboard lists them:
- * every transport registered on this core's contract major (labelled with
+ * every transport registered with this core (labelled with
  * the name it announced), then the web chat. Read from the registration
  * table per call — a transport that came up a minute ago is listed without
  * any core change. Every entry answers from the core's own tables since
  * Phase 7 — same contract, no HTTP, never unconfigured.
  */
 export async function directorySources(): Promise<DirectorySource[]> {
-  const transports = await listCompatibleTransports();
+  const transports = await listTransports();
   return [
     ...transports.map((row) => ({
       id: row.id,
@@ -128,7 +128,7 @@ async function aggregate<Row, Out>(
         return {
           ok: false as const,
           source,
-          error: `${source.label} service is not configured (TG_API_URL / INTERNAL_API_TOKEN)`,
+          error: `${source.label} is not hosted by this core`,
         };
       }
       try {

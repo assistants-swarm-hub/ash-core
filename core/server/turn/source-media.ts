@@ -9,7 +9,7 @@ import {
   sourceStoreMediaBrowse,
   sourceStoreMediaPort,
 } from "@/server/source-store/media-port";
-import { listCompatibleTransports } from "@/server/transports/service";
+import { listTransports } from "@/server/transports/service";
 
 /**
  * A source's media as the pipeline's {@link MediaStorePort} — in-process for
@@ -55,13 +55,13 @@ export function sourceMediaBrowse(source: SourceId): SourceMediaBrowse | null {
 
 /**
  * Every source this deployment runs: the transports registered on this
- * core's contract major, then the web chat. The backfill and the dashboard
+ * core, then the web chat. The backfill and the dashboard
  * gallery work across all of them: pictures arrive wherever people are, and
  * neither surface should have to know which app that was — nor does this
  * module: the roster is whatever registered.
  */
 export async function mediaSources(): Promise<SourceMediaBrowse[]> {
-  const transports = await listCompatibleTransports();
+  const transports = await listTransports();
   return [...transports.map((row) => row.id), WEB_CHAT_SOURCE]
     .map((source) => sourceMediaBrowse(source))
     .filter((browse): browse is SourceMediaBrowse => browse !== null);

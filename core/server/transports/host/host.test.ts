@@ -1,5 +1,4 @@
 import {
-  CONTRACT_MAJOR,
   type InboundMessage,
   type PlatformAdapter,
   type PlatformConnection,
@@ -177,15 +176,12 @@ afterEach(async () => {
 });
 
 describe("startTransportHost", () => {
-  it("registers the package as the core's own, opens its desired connections and exposes it as hosted", async () => {
+  it("registers the package from its descriptor, opens its desired connections and exposes it as hosted", async () => {
     host = await startTransportHost({ redisUrl: "redis://test" });
     expect(host.sources).toEqual(["acme"]);
     expect(wires.registerTransport).toHaveBeenCalledWith({
       id: "acme",
       name: "Acme Chat",
-      contractMajor: CONTRACT_MAJOR,
-      baseUrl: "",
-      mcpPath: "in-process",
       connectionConfigSchema: acme.descriptor.connectionConfigSchema,
       transportConfigSchema: [],
     });

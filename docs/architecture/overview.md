@@ -5,16 +5,18 @@ One application in this Turborepo, one Postgres database, one Redis, one brain.
 chat, the whole reply pipeline, every background job, the MCP tool runtime and
 the trace store.
 
-Messaging platforms are **transports**: stateless services that own a platform
-connection and nothing else, each in its own repository and its own image
-(the core names none of them). They talk to the core over
-Redis (a BullMQ queue and a pub/sub channel) and over two small
-token-authenticated HTTP surfaces, and they connect by registering — the core
-holds no list of them. A new platform is another container; see
+Messaging platforms are **transports**: stateless npm packages that own a
+platform connection and nothing else, each in its own repository (the core
+names none of them). The core finds the installed ones by the package keyword
+`assistants-swarm-hub-transport` and hosts them in its own process: it
+registers each from its descriptor, runs its connections and serves its MCP
+tools on an in-process server. Inbound updates still cross the Redis queue and
+deliveries and turn lifecycle the pub/sub bus; everything else is a direct
+call. A new platform is another `npm install`; see
 [Adding a transport](../development/adding-a-transport.md).
 
 ```
-   platform ◄──its own API──► transport  (stateless, its own repo, its own port)
+   platform ◄──its own API──► transport  (an npm package, hosted inside the core process)
                                   │  queue `transport-updates`          ▲ `reply.delivery`, `turn.lifecycle`
                                   ▼  (every message, edit, reaction,    │ (Redis pub/sub `assistants-swarm-hub:events`)
                                      delivery — media bytes attached)   │
@@ -27,7 +29,7 @@ holds no list of them. A new platform is another container; see
            Postgres (store/)   data/traces/         server/llm + server/mcp
            one schema, one     NDJSON, append-only   OpenAI-compatible + native providers;
            migration chain                           in-process tools + remote MCP servers
-                                                     (each transport's own is one)
+                                                     (each transport's own is reached in-process)
 ```
 
 Paths in this document are relative to `core/` unless they start with
@@ -38,24 +40,26 @@ Paths in this document are relative to `core/` unless they start with
 | Workspace | Responsibility | State |
 | --- | --- | --- |
 | `core` | Dashboard (admin and user roles), web chat, the conversation store, the reply pipeline, background jobs, LLM clients, MCP runtime, traces, realtime | The Postgres database (`store/`), trace files, downloads |
-| *(each transport, elsewhere)* | One platform: connections per assistant, media download, structural addressing, sends, typing, the platform's MCP tools | **None.** It registers with the core at boot and reconciles from the desired state the core answers with |
-| `packages/contracts` | Every cross-app zod schema: scoped refs, transport events, reply delivery, turn lifecycle, the internal APIs, the trace contract, realtime topics | — |
+| *(each transport, elsewhere)* | One platform: connections per assistant, media download, structural addressing, sends, typing, the platform's MCP tools | **None.** The core registers it from its descriptor at boot and runs its connections from the desired state it holds |
+| `packages/contracts` | Every cross-app zod schema: scoped refs, transport events, reply delivery, turn lifecycle, the trace contract, realtime topics — plus the platform interface a transport implements (`transport-interface.ts`) and `TRANSPORT_SDK_MAJOR` | — |
 | `packages/bus` | BullMQ queues (`attempts: 1`) and the ioredis pub/sub bus | — |
-| `packages/service` | What every transport service needs once: env access, the internal-token guard, serving an MCP server over Hono, the bus trace client and dashboard-refresh ping | — |
+| `packages/service` | The bus helpers: the trace client and the dashboard-refresh ping | — |
 | `packages/media` | Image normalization to a bounded JPEG (shared by core and transports) | — |
 | `packages/db` | Pool helpers, the production migration runner, Testcontainers helpers | — |
 | `packages/ui` | Shared presentational components and the live-event hook | — |
-| `packages/transport-sdk` | The **published** package a transport is built on: the four packages above it needs, bundled into built output (ESM + `.d.ts`) so a transport in another repository resolves nothing private. Also generates the language-neutral wire contract under [`docs/api/transport/`](../api/transport/) | — |
+| `packages/transport-sdk` | The **published** package a transport is built on: the interface plus a few helpers, no runtime, bundled into built output (ESM + `.d.ts`) so a transport in another repository resolves nothing private. A transport declares it as a peer dependency | — |
 
 Apps never import each other's code — only packages. Cross-app pointers are
 scoped refs (`acme:user:123`, `chat:thread:<id>`), never foreign keys into another
 app's data.
 
-The four packages a transport needs are private and unpublished; what a
+The packages a transport needs are private and unpublished; what a
 transport author installs is `packages/transport-sdk`, which re-exports the
-wire half of them and is bundled at build time. That is why nothing in this
-table is published on its own: a transport pins one package and one wire
-major, not six versions of this repository's internals.
+interface half of them and is bundled at build time. That is why nothing in this
+table is published on its own: a transport pins one package and one SDK
+major, not six versions of this repository's internals. The core compares the
+peer range's lowest major against `TRANSPORT_SDK_MAJOR` and refuses a
+mismatch by package name, with the reason on the dashboard roster.
 
 ## Layers inside the core
 
@@ -137,11 +141,10 @@ against a Testcontainers instance.
 5. `ok(data)` wraps the result as `{ data }`; `jsonDownload` / `csvDownload`
    produce attachments instead.
 
-One family bypasses sessions entirely: `app/api/internal/transports/**` are
-plain handlers authenticated by the `x-internal-token` header, equal to
-`INTERNAL_API_TOKEN`. They are for transport services, never the browser. Auth
-is enforced at *both* the proxy and `defineRoute`, so the API stays covered even
-when the proxy is bypassed.
+Auth is enforced at *both* the proxy and `defineRoute`, so the API stays
+covered even when the proxy is bypassed. A hosted transport calls no HTTP
+route: what it needs from the core is a direct call into the host's
+in-process core API.
 
 ## Request lifecycle (dashboard pages)
 
@@ -239,8 +242,12 @@ of the Edge-analyzed instrumentation module.
 4. Starts the **source events consumer** on the bus: the SSE bridge for
    `dashboard.refresh`, `trace.recorded` from the transports, `feedback.recorded`,
    and the web chat's own deliveries and lifecycle.
-5. Reconciles the **managed tool connections**: every registered transport's
-   MCP server is discovered and its toolset applied, so the tools that ship
+5. Starts the **transport host**: every installed transport package (found by
+   its keyword) is loaded, checked against `TRANSPORT_SDK_MAJOR`, registered
+   from its descriptor and its connections reconciled from the desired state;
+   a package that does not load is reported and skipped. Then reconciles the
+   **managed tool connections**: every registered transport's in-process MCP
+   server is discovered and its toolset applied, so the tools that ship
    with a release are offered without an operator pressing Apply.
 6. Starts the eight schedulers — vision backfill and history indexing (idle),
    tasks (interval), self-improvement, history summaries, memory, analytics
@@ -248,13 +255,12 @@ of the Edge-analyzed instrumentation module.
    which first sweeps any run left `running` by a previous process to `failed`.
 
 Nothing here gates readiness. A missing Redis, an unreachable LLM, a transport
-that has not registered yet, or an unwritable trace directory surfaces on the
+package the host refused, or an unwritable trace directory surfaces on the
 dashboard instead of crashing boot.
 
-The transport's boot is its own: it serves `/health` first,
-registers with the core (retrying until it answers), reconciles its pollers
-from the desired state, subscribes to config changes, and starts its delivery
-consumer.
+A transport has no boot of its own: the host starts its connections from the
+desired state, re-reconciles them on config changes, and runs its delivery
+consumer. A newly installed or updated transport needs a core restart.
 
 ## Data and state locations
 
@@ -267,14 +273,14 @@ consumer.
 | Agent downloads | `data/downloads/` on disk | Delivered to the chat as they land |
 | Live job progress, browser live state, running web-chat turns | RAM (`globalThis`) | Transient by design |
 | Running (unsettled) traces | RAM | A crash drops them |
-| The transport's poller state | RAM in the transport | Reported on `/health`; rebuilt from the desired state at boot |
+| The transport's poller state | RAM in the hosted transport | Reported as live connection status; rebuilt from the desired state at boot |
 
 ## Key architectural decisions
 
 | Decision | Rationale |
 | --- | --- |
 | Stateless transports, one store in the core (Phase 7, 2026-08-30) | A transport is a translation layer; storing conversations in two places was two sources of truth. The core owns the mirror, presence, context composition and the cross-feed |
-| A transport connects with no core change | Registration announces its config schemas; the dashboard renders them; platform actions are the transport's own MCP tools. The source id is whatever registers (validated by shape, checked against the registration table at runtime — no list in the core); the one handshake is the contract major. Nothing in the core names a platform |
+| A transport connects with no core change | Its descriptor announces its config schemas; the dashboard renders them; platform actions are the transport's own MCP tools. The source id is whatever registers (validated by shape, checked against the registration table at runtime — no list in the core); the one handshake is the transport-sdk major. Nothing in the core names a platform |
 | Redis queue with `attempts: 1` (user decision, 2026-08-22) | The queue never retries on its own. A failed turn is re-enqueued only when it performed no action yet — the turn runner alone can know that |
 | A transport pulls from its platform rather than exposing a webhook | A self-hosted bot behind NAT has no public URL |
 | Per-chat sequential, cross-chat concurrent (user decision, 2026-07-20) | Kept at every stage: the poller's `sequentialize`, the ingest's per-chat chains, the turn consumer's per-chat chains |
@@ -283,7 +289,7 @@ consumer.
 | Traces in files, not Postgres | A settled trace is immutable, so a month is a plain append-only log — no rewrite, fold, or compaction |
 | One SSE connection per tab | Browsers allow about six concurrent HTTP/1.1 connections per origin; per-component `EventSource`s would exhaust the budget |
 | Background jobs in-process, no worker service | One core container, in-process singletons, advisory locks for cross-process safety |
-| System ffmpeg over a bundled/WASM build | User decision; both images install it |
+| System ffmpeg over a bundled/WASM build | User decision; the image installs it |
 | yt-dlp for media-page downloads, kept current by the app itself (user decisions, 2026-07-29 and 2026-08-01) | A media site's player exposes no file URL; a stale build fails every media page, so the image pins a floor and a daily job installs newer ones into `data/bin` |
 | Playwright loaded lazily | It is a `serverExternalPackage`; a static import would put the native package in the boot graph |
 

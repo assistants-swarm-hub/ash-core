@@ -19,19 +19,14 @@ export interface TransportSummary {
   id: string;
   name: string;
   enabled: boolean;
-  /** Whether the transport has announced itself (an empty URL = never). */
-  registered: boolean;
-  /** The contract major it announced. */
-  contractMajor: number;
-  /** False when this core speaks another contract major; `refusedReason` says so. */
-  compatible: boolean;
-  refusedReason: string | null;
+  /** Whether this core runs the transport now (its package loaded at boot). */
+  hosted: boolean;
   connectionConfigSchema: TransportConfigField[];
   transportConfigSchema: TransportConfigField[];
   configPreview: Record<string, string>;
 }
 
-/** Live poller state the transport reports for one connection. */
+/** Live connection state the host reports for one connection. */
 export interface ConnectionStatus {
   state: "starting" | "running" | "error" | "stopped";
   username: string | null;

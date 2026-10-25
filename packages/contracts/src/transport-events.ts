@@ -308,26 +308,16 @@ export const transportConfigFieldSchema = z.object({
 });
 
 /**
- * POST /api/internal/transports/register — a transport announces itself at
- * boot (PLAN.md "The transport contract"): its id, name, base URL, MCP path
- * and config schemas. The core upserts the registration (preserving the
- * admin's enabled flag and the stored config blobs) and answers with the
- * transport's desired state, so registration doubles as the boot-time fetch.
+ * A transport's registration — what the host writes about a package it
+ * loaded: its id, name and config schemas, from the package's descriptor.
+ * The core upserts it (preserving the admin's enabled flag and the stored
+ * config blobs) and answers with the transport's desired state, so
+ * registration doubles as the boot-time fetch.
  */
-export const transportRegistrationRequestSchema = z.object({
-  /** The transport's own source id — any slug; the core accepts what registers. */
+export const transportRegistrationSchema = z.object({
+  /** The transport's own source id — any slug; the core accepts what loads. */
   id: sourceIdSchema,
-  /**
-   * The contract major this transport was built against (`CONTRACT_MAJOR`
-   * of the SDK it imports). A core that speaks another major refuses the
-   * registration with a reason instead of silently dropping the events.
-   */
-  contractMajor: z.number().int().positive(),
   name: z.string().min(1),
-  /** The transport's internal API base URL, reachable from the core. */
-  baseUrl: z.string().min(1),
-  /** Path of the transport's MCP server on that base, or null. */
-  mcpPath: z.string().nullable(),
   connectionConfigSchema: z.array(transportConfigFieldSchema),
   transportConfigSchema: z.array(transportConfigFieldSchema),
 });
@@ -361,7 +351,7 @@ export const transportConfigChangedEventSchema = eventEnvelopeSchema.extend({
 });
 
 export type TransportConfigField = z.infer<typeof transportConfigFieldSchema>;
-export type TransportRegistrationRequest = z.infer<typeof transportRegistrationRequestSchema>;
+export type TransportRegistration = z.infer<typeof transportRegistrationSchema>;
 export type TransportDesiredConnection = z.infer<typeof transportDesiredConnectionSchema>;
 export type TransportDesiredState = z.infer<typeof transportDesiredStateSchema>;
 export type TransportConfigChangedEvent = z.infer<typeof transportConfigChangedEventSchema>;

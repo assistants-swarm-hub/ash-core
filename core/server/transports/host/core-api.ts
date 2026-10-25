@@ -1,10 +1,9 @@
 import "server-only";
 
-import {
-  CONTRACT_MAJOR,
-  type TransportCoreApi,
-  type TransportDescriptor,
-  type TransportDesiredState,
+import type {
+  TransportCoreApi,
+  TransportDescriptor,
+  TransportDesiredState,
 } from "@assistants-swarm-hub/contracts";
 
 import { processCallbackPress } from "@/features/self-improvement/server/collect-flows";
@@ -15,26 +14,17 @@ import { desiredTransportState, registerTransport } from "@/server/transports/se
 
 /**
  * What a hosted transport asks of the core, answered by direct calls into
- * the services the internal transport routes used to front. Same answers,
- * same wording, no HTTP: the routes stay only for a transport still run as
- * its own service.
+ * the core's services: its registration and desired state, the mirror
+ * lookup a reaction tool needs, and the toast a menu press wants back.
  */
 
-/**
- * Register a hosted transport: the same upsert a service's registration
- * does, with no base URL (nothing calls it back) and the core's own
- * contract major (the host IS the core's runtime). The answer is the
- * desired state, as it is over the wire.
- */
+/** Register a hosted transport from its descriptor; the answer is its desired state. */
 export async function registerHostedTransportRow(
   descriptor: TransportDescriptor,
 ): Promise<TransportDesiredState> {
   return registerTransport({
     id: descriptor.id,
     name: descriptor.name,
-    contractMajor: CONTRACT_MAJOR,
-    baseUrl: "",
-    mcpPath: "in-process",
     connectionConfigSchema: descriptor.connectionConfigSchema,
     transportConfigSchema: descriptor.transportConfigSchema ?? [],
   });

@@ -1,70 +1,19 @@
 import "server-only";
 
-import {
-  internalSentMenuResponseSchema,
-  type SourceId,
-} from "@assistants-swarm-hub/contracts";
+import type { SourceId } from "@assistants-swarm-hub/contracts";
 
-import { internalRequester, sourceApiConfig } from "@/server/source/internal-client";
 import { hostedTransport } from "@/server/transports/hosted";
 
 import type { CollectTransport } from "./collect-flows";
 
 /**
- * The menu operations over the owning transport's internal API — how the
- * core-owned feedback flow posts, edits and removes its option menus in the
- * platform chat. Which app answers is resolved from the source id, as every
- * other transport call is.
- */
-
-const REQUEST_TIMEOUT_MS = 30_000;
-
-/**
- * The menu transport for one source, or null for the web chat (no reactions
- * there). A transport this core hosts answers in-process; for one run as its
- * own service, config resolves per call from the transport's registration,
- * and an unregistered transport's calls fail audibly and the flows degrade.
+ * The menu operations of the owning transport — how the core-owned feedback
+ * flow posts, edits and removes its option menus in the platform chat. Which
+ * transport answers is resolved from the source id, as every other transport
+ * call is: the web chat has none (no reactions there), and a source this
+ * core does not host has none either, so the flows degrade audibly.
  */
 export function collectTransport(source: SourceId): CollectTransport | null {
   if (source === "chat") return null;
-  const hosted = hostedTransport(source);
-  if (hosted) return hosted.menus;
-  const request = internalRequester({
-    config: () => sourceApiConfig(source),
-    label: `${source} internal API`,
-    timeoutMs: REQUEST_TIMEOUT_MS,
-  });
-  const menuPath = (chatId: string, rest = "") =>
-    `/internal/chats/${encodeURIComponent(chatId)}/menu${rest}`;
-
-  return {
-    async sendMenu(input) {
-      const body = internalSentMenuResponseSchema.parse(
-        await request(`${menuPath(input.chatId)}?assistantId=${encodeURIComponent(input.assistantId)}`, {
-          method: "POST",
-          body: JSON.stringify({
-            text: input.text,
-            keyboard: input.keyboard,
-            replyToSourceMessageId: input.replyToSourceMessageId,
-          }),
-        }),
-      );
-      return { sourceMessageId: body.sourceMessageId };
-    },
-    async editMenu(input) {
-      await request(
-        `${menuPath(input.chatId, `/${encodeURIComponent(input.sourceMessageId)}`)}?assistantId=${encodeURIComponent(input.assistantId)}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ text: input.text, keyboard: input.keyboard }),
-        },
-      );
-    },
-    async deleteMenu(input) {
-      await request(
-        `${menuPath(input.chatId, `/${encodeURIComponent(input.sourceMessageId)}`)}?assistantId=${encodeURIComponent(input.assistantId)}`,
-        { method: "DELETE" },
-      );
-    },
-  };
+  return hostedTransport(source)?.menus ?? null;
 }

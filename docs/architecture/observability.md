@@ -235,11 +235,11 @@ The store is a `globalThis` singleton so the writers (feature, route and queue
 consumer bundles) and the boot-owned flush timer share one instance across Next
 bundles and dev hot-reload.
 
-Traces recorded in a transport service arrive over the bus: the transport
+Traces recorded by a hosted transport arrive over the bus: the transport
 buffers the whole action and publishes one `trace.recorded` event on settle
 (`packages/contracts/src/trace.ts`), and the core's events consumer hands it to
 `server/trace/ingest.ts`, which writes it into the same store. There is one
-trace store and one Debug explorer for every app.
+trace store and one Debug explorer for the core and every transport.
 
 ### The header index
 

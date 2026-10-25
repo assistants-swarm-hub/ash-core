@@ -10,10 +10,10 @@
 # The version default is rewritten by `npm run release:*` from the root
 # package.json, and the release workflow refuses to ship if the two drift.
 #
-# No transport is here, on purpose: the core knows none. Each transport is its
-# own repository, image and release, and running one is one service the
-# operator adds — see the recipe in docs/operations/deployment.md. It registers
-# itself with the core, and the core needs no dependency on it.
+# No transport is named here, on purpose: the core knows none. A transport is
+# an npm package the core hosts in its own process; the operator names the
+# ones to run in TRANSPORTS (in .env) and the image installs them at boot —
+# see docs/operations/deployment.md.
 services:
   app:
     image: ghcr.io/assistants-swarm-hub/ash-core:${ASH_VERSION:-1.49.0}
@@ -30,12 +30,14 @@ services:
       # Built from the bundled db service; override DATABASE_URL to use an
       # external database.
       DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-bot}:${POSTGRES_PASSWORD:-bot}@db:5432/${POSTGRES_DB:-core}}
-      # The cross-app bus + transport queues. The token authenticates every
-      # direction and must match the transport services' — set a real one in
-      # .env. Transport base URLs are announced at registration, not
-      # configured here.
+      # The event bus and the transport queues.
       REDIS_URL: redis://redis:6379
-      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-change-me}
+      # The transport packages to install at boot, space-separated npm specs
+      # (a name, a name@version, or a mounted tarball), and the token the
+      # org's registry on GitHub Packages wants for the install. Empty means
+      # a core with no transports.
+      TRANSPORTS: ${TRANSPORTS:-}
+      NPM_TOKEN: ${NPM_TOKEN:-}
       TZ: ${TZ:-UTC}
     volumes:
       # Bind-mounted so trace/debug logs persist across restarts. The app writes

@@ -117,17 +117,16 @@ durable of its own.
 
 `packages/contracts` defines what any transport is, and
 `packages/transport-sdk` publishes it: an author installs one package
-(built output, with the private packages bundled in) or reads the
-generated JSON Schema and OpenAPI under `docs/api/transport/` and speaks
-Redis and HTTP directly. The design goal is hard: **a new transport
+(the interface plus a few helpers, built output with the private packages
+bundled in) and implements it. The design goal is hard: **a new transport
 connects to a running core with zero core changes**, from its own
-repository, in any language.
+repository, as an npm package the core hosts in its own process.
 
 A transport:
 
-- **self-registers** at boot over the internal API/bus with a shared
-  secret: its id, display name, config schema (for the assistant-editor
-  connection section), and MCP endpoint. It appears in the dashboard,
+- **is registered** at boot from its descriptor by the core that hosts
+  it: its id, display name, config schema (for the assistant-editor
+  connection section), and MCP tools. It appears in the dashboard,
   where an admin enables it;
 - **forwards everything**: every message (addressed or not — group
   chatter builds context), edit, deletion, and membership change becomes
@@ -157,13 +156,14 @@ are MCP tools.
 
 The first transport was the original bot's platform, in its own repository;
 adding another platform means writing another
-transport on the SDK, publishing its image, and adding one service to the
-operator's compose file.
+transport on the SDK, publishing its npm package, and naming it in the
+operator's `TRANSPORTS` variable (or `npm install`ing it).
 
-The wire has one number both sides must agree on: `CONTRACT_MAJOR`,
-announced at registration. A core that speaks another major refuses the
-transport by name with a reason its dashboard shows — never a silent
-drop. The SDK's own semver is separate, and covers its API.
+The contract has one number both sides must agree on: the SDK's major.
+A package declares `@assistants-swarm-hub/transport-sdk` as a peer
+dependency; a core whose `TRANSPORT_SDK_MAJOR` differs from that range's
+lowest major refuses the transport by package name with a reason its
+dashboard shows — never a silent drop.
 
 ### Message flow
 
@@ -344,11 +344,12 @@ runbook with a rollback path (restore backup, redeploy last v1 image).
 
 ## Deployment
 
-Docker images on the org's GitHub Container Registry:
-`ghcr.io/assistants-swarm-hub/ash-core` from this repository, and one per
-transport from its own repository, each named after its
-repository. Each release pipeline builds and publishes on its own version
-bump; compose pins every service to a version, the core's and each
+One Docker image on the org's GitHub Container Registry,
+`ghcr.io/assistants-swarm-hub/ash-core` from this repository; each
+transport publishes an npm package from its own repository to the org's
+registry on GitHub Packages, which the image's entrypoint installs at boot
+from the `TRANSPORTS` variable. Each release pipeline publishes on its own
+version bump; compose pins the core to a version and `TRANSPORTS` pins each
 transport's separately. Compose runs one Postgres database (core's) and one
 Redis.
 

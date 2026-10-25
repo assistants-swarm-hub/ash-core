@@ -162,6 +162,13 @@
       "when": 1792859322565,
       "tag": "0022_tool_connections_reach_in_process",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792863784888,
+      "tag": "0023_transports_are_hosted",
+      "breakpoints": true
     }
   ]
 }

@@ -64,7 +64,7 @@ beforeAll(async () => {
   db = drizzle(pool, { schema: storeSchema });
   holder.db = db;
   // The ingest accepts updates only from a registered transport speaking this
-  // core's contract major; the suite speaks as "acme", so register it once
+  // core; the suite speaks as "acme", so register it once
   // through the shared fixture (the per-test truncate spares it).
   await registerTestTransport(db);
 });

@@ -26,6 +26,7 @@ import { loadTransportPackages, nodeModulesChain, TRANSPORT_KEYWORD } from "./pa
 const FIXTURE = path.resolve(__dirname, "../../test/fixtures/transports/acme");
 const ACME = "@acme/transport-acme";
 const BROKEN = "@acme/transport-broken";
+const OLD = "@acme/transport-old";
 
 const coreZodDir = path.dirname(createRequire(import.meta.url).resolve("zod/package.json"));
 
@@ -46,6 +47,11 @@ beforeAll(async () => {
   await fs.cp(coreZodDir, path.join(nodeModules, "zod"), { recursive: true });
   await writePackage(BROKEN, { keywords: [TRANSPORT_KEYWORD] }, "export default { descriptor: { id: 'Broken Id' } };\n");
   await writePackage("bystander", { keywords: ["unrelated"] }, "export default { descriptor: { id: 'bystander' } };\n");
+  await writePackage(
+    OLD,
+    { keywords: [TRANSPORT_KEYWORD], peerDependencies: { "@assistants-swarm-hub/transport-sdk": "^4.2.0" } },
+    "export default { descriptor: { id: 'old' } };\n",
+  );
 });
 
 afterAll(async () => {
@@ -59,10 +65,17 @@ describe("nodeModulesChain", () => {
     expect(chain[1]).toBe(nodeModules);
     expect(chain.at(-1)).toBe(path.join(path.parse(project).root, "node_modules"));
   });
+
+  it("searches NODE_PATH entries last, as Node does", () => {
+    const extra = path.join(project, "transports", "node_modules");
+    const chain = nodeModulesChain(project, [extra, ""].join(path.delimiter));
+    expect(chain.at(-1)).toBe(extra);
+    expect(chain.at(-2)).toBe(path.join(path.parse(project).root, "node_modules"));
+  });
 });
 
 describe("loadTransportPackages", () => {
-  it("loads the keyword-marked package through its default export and reports the one that is not a transport", async () => {
+  it("loads the keyword-marked package, reports the one that is not a transport and the one built for another SDK major", async () => {
     const result = await loadTransportPackages([nodeModules]);
     expect(result.searched).toEqual([nodeModules]);
     expect(result.loaded.map((pkg) => pkg.name)).toEqual([ACME]);
@@ -73,6 +86,11 @@ describe("loadTransportPackages", () => {
     expect(acme.transport.tools?.platform).toBe("Acme");
     expect(result.failed).toEqual([
       { name: BROKEN, dir: nodeModules, error: expect.stringMatching(/default export is not a transport[\s\S]*source id/) },
+      {
+        name: OLD,
+        dir: nodeModules,
+        error: expect.stringMatching(/built for @assistants-swarm-hub\/transport-sdk 4 \("\^4\.2\.0"\); this core hosts 5/),
+      },
     ]);
   });
 

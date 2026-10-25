@@ -73,7 +73,7 @@ so the assistant editor says which kind it is.
 | `message` | `transport.message` — media downloaded and normalized, one structural addressing verdict per running bot, a dedupe key for the stream | The whole pipeline below |
 | `edited_message` | `transport.edited` | Rewrites the mirror row's content. Edits with no textual content are ignored |
 | `message_reaction` | `transport.reaction` (a freshly added 👍/👎 only) | Opens a feedback row and posts the options menu back through the transport's menu API |
-| `callback_query` | a synchronous `POST /api/internal/transports/callback` | Records the chosen option (or flips the row to awaiting free text) and answers with the toast the button shows |
+| `callback_query` | a synchronous in-process call (the host's core API → `processCallbackPress`) | Records the chosen option (or flips the row to awaiting free text) and answers with the toast the button shows |
 | a suppressed duplicate group receipt | `transport.presence` | Stamps that this bot is in the chat, so a bot that joined a group second still gets its turns |
 
 Bot-authored messages are never forwarded. A group message is delivered to every
@@ -356,15 +356,15 @@ verbatim.
    traces and the pipeline all keep the raw text.
 2. **Voice reply**, when a speech endpoint is configured and the turn was a
    voice note: the core synthesizes MP3, transcodes to OGG/Opus, and sends the
-   bytes through the transport's internal API (`POST /internal/chats/:chatId/voice`),
-   which falls back to a text send and reports what it delivered.
+   bytes through the host's in-process outbound port (`sendVoice`), where the
+   transport falls back to a text send and reports what it delivered.
 3. **Generated images**, when the model called `image_generate`: delivered after
-   the text through `POST /internal/chats/:chatId/photos`, so the acknowledgement
+   the text through the same port (`sendPhotos`), so the acknowledgement
    arrives before the picture it acknowledges. Each delivered photo comes back
    as a `message.delivered` event carrying the bytes, so the describer later
    recognizes what the bot drew.
 4. **Browsing acknowledgements**: a turn that enqueued a browser run sends its
-   reply silent through the internal API instead, because its id is registered
+   reply silent through the outbound port instead, because its id is registered
    for deletion once the run reports.
 5. **Mirror.** The transport's `message.delivered` report is what writes the
    `assistant` row — and, in a group, what the other assistants hear.

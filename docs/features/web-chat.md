@@ -73,8 +73,8 @@ after 10 minutes so a turn that never settles cannot leave a thread thinking
 forever, and every change pings the `threads` topic so the browser re-reads.
 
 Everything else the pipeline sends beyond plain text goes through the web
-chat's **outbound port** (`server/outbound.ts`, the same shape as a
-transport's internal API so every caller stays one client): a voice reply is
+chat's **outbound port** (`server/outbound.ts`, the same shape as the
+transport host's outbound port so every caller stays one client): a voice reply is
 stored as an assistant message whose text is the spoken words, with the audio
 attached (`asVoice` is always true — a browser plays whatever it is given);
 generated images become one message per picture with pending media, so the

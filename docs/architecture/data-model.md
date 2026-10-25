@@ -190,23 +190,21 @@ Index: `assistants_name_idx (name)`. Cascades: `assistant_transports`,
 
 ### `transports`
 
-Registered transports. A transport announces itself at boot — id, name, base
-URL, MCP path, config-field schemas — and this row is what every core →
-transport call resolves against (no per-transport env vars). See
-[Adding a transport](../development/adding-a-transport.md).
+Registered transports. The core registers each installed transport package
+at boot from its descriptor — id, name, config-field schemas — and this row is
+what the transport's hosted state resolves against (no per-transport env
+vars). See [Adding a transport](../development/adding-a-transport.md).
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | text PK | The source id, as the transport announced it |
-| `name` | text NOT NULL | Human name, as the transport announced it |
-| `base_url` | text NOT NULL | The transport's announced internal API base URL |
-| `mcp_path` | text | Path of the transport's MCP server on that base, or null when none |
+| `id` | text PK | The source id, as the transport's descriptor names it |
+| `name` | text NOT NULL | Human name, as the transport's descriptor names it |
 | `connection_config_schema` | jsonb `TransportConfigField[]` NOT NULL, default `[]` | Field descriptors for the per-assistant connection section the dashboard renders |
 | `transport_config_schema` | jsonb `TransportConfigField[]` NOT NULL, default `[]` | Field descriptors for the transport-level settings section |
 | `config` | jsonb NOT NULL, default `{}` | The transport-level opaque config blob; the core never interprets it |
 | `enabled` | boolean NOT NULL, default `true` | Admin switch: a disabled transport's events are ignored and it gets no state |
 | `registered_at` | timestamptz NOT NULL | |
-| `last_seen_at` | timestamptz NOT NULL | Stamped on every registration/heartbeat — the reachability signal |
+| `last_seen_at` | timestamptz NOT NULL | Stamped on every registration — the last boot that hosted this transport |
 | `updated_at` | timestamptz NOT NULL | |
 
 ### `assistant_transports`
@@ -292,8 +290,8 @@ users, chats, messages and media in one set of tables, keyed by a `source`
 discriminator plus source-local text ids. The former transport-side store,
 table for table, with the platform-shaped columns generalized. The core writes here:
 its ingest consumer (`server/ingest/consumer.ts`) persists the events
-transports forward over the queue, and transports report their sends through
-the internal transports API. The web chat's `web_*` tables stay separate (it
+transports forward over the queue, and transports report their sends as
+`message.delivered` events on the same queue. The web chat's `web_*` tables stay separate (it
 is a core feature, not a transport).
 
 ### `source_users`

@@ -31,6 +31,16 @@ import type {
  * process boundary, which is why it lives next to the wire rather than in it.
  */
 
+/**
+ * The transport-sdk major this core hosts. A transport package declares the
+ * SDK it was built against as a peer dependency; the host reads that range,
+ * and a package whose lowest accepted version is on another major is refused
+ * by name, with a reason the dashboard shows — the interface moved
+ * incompatibly between majors, and running it would fail in stranger ways.
+ * The SDK's own package version pins its major to this number in a test.
+ */
+export const TRANSPORT_SDK_MAJOR = 5;
+
 /** Who this transport is, as the dashboard learns it when the package loads. */
 export interface TransportDescriptor {
   /** The source id: a short lowercase slug, the prefix of every scoped ref. */
@@ -41,12 +51,6 @@ export interface TransportDescriptor {
   connectionConfigSchema: TransportConfigField[];
   /** Transport-wide settings, usually none. */
   transportConfigSchema?: TransportConfigField[];
-  /**
-   * Where a transport served as its own service serves MCP, or null when it
-   * hosts no tools. Meaningless for a hosted package — its tools join the
-   * core's own server — and kept only while the service form is supported.
-   */
-  mcpPath?: string | null;
   /** The platform's message length cap, in UTF-16 code units. */
   maxMessageLength: number;
   /** How often to refresh the typing indicator; the platform decides. */
