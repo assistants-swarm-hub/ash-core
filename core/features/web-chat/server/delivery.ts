@@ -7,17 +7,19 @@ import {
 } from "@assistants-swarm-hub/contracts";
 
 import { withTrace } from "@/server/trace";
+import type { TurnEventSink } from "@/server/transports/hosted";
 
 import { appendMessage, getThreadById } from "./repository";
 import { pingThreads } from "./service";
 import { threadTurns } from "./turns";
 
 /**
- * The web chat's half of the turn's outbound events, consumed in-process
+ * The web chat's half of the turn's outbound events, handed over in-process
  * since the dissolve (the chat app's bus consumer, relocated): the pipeline
- * publishes `reply.delivery` and `turn.lifecycle` for every source on the
- * bus, each transport consumes its own, and the core consumes the web chat's here
- * (wired in `server/source/events-consumer.ts`).
+ * hands `reply.delivery` and `turn.lifecycle` to whoever owns the turn
+ * (`server/turn/turn-events.ts`) — a hosted transport's host, or this sink
+ * for a web thread — and publishes them on the bus only for a source this
+ * process does not run.
  *
  * "Delivering" to a web thread is storing the reply and pinging the
  * dashboard, because the thread is already on screen — there is no platform
@@ -83,4 +85,9 @@ export function handleChatTurnLifecycle(event: TurnLifecycleEvent): void {
   // Ping on a visible change, and always on settle: the last ping is what
   // clears "thinking…" and shows the finished transcript.
   if (changed || event.phase === "settled") pingThreads();
+}
+
+/** The web chat as the router sees it: the same sink shape a hosted transport has. */
+export function webChatTurnSink(): TurnEventSink {
+  return { deliver: handleChatReplyDelivery, lifecycle: handleChatTurnLifecycle };
 }

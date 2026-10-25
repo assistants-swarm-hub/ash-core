@@ -74,10 +74,11 @@ A message crosses two queues before a model sees it:
    `handleIncomingMessage`. Deliveries leave as `reply.delivery` events and
    the turn's `accepted` / `progress` / `settled` lifecycle as
    `turn.lifecycle` events, handed to the owning source by
-   `server/turn/turn-events.ts` — a direct call into the host for a hosted
-   transport, the Redis channel `assistants-swarm-hub:events` for any other
-   source; the owning source performs the send (or, for the web chat, stores
-   the line in-process) and renders the lifecycle as typing.
+   `server/turn/turn-events.ts` — a direct call for every source this
+   process runs (a hosted transport's host, the web chat's sink), the Redis
+   channel `assistants-swarm-hub:events` for one run elsewhere; the owning
+   source performs the send (or, for the web chat, stores the line) and
+   renders the lifecycle as typing.
 
 Ordering is preserved within a chat by an in-process promise chain per chat
 ref; eight chats run concurrently. A turn that fails **before performing any

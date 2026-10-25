@@ -383,13 +383,18 @@ brings its own copies there — the case above.
      core imports nothing from `packages/service` any more; the package is
      left in place (removing it is a lockfile change — `npm install` in the
      core prunes the transport junctions — and a decision for the user).
-   - **Not changed, on purpose**: the web chat keeps consuming its own
-     `reply.delivery` / `turn.lifecycle` from the bus
-     (`server/source/events-consumer.ts` → `features/web-chat/server/delivery.ts`),
-     as the brief's "behave exactly as before" asks. Going direct there is a
-     one-line registration of a `TurnEventSink` for `chat` in the router —
-     offered to the user, not done. `feedback.recorded` also still rides the
-     bus from the core to the core's own consumer; out of scope here.
+   - **The web chat goes direct too** (user, 2026-10-25): the router
+     resolves `chat` to `webChatTurnSink()` (`features/web-chat/server/delivery.ts`,
+     the same `TurnEventSink` shape a hosted transport has — deliver stores
+     the reply in the thread, lifecycle renders the progress; no mirror hold
+     to release), and the events consumer lost its `reply.delivery` branch
+     and the chat half of `turn.lifecycle`. So every source this process
+     runs is a direct call, and the bus carries those two events only for a
+     transport run as its own service. `turn-events.test.ts` (5) covers it:
+     the web chat's reply and lifecycle reach its sink with no hold release
+     and nothing on the bus; the "elsewhere" case uses a synthetic unhosted
+     source. `feedback.recorded` still rides the bus from the core to the
+     core's own consumer; out of scope here.
    - **Tests**: `host.test.ts` (12: the bus module now offers the queue and
      nothing else, so a host that opened a publisher or a subscriber would
      fail — the proof that nothing of the host touches Redis beyond the

@@ -183,15 +183,17 @@ The full walk-through is [The message pipeline](message-pipeline.md). In short:
    cases; the tool loop runs; the reply is handed to the owning source as one
    `reply.delivery` event and the turn's `accepted` / `progress` / `settled`
    lifecycle as `turn.lifecycle` events — direct calls into the host for a
-   hosted transport, the bus for any other source (`server/turn/turn-events.ts`).
+   hosted transport or the web chat, the bus for a source run elsewhere
+   (`server/turn/turn-events.ts`).
 4. **The transport delivers**: it renders the reply for its platform, sends it,
    shows typing from the lifecycle events, and reports `message.delivered`.
 5. **The ingest mirrors the delivery** as an assistant row and, in a group,
    cross-feeds it to the other assistants present as their own turns.
 
 The web chat runs the same pipeline in-process: `features/web-chat` stores the
-message, builds the same turn event, and consumes its own `reply.delivery` /
-`turn.lifecycle` events from the bus (`server/source/events-consumer.ts`).
+message, builds the same turn event, and receives its own `reply.delivery` /
+`turn.lifecycle` events from the same router, as a direct call into
+`features/web-chat/server/delivery.ts`.
 
 ## Process singletons
 
@@ -243,9 +245,9 @@ of the Edge-analyzed instrumentation module.
    need `REDIS_URL` and `DATABASE_URL`; without them the core boots but
    processes no messages, and says so loudly in the log.
 4. Starts the **source events consumer** on the bus: the SSE bridge for
-   `dashboard.refresh`, `feedback.recorded`, the web chat's own deliveries and
-   lifecycle, and — for a transport run elsewhere — its `trace.recorded` and
-   settle events (a hosted transport's never reach the bus).
+   `dashboard.refresh`, `feedback.recorded`, and — for a transport run
+   elsewhere — its `trace.recorded` and settle events (the web chat's and a
+   hosted transport's never reach the bus).
 5. Starts the **transport host**: every installed transport package (found by
    its keyword) is loaded, checked against `TRANSPORT_SDK_MAJOR`, registered
    from its descriptor and its connections reconciled from the desired state;

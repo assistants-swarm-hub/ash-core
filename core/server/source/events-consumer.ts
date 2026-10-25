@@ -6,7 +6,6 @@ import {
   dashboardRefreshEventSchema,
   feedbackRecordedEventSchema,
   parseScopedRef,
-  replyDeliveryEventSchema,
   traceRecordedEventSchema,
   turnLifecycleEventSchema,
 } from "@assistants-swarm-hub/contracts";
@@ -14,10 +13,6 @@ import {
 import { releaseHold } from "@/server/ingest/consumer";
 
 import { handleFeedbackRecorded } from "@/features/self-improvement/server/recorded-consumer";
-import {
-  handleChatReplyDelivery,
-  handleChatTurnLifecycle,
-} from "@/features/web-chat/server/delivery";
 import { REALTIME_TOPICS, type RealtimeTopic } from "@/lib/realtime";
 import { getEnv } from "@/server/env";
 import { publishEvent } from "@/server/realtime/hub";
@@ -30,14 +25,12 @@ import { ingestSourceTrace } from "@/server/trace/ingest";
  * see `recorded-consumer.ts`), `dashboard.refresh` (the SSE bridge), and
  * `trace.recorded` (the unified trace store's ingest half).
  *
- * Reply-delivery and turn-lifecycle events are each source's to consume, and
- * since the chat dissolve (Phase 6) the core IS the web chat's source side:
- * the pipeline publishes a turn's events to the bus for every source it
- * does not host (`server/turn/turn-events.ts`), and the web chat's are
- * consumed right here — the reply stored in the thread, the lifecycle
- * rendered as live progress. A hosted transport's never reach the bus: its
- * deliveries, typing, settle hold release and traces are direct calls. What
- * remains here for transports serves one run as its own service.
+ * Reply-delivery and turn-lifecycle events are each source's to consume.
+ * Every source this process runs — the web chat and each hosted transport —
+ * gets them as direct calls from the pipeline (`server/turn/turn-events.ts`),
+ * never over the bus; what remains here for them is the settle of a
+ * transport run as its own service, whose mirror hold the core still
+ * releases on its behalf.
  */
 
 export interface SourceEventsConsumer {
@@ -68,30 +61,14 @@ export async function startSourceEventsConsumer(input: {
         }
         return;
       }
-      if (type === "reply.delivery") {
-        const parsed = replyDeliveryEventSchema.safeParse(payload);
-        if (!parsed.success || parsed.data.source !== "chat") return;
-        // Detached: one bad delivery must not kill the subscriber; the
-        // failure lands in its own deliver trace.
-        void handleChatReplyDelivery(parsed.data).catch((err) => {
-          console.error(
-            "web-chat reply delivery failed:",
-            err instanceof Error ? err.message : String(err),
-          );
-        });
-        return;
-      }
       if (type === "turn.lifecycle") {
         const parsed = turnLifecycleEventSchema.safeParse(payload);
         if (!parsed.success) return;
-        if (parsed.data.source === "chat") {
-          handleChatTurnLifecycle(parsed.data);
-          return;
-        }
         // A turn of a transport run elsewhere settled: release the mirror
         // row's live-processing hold (the transport keeps only the typing
-        // rendering; the hold moved in with the store — Phase 7). A hosted
-        // transport's settle releases it in the router, before any bus.
+        // rendering; the hold moved in with the store — Phase 7). A source
+        // this process runs never publishes here: its settle releases the
+        // hold in the router.
         if (parsed.data.phase === "settled") {
           const event = parsed.data;
           void releaseHold(

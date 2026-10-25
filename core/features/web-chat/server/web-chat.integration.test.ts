@@ -21,7 +21,7 @@ const STORE_MIGRATIONS = fileURLToPath(new URL("../../../store/migrations", impo
  * The web chat as a core feature (Phase 6 — the chat app dissolved): a human
  * posts into a thread, one normalized inbound event reaches the enqueue seam,
  * and the pipeline's reply-delivery event lands in the transcript through the
- * in-process delivery handler. Ported from the chat app's runtime suite; the
+ * in-process delivery handler (the sink `server/turn/turn-events.ts` calls). Ported from the chat app's runtime suite; the
  * HTTP surface it exercised is gone, so the same behaviors are proven against
  * the service, the outbound port, and the delivery handler directly.
  */
@@ -381,8 +381,8 @@ describe("delivery", () => {
     silent: false,
   });
 
-  // The delivery handler runs on the process db (it is the bus consumer's
-  // half); bind the suite's handle for its duration.
+  // The delivery handler runs on the process db (the router calls it with
+  // no handle to pass); bind the suite's handle for its duration.
   it("stores a delivered reply, and drops one for a thread that is gone", async () => {
     const thread = await service.createChatThread(
       { assistantId: ASSISTANT_ID, name: "Answered" },

@@ -41,8 +41,8 @@ is the durable record, and a turn that fails to enqueue must still leave what
 the person said — then composes the conversation context (the last 24 hours of
 the thread, insertion order, deleted rows and the current message excluded)
 and enqueues one `message.inbound` event; the answer arrives the way every
-source's does, through the pipeline and back over the bus. The response carries
-the turn's correlation id.
+source's does, through the pipeline and back as a direct call into this
+feature. The response carries the turn's correlation id.
 
 A message needs text, an image, a voice note, a document, or some of each:
 
@@ -58,9 +58,11 @@ text.
 ## Delivery and the turn's progress
 
 There is no platform to hand a reply to: "delivering" to a web thread is
-storing the line and pinging the dashboard. `server/delivery.ts` consumes the
-pipeline's `reply.delivery` events for `chat` in-process (wired in
-`server/source/events-consumer.ts`), appends the assistant row, and records
+storing the line and pinging the dashboard. `server/delivery.ts` is the web
+chat's turn-event sink: the pipeline hands it each `reply.delivery` for
+`chat` directly (`server/turn/turn-events.ts` — the same router that calls a
+hosted transport's host; the bus carries these events only for a source this
+process does not run), and it appends the assistant row and records
 the delivery as a `bot-messaging` / `deliver` trace on the turn's correlation —
 the same record a transport writes for its sends. A reply for a
 thread that was deleted while the turn ran is dropped, and the trace says so.

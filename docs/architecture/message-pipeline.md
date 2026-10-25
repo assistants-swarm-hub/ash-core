@@ -350,8 +350,9 @@ verbatim.
 1. **Text.** The core hands the owning source one `reply.delivery` event
    carrying the whole answer as the model's **raw** Markdown, the message it
    answers, and the mirror-checked whitelist of `#<id>` citations that may
-   become links — a direct call into the host for a hosted transport, the bus
-   for any other source (`server/turn/turn-events.ts`).
+   become links — a direct call for every source this process runs (a hosted
+   transport's host, the web chat's own sink), the bus for one run elsewhere
+   (`server/turn/turn-events.ts`).
    It knows no platform's cap: the transport cuts a long answer at natural
    boundaries under its platform's cap (the SDK's `splitMessage`), sends the
    parts in order, and reports each as its own `message.delivered`. It renders
