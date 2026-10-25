@@ -409,12 +409,22 @@ brings its own copies there — the case above.
      integration suites (turn consumer, assistants, transports, tool
      connections, web chat — 62 tests) pass.
    - **Live (2026-10-25)**: `next dev` on 4300 registered `discord` and
-     `tg` and opened all three stored connections (`running`) with no
-     subscriber opened for either — the only Redis use left in the host is
-     the `transport-updates` queue. A user-sent message round trip
-     (inbound → reply → deliver on one correlation, with no
-     `reply.delivery` bus event for the source) is the remaining proof;
-     see the end of this entry once it ran.
+     `tg` and opened all three stored connections (`running`). Redis
+     reports **one** subscriber on `assistants-swarm-hub:events` with both
+     transports up (`PUBSUB NUMSUB`) — the source events consumer; before
+     this step each hosted transport added two (its config watch and its
+     delivery consumer). The only Redis use left in the host is the
+     `transport-updates` queue. A user-sent Telegram message to a hosted
+     bot produced, on one correlation, the host's `inbound` trace
+     ("inbound event enqueued"), the core's `reply` trace (addressing
+     through the LLM request and the honesty gate to "send message") and
+     the host's `deliver` trace ("reply sent", the reply target attached
+     as requested) — the deliver trace opened 3 ms before the reply trace
+     settled, which is the direct call: the hand-over happens inside the
+     turn, and the settle follows it. The reply was mirrored as the
+     assistant's row 150 ms later. No `reply.delivery` or `turn.lifecycle`
+     for that source crossed the bus: nothing subscribed to one, and the
+     router never published one for a hosted source.
    - **Docs**: `architecture/message-pipeline.md` (diagram, stage 0, stage 7,
      reading a turn), `architecture/overview.md` (summary, diagram, the five
      steps, singletons, boot), `architecture/observability.md` (trace
