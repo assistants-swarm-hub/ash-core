@@ -21,6 +21,8 @@ describe("toolConnectionClient", () => {
       menus: {} as never,
       statuses: () => [],
       tools,
+      turns: {} as never,
+      reconcile: () => undefined,
     });
     const client = toolConnectionClient({
       transport: "in-process",

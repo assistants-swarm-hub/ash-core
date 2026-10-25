@@ -83,8 +83,9 @@ it streams) and the screenshot byte route.
 There is no service-to-service surface: a transport is an npm package the
 core hosts in its own process, so nothing between core and transport crosses
 the network and no shared secret exists. A menu press, the mirror lookup and
-every send are direct calls (the host's in-process core API and outbound
-port); only the queue and bus events travel over Redis, as before.
+every send, every delivery and every reconcile are direct calls (the host's
+in-process core API, outbound port and turn-event sink); only the
+transport-updates queue travels over Redis, as before.
 
 What that means for trust: an installed transport package runs with the
 core's own privileges — it sees the bot tokens handed to its connections and

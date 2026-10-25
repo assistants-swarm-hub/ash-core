@@ -10,15 +10,16 @@ platform connection and nothing else, each in its own repository (the core
 names none of them). The core finds the installed ones by the package keyword
 `assistants-swarm-hub-transport` and hosts them in its own process: it
 registers each from its descriptor, runs its connections and serves its MCP
-tools on an in-process server. Inbound updates still cross the Redis queue and
-deliveries and turn lifecycle the pub/sub bus; everything else is a direct
-call. A new platform is another `npm install`; see
+tools on an in-process server. Inbound updates cross the Redis queue (a
+durable, ordered buffer in front of the store); everything the core says
+back — deliveries, turn lifecycle, config changes, trace recording — is a
+direct call. A new platform is another `npm install`; see
 [Adding a transport](../development/adding-a-transport.md).
 
 ```
    platform ◄──its own API──► transport  (an npm package, hosted inside the core process)
                                   │  queue `transport-updates`          ▲ `reply.delivery`, `turn.lifecycle`
-                                  ▼  (every message, edit, reaction,    │ (Redis pub/sub `assistants-swarm-hub:events`)
+                                  ▼  (every message, edit, reaction,    │ (direct calls into the host)
                                      delivery — media bytes attached)   │
    dashboard ──HTTP──► core (Next.js, :3200)                       │
    (browser) ◄──SSE──   server/ingest ─► queue `inbound-messages` ─► server/turn ─► features/bot-messaging ──┘
@@ -179,9 +180,10 @@ The full walk-through is [The message pipeline](message-pipeline.md). In short:
 3. **The turn consumer runs the pipeline** (`server/turn/consume.ts` →
    `features/bot-messaging/server/service.ts`): per-chat sequential, cross-chat
    concurrent; the name check and the LLM analyzer settle the ambiguous group
-   cases; the tool loop runs; the reply is published as one `reply.delivery`
-   event and the turn's `accepted` / `progress` / `settled` lifecycle as
-   `turn.lifecycle` events on the bus.
+   cases; the tool loop runs; the reply is handed to the owning source as one
+   `reply.delivery` event and the turn's `accepted` / `progress` / `settled`
+   lifecycle as `turn.lifecycle` events — direct calls into the host for a
+   hosted transport, the bus for any other source (`server/turn/turn-events.ts`).
 4. **The transport delivers**: it renders the reply for its platform, sends it,
    shows typing from the lifecycle events, and reports `message.delivered`.
 5. **The ingest mirrors the delivery** as an assistant row and, in a group,
@@ -202,7 +204,8 @@ bundle copy:
 | --- | --- | --- |
 | Postgres pool + Drizzle handle | `server/store/db.ts` | A module-local leaks connections on every hot reload |
 | Inbound queue producer | `server/turn/enqueue.ts` | One BullMQ producer for the pipeline's entrance |
-| Bus publisher | `server/bus/publisher.ts` | One pub/sub connection for service-level events (`assistant.deleted`, `transport.config.changed`) |
+| Bus publisher | `server/bus/publisher.ts` | One pub/sub connection for service-level events (`assistant.deleted`, `transport.config.changed`) — reached only for a transport this process does not host; a hosted one is told directly |
+| Hosted transports | `server/transports/hosted.ts` | The transports this process hosts, by source id: their outbound port, menus, statuses, tools, the turn's delivery/lifecycle sink and the reconcile hook — what every core-side caller asks before the bus |
 | MCP registry + tool context | `server/mcp/runtime.ts`, `server/mcp/context.ts` | Tools are registered once; the per-turn `AsyncLocalStorage` binding is one store |
 | Realtime hub | `server/realtime/hub.ts` | One pub/sub bus shared by publishers and the SSE route |
 | Trace store | `server/trace/store.ts` | Writers and the boot-owned flush timer must share one instance |
@@ -240,8 +243,9 @@ of the Edge-analyzed instrumentation module.
    need `REDIS_URL` and `DATABASE_URL`; without them the core boots but
    processes no messages, and says so loudly in the log.
 4. Starts the **source events consumer** on the bus: the SSE bridge for
-   `dashboard.refresh`, `trace.recorded` from the transports, `feedback.recorded`,
-   and the web chat's own deliveries and lifecycle.
+   `dashboard.refresh`, `feedback.recorded`, the web chat's own deliveries and
+   lifecycle, and — for a transport run elsewhere — its `trace.recorded` and
+   settle events (a hosted transport's never reach the bus).
 5. Starts the **transport host**: every installed transport package (found by
    its keyword) is loaded, checked against `TRANSPORT_SDK_MAJOR`, registered
    from its descriptor and its connections reconciled from the desired state;

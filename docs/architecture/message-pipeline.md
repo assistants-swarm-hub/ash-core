@@ -28,9 +28,10 @@ web thread message ─► features/web-chat (in-process) ───────�
                                             features/bot-messaging/server/service.ts
                                             (handleIncomingMessage — the reply pipeline)
                                                                     │
-                                              bus ◄── `reply.delivery`, `turn.lifecycle`
-                                               │
-                                               └─► the transport sends, shows typing, reports `message.delivered`
+                                                                    │ `reply.delivery`, `turn.lifecycle`
+                                                                    │ (a direct call into the host — server/turn/turn-events.ts)
+                                                                    ▼
+                                            the transport sends, shows typing, reports `message.delivered`
 ```
 
 The exact same core code runs with no transport at all: the ingest's integration
@@ -47,7 +48,8 @@ contain. The SDK runtime (`packages/transport-sdk`) owns the shape:
 
 - One platform connection per enabled assistant connection, started by the
   transport's own boot from the desired state the core answers at registration
-  and reconciled on every `transport.config.changed` event.
+  and reconciled on every change the core announces (a direct reconcile call
+  for a hosted transport).
 - Updates are processed **concurrently across chats**, in order within each
   chat (user decision, 2026-07-20).
 - Which platform updates are subscribed to, and what a platform only delivers
@@ -345,9 +347,11 @@ verbatim.
 
 ## Stage 7 — delivery
 
-1. **Text.** The core publishes one `reply.delivery` event carrying the
-   whole answer as the model's **raw** Markdown, the message it answers, and
-   the mirror-checked whitelist of `#<id>` citations that may become links.
+1. **Text.** The core hands the owning source one `reply.delivery` event
+   carrying the whole answer as the model's **raw** Markdown, the message it
+   answers, and the mirror-checked whitelist of `#<id>` citations that may
+   become links — a direct call into the host for a hosted transport, the bus
+   for any other source (`server/turn/turn-events.ts`).
    It knows no platform's cap: the transport cuts a long answer at natural
    boundaries under its platform's cap (the SDK's `splitMessage`), sends the
    parts in order, and reports each as its own `message.delivered`. It renders
@@ -369,7 +373,8 @@ verbatim.
 5. **Mirror.** The transport's `message.delivered` report is what writes the
    `assistant` row — and, in a group, what the other assistants hear.
 6. **Settle.** `turn.lifecycle` `settled` stops typing on the transport and
-   releases the mirror row's live-processing hold in the core.
+   releases the mirror row's live-processing hold in the core — for a hosted
+   transport both in the same call, before any bus.
 
 ## Outcomes
 
@@ -396,7 +401,8 @@ id, `<chatId>:<messageId>:<assistantId>`:
    current turn composed, history window loaded, vision resolved, time context,
    language directive, then the LLM request, each tool call, the LLM response,
    and the output.
-3. `deliver` (the transport, recorded through the bus): the send, with the
+3. `deliver` (the transport, recorded straight into the store by the host):
+   the send, with the
    message id the platform assigned and whether it attached the requested reply
    target.
 

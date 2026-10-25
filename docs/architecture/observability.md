@@ -139,7 +139,7 @@ the cell (`/debug?assistantId=…`). It is stamped where the turn knows it:
 | Trace | Assistant |
 | --- | --- |
 | A reply turn (core) | The inbound event's — the assistant whose bot received the message |
-| Its source-side halves (a transport's `inbound`, `deliver`, feedback collection) | The receiving connection's, carried across apps on the `trace.recorded` event |
+| Its source-side halves (a transport's `inbound`, `deliver`, feedback collection) | The receiving connection's, stamped by the transport's recorder on the turn's correlation |
 | A timed task fire | The task's own — a fire runs *as* its assistant |
 | Creating, editing or deleting an assistant | The assistant in question |
 
@@ -235,11 +235,12 @@ The store is a `globalThis` singleton so the writers (feature, route and queue
 consumer bundles) and the boot-owned flush timer share one instance across Next
 bundles and dev hot-reload.
 
-Traces recorded by a hosted transport arrive over the bus: the transport
-buffers the whole action and publishes one `trace.recorded` event on settle
-(`packages/contracts/src/trace.ts`), and the core's events consumer hands it to
-`server/trace/ingest.ts`, which writes it into the same store. There is one
-trace store and one Debug explorer for the core and every transport.
+Traces recorded by a hosted transport go straight into the store: the
+transport's recorder buffers the whole action and hands it over once on settle
+(`packages/contracts/src/trace.ts`), and the host settles it through
+`server/trace/ingest.ts` — the same ingest a `trace.recorded` bus event from a
+source run elsewhere goes through (`server/source/events-consumer.ts`). There
+is one trace store and one Debug explorer for the core and every transport.
 
 ### The header index
 
@@ -359,9 +360,10 @@ deliberately tiny, a notification rather than a payload. Topics: `traces`,
 `bot`, `status`, `history`, `users`, `groups`, `vision`, `tasks`, `feedback`,
 `memory`, `analytics`, `browser`, `assistants`, `threads`, `tools`, `accounts`.
 
-A transport pings the hub through the bus: a `dashboard.refresh` event naming
-topics (a transport sends `status` on every connection state change). The events
-consumer re-publishes only names this dashboard actually serves.
+A hosted transport's connection manager pings the hub directly (`status` on
+every connection state change). A source run elsewhere pings it through the
+bus: a `dashboard.refresh` event naming topics, which the events consumer
+re-publishes only for names this dashboard actually serves.
 
 ### One connection per tab
 

@@ -46,11 +46,12 @@ import { startTurnConsumerFromEnv, type TurnConsumer } from "@/server/turn/consu
  * instrumentation module. Imported dynamically only when the server runs in
  * the Node.js runtime.
  *
- * Since the source split the core runs NO platform client: inbound turns
- * arrive on the queue (a transport enqueues), replies leave as bus events,
- * and everything platform-shaped is the transport's. What boots here is
- * the brain — the queue consumer, the bus subscriber, and the background
- * jobs.
+ * Since the source split the core runs NO platform client of its own:
+ * inbound turns arrive on the queue (a transport enqueues), replies leave as
+ * direct calls into the transport host (the bus only for a source this
+ * process does not host), and everything platform-shaped is the
+ * transport's. What boots here is the brain — the queue consumers, the bus
+ * subscriber, the transport host, and the background jobs.
  */
 export function registerNode(): void {
   let shuttingDown = false;

@@ -13,10 +13,11 @@ import {
 /**
  * Outbound sends to the owning source — the calls that need something back
  * (a delivered message id, a mirror-checked refusal) or carry bytes, which
- * the fire-and-forget bus events cannot do: browsing acknowledgements (their
- * id is registered for deletion), voice replies (TTS audio), generated
- * images, and deletes. Plain text replies keep travelling as reply-delivery
- * bus events; the source persists both kinds itself.
+ * the fire-and-forget reply-delivery events cannot do: browsing
+ * acknowledgements (their id is registered for deletion), voice replies (TTS
+ * audio), generated images, and deletes. Plain text replies keep travelling
+ * as reply-delivery events (`turn-events.ts`); the source persists both
+ * kinds itself.
  *
  * ONE port, every source: which one answers is resolved from the source id,
  * so the sends below are written once and a new source needs nothing here.

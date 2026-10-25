@@ -32,7 +32,7 @@ the archive. Commit-on-main is back in force. Entries below dated before
 2026-08-21 predate the redesign — re-check their file paths against the
 current tree before acting on them.
 
-## Transports as packages the core hosts in-process (`done`, 2026-10-25 — prune after the next release; step 6 stays optional)
+## Transports as packages the core hosts in-process (`done`, 2026-10-25 — prune after the next release)
 
 **Decision (user, 2026-10-24).** A transport is an **npm package, not a
 service**. It keeps its own repository and its own release (a package version
@@ -77,13 +77,13 @@ core.
 - `docs/api/transport/openapi.yaml`, `events.schema.json`, their generator and
   CI check — there is no wire to document.
 
-**What stays (phase 1), deliberately.** The `transport-updates` queue remains
-the ingest's entrance and the bus remains how `reply.delivery`,
-`turn.lifecycle` and `transport.config.changed` reach the host: both are
-in-process-reachable (same Redis), so the pipeline side does not move at all
-in the first cut. Collapsing those hops into direct calls is phase 6, after
-everything else works. The `transports` table and the dashboard roster stay:
-loading a package is the registration (same row, `base_url` dropped).
+**What stays, deliberately.** The `transport-updates` queue remains the
+ingest's entrance: a durable, ordered buffer in front of the store, not a
+boundary. Phase 1 also kept the bus as how `reply.delivery`,
+`turn.lifecycle` and `transport.config.changed` reached the host; step 6
+collapsed those into direct calls (below). The `transports` table and the
+dashboard roster stay: loading a package is the registration (same row,
+`base_url` dropped).
 
 **Design.**
 
@@ -340,9 +340,92 @@ brings its own copies there — the case above.
    the container stayed healthy overnight. Stale comments naming the
    contract major reworded. The transports' descriptors drop `mcpPath`
    (committed in both repositories).
-6. **Collapse the hops** (`todo`, optional) — deliveries and lifecycle as
-   direct host calls instead of bus events; the ingest queue stays (it is
-   durability, not a boundary).
+6. **Collapse the hops** (`done`, 2026-10-25) — a hosted transport's
+   deliveries, typing, config changes and traces never touch Redis; the
+   ingest queue stays.
+   - **The turn's outbound events are a direct call** —
+     `core/server/turn/turn-events.ts` (`publishTurnEvent`) is the one router
+     between the pipeline and whoever renders a turn: a source this process
+     hosts gets `reply.delivery` and `turn.lifecycle` through its registry
+     entry (`HostedTransport.turns`, a `TurnEventSink`), any other source gets
+     the very same events on the bus. The turn consumer's `ctx.publish` is
+     that router (`consume.ts`); `handleInboundJob` did not change. A hosted
+     delivery is detached, as the bus consumer was: the pipeline's job ends
+     when the reply is handed over, and the send's outcome is its own
+     `deliver` trace on the turn's correlation (a failure also lands in the
+     core log under `[<id> delivery]`). A hosted settle releases the mirror
+     row's live-processing hold in the router (the hold is the ingest's);
+     the events consumer keeps releasing it from the bus for a transport
+     run elsewhere. `host/delivery.ts` is now `startDelivery`: the sink
+     (deliver + lifecycle + the per-turn typing loops) with no subscriber
+     and no publisher.
+   - **Reconcile is a direct call** — `HostedTransport.reconcile(reason)`;
+     `announceTransportChange` calls it for a hosted transport and publishes
+     `transport.config.changed` only for one it does not host;
+     `removeAssistant` tells every hosted transport and publishes
+     `assistant.deleted` only when a registered transport is not hosted
+     (the loud no-bus warning is now conditional on that). The host runs
+     the initial desired-state application and every reconcile on one
+     serialized chain, so a burst collapses and nothing overlaps the start;
+     the registry entry exists before the first application, so a change
+     made while the connections come up is reconciled right after.
+   - **Traces go straight into the store** (decision: yes — a clean
+     replacement). `host/traces.ts` (`hostedTraceClient`) is the contract's
+     `createSourceTraceRecorder` with `ingestSourceTrace` as its publish:
+     the same `SourceTrace` the `trace.recorded` event carries, settled
+     through the same `server/trace/ingest.ts`, so the shape, the
+     correlation and the Debug rendering are identical and only the Redis
+     hop is gone. The events consumer's `trace.recorded` branch stays for a
+     source run elsewhere.
+   - **Also direct**: the connection manager's `status` refresh ping goes to
+     the realtime hub in-process instead of a `dashboard.refresh` bus event
+     (`connections.ts` lost its bus publisher and `redisUrl`). With that the
+     core imports nothing from `packages/service` any more; the package is
+     left in place (removing it is a lockfile change — `npm install` in the
+     core prunes the transport junctions — and a decision for the user).
+   - **Not changed, on purpose**: the web chat keeps consuming its own
+     `reply.delivery` / `turn.lifecycle` from the bus
+     (`server/source/events-consumer.ts` → `features/web-chat/server/delivery.ts`),
+     as the brief's "behave exactly as before" asks. Going direct there is a
+     one-line registration of a `TurnEventSink` for `chat` in the router —
+     offered to the user, not done. `feedback.recorded` also still rides the
+     bus from the core to the core's own consumer; out of scope here.
+   - **Tests**: `host.test.ts` (12: the bus module now offers the queue and
+     nothing else, so a host that opened a publisher or a subscriber would
+     fail — the proof that nothing of the host touches Redis beyond the
+     queue; new: a direct delivery is sent, reported as `message.delivered`
+     and traced on the turn's correlation with no bus; a failed delivery
+     is a failed trace and rethrows; typing runs from `accepted` through
+     `progress` until `settled` under fake timers; a direct reconcile
+     applies the fresh state; a burst of three reconciles restarts once for
+     a rotated token), `turn-events.test.ts` (4: a hosted reply goes to the
+     host and nothing to the bus; a failed direct delivery stays out of the
+     pipeline; a hosted settle releases the hold; an unhosted source's
+     events reach the bus untouched and its hold is left to the consumer),
+     `assistants.integration.test.ts` (the delete path told on both routes:
+     a registered transport run elsewhere gets the bus event or the loud
+     warning; a hosted one gets `reconcile("assistant.deleted")` and no bus
+     event). `tsc`, `eslint`, 1289 core unit tests, and the touched
+     integration suites (turn consumer, assistants, transports, tool
+     connections, web chat — 62 tests) pass.
+   - **Live (2026-10-25)**: `next dev` on 4300 registered `discord` and
+     `tg` and opened all three stored connections (`running`) with no
+     subscriber opened for either — the only Redis use left in the host is
+     the `transport-updates` queue. A user-sent message round trip
+     (inbound → reply → deliver on one correlation, with no
+     `reply.delivery` bus event for the source) is the remaining proof;
+     see the end of this entry once it ran.
+   - **Docs**: `architecture/message-pipeline.md` (diagram, stage 0, stage 7,
+     reading a turn), `architecture/overview.md` (summary, diagram, the five
+     steps, singletons, boot), `architecture/observability.md` (trace
+     ingest, the hub ping), `architecture/security.md`,
+     `architecture/data-model.md`, `development/adding-a-transport.md`
+     (the direction table, step 3, step 5), `development/contributing.md`,
+     `api/endpoints.md`, `api/README.md`, `features/assistants.md`,
+     `features/bot-messaging.md`, `operations/troubleshooting.md`, and the
+     module comments of `host.ts`, `delivery.ts`, `hosted.ts`,
+     `events-consumer.ts`, `consume.ts`, `source-outbound.ts`,
+     `register-node.ts`.
 
 ## Transport SDK: a new transport with zero core edits (`deferred`, opened 2026-09-02 — superseded 2026-10-24)
 

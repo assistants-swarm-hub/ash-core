@@ -15,6 +15,8 @@ import { getBusPublisher } from "@/server/bus/publisher";
 import { publishEvent } from "@/server/realtime/hub";
 import { getStoreDb, type StoreDb } from "@/server/store/db";
 import { withTrace } from "@/server/trace";
+import { hostedTransport, listHostedTransports } from "@/server/transports/hosted";
+import { listTransports } from "@/server/transports/service";
 import {
   countAssistants,
   deleteAssistant,
@@ -214,11 +216,13 @@ function deletedEvent(assistantId: string): AssistantDeletedEvent {
 }
 
 /**
- * Delete an assistant, recorded as a trace. Its tasks cascade in the store;
- * everything a transport keys on the id (its connection and the client behind it)
- * is dropped by the app reacting to the `assistant.deleted` bus event — so
- * with no bus configured the skipped notification is a loud trace warning,
- * never a silent divergence.
+ * Delete an assistant, recorded as a trace. Its tasks cascade in the store,
+ * and so does its transport connection; everything a transport keys on the
+ * id (the connection and the client behind it) is dropped by the transport
+ * reconciling against the desired state — told directly when this process
+ * hosts it, by the `assistant.deleted` bus event when it runs elsewhere. So
+ * with no bus configured and a transport that needs one, the skipped
+ * notification is a loud trace warning, never a silent divergence.
  */
 export async function removeAssistant(
   id: string,
@@ -231,20 +235,34 @@ export async function removeAssistant(
       const deleted = await deleteAssistant(db, id);
       if (!deleted) throw ApiError.notFound("Unknown assistant");
       await trace.event({ type: "db", message: "assistant deleted (tasks cascaded)" });
-      const publisher = getBusPublisher();
-      if (publisher) {
-        await publisher.publish(BUS_EVENTS_CHANNEL, deletedEvent(id));
-        await trace.event({
-          type: "external_call",
-          message: "assistant.deleted published — sources drop their connections",
-        });
-      } else {
+      // `assistant.deleted` has no per-connection event: the cascade removed
+      // the connection rows, so the desired state is the only thing that
+      // knows — every hosted transport refetches it now.
+      const hosted = listHostedTransports();
+      for (const transport of hosted) transport.reconcile("assistant.deleted");
+      if (hosted.length > 0) {
         await trace.event({
           type: "step",
-          level: "warn",
-          message:
-            "bus not configured (REDIS_URL) — source apps were NOT told; any connection for this assistant keeps polling",
+          message: `hosted transports told to reconcile: ${hosted.map((t) => t.descriptor.id).join(", ")}`,
         });
+      }
+      const elsewhere = (await listTransports(db)).filter((row) => !hostedTransport(row.id));
+      if (elsewhere.length > 0) {
+        const publisher = getBusPublisher();
+        if (publisher) {
+          await publisher.publish(BUS_EVENTS_CHANNEL, deletedEvent(id));
+          await trace.event({
+            type: "external_call",
+            message: "assistant.deleted published — sources drop their connections",
+          });
+        } else {
+          await trace.event({
+            type: "step",
+            level: "warn",
+            message:
+              "bus not configured (REDIS_URL) — source apps were NOT told; any connection for this assistant keeps polling",
+          });
+        }
       }
       await trace.succeed({
         outputSummary: `deleted ${id}`,

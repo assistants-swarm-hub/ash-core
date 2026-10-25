@@ -143,7 +143,7 @@ These come from repeated correction; violating one is a review comment every tim
 | Rule | Detail |
 | --- | --- |
 | **Every rendered time goes through `<Timestamp>`** | Never `toLocaleString()`, never bare UTC, and never a timezone prop — the zone comes from `TimezoneProvider` |
-| **Every data page live-updates** | `publishEvent` on the server, `useLiveRefresh`/`useLiveEvent` + `LiveIndicator` on the client. A page that needs a manual reload is a bug. A transport pings the same topics through a `dashboard.refresh` bus event |
+| **Every data page live-updates** | `publishEvent` on the server, `useLiveRefresh`/`useLiveEvent` + `LiveIndicator` on the client. A page that needs a manual reload is a bug. The host pings `status` for a transport's connection changes |
 | **Multiple sections on one page go into the shared `Tabs`**, not stacked cards | Job cards stay above the tabs. Drop card titles that duplicate a tab label |
 | **Import primitives from `@/components/ui`** | One stable entry point for the core's design system; `packages/ui` holds the pieces shared with other apps |
 | **Every query filter has a visible control** | Ids on cards are clickable facets, never free text the reader has to type |
@@ -207,8 +207,8 @@ Local-development cautions:
 - **Never `rm -rf .next` or run a production build while `next dev` is live** — it
   kills the running server.
 - **Boot-time code needs a restart.** The queue consumers, the schedulers and
-  everything a transport does at boot (registration, the reconcile, the bus
-  subscriptions) are started once; `next dev` and `tsx watch` do not re-run
+  everything a transport does at boot (registration, the reconcile, the
+  registry entry) are started once; `next dev` and `tsx watch` do not re-run
   them the way a page re-renders. Restart before judging a live check.
 - **Commits go straight to `main`** — this project has no feature branches.
   Never push on the user's behalf.

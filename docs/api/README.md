@@ -231,7 +231,7 @@ These destroy data and are worth naming explicitly:
 | `POST /api/analytics/insights/regenerate` | Every day score covering the period, plus the roll-ups built from them. Also **billable** — each dropped day costs one LLM pass to re-score |
 | `DELETE /api/memory/users/{userId}` | The person's memory document and, by cascade, their pending notes |
 | `DELETE /api/accounts/{id}` | A (deactivated) account and everything that was only theirs: their assistants (with tasks and transport connections), the memory under their linked identities, their link membership, their web threads, link codes and tool connections |
-| `DELETE /api/assistants/{id}` | The assistant, its tasks (store cascade) and, through the `assistant.deleted` bus event, its transport connections |
+| `DELETE /api/assistants/{id}` | The assistant, its tasks (store cascade) and, through the host's reconcile, its transport connections |
 | `DELETE /api/chat/threads/{id}` | The thread and its whole transcript, media included |
 | `DELETE /api/history/search-index` | The search index rows - re-derived by the rebuild it arms, so nothing is lost |
 

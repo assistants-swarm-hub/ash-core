@@ -1,6 +1,11 @@
 import "server-only";
 
-import type { ConnectionStatus, TransportDescriptor } from "@assistants-swarm-hub/contracts";
+import type {
+  ConnectionStatus,
+  ReplyDeliveryEvent,
+  TransportDescriptor,
+  TurnLifecycleEvent,
+} from "@assistants-swarm-hub/contracts";
 
 import type { CollectTransport } from "@/features/self-improvement/server/collect-flows";
 import type { DiscoveredTool } from "@/server/mcp/http-client";
@@ -12,15 +17,27 @@ import type { SourceOutboundPort } from "@/server/turn/source-outbound";
  * "Transports as packages the core hosts in-process").
  *
  * Every place the core used to reach a transport over its internal HTTP
- * API — the outbound port, the feedback menus, the live connection statuses,
- * the transport's own MCP tools — asks here first. A source that is hosted
- * answers in-process; one that is not falls through to whatever the
- * registration row says, which keeps a transport still run as its own
- * service working until that form is retired.
+ * API or the bus — the outbound port, the feedback menus, the live
+ * connection statuses, the transport's own MCP tools, the turn's deliveries
+ * and lifecycle, a desired-state change — asks here first. A source that is
+ * hosted answers in-process; one that is not falls through to whatever the
+ * registration row says and to the bus, which keeps a transport still run
+ * as its own service working until that form is retired.
  *
  * Process-global like every boot-bound singleton here: Next.js evaluates
  * several bundles per process, and the host registers once.
  */
+
+/**
+ * Where a turn's outbound events go for one source: the finished reply to
+ * perform and the lifecycle to render (typing). The pipeline calls this
+ * in-process for a hosted source and publishes the very same events on the
+ * bus for one it does not host (`server/turn/turn-events.ts`).
+ */
+export interface TurnEventSink {
+  deliver(event: ReplyDeliveryEvent): Promise<void>;
+  lifecycle(event: TurnLifecycleEvent): void;
+}
 
 /** A hosted transport's own MCP server, reached without a socket. */
 export interface HostedTransportTools {
@@ -42,6 +59,13 @@ export interface HostedTransport {
   statuses(): ConnectionStatus[];
   /** The transport's tools, or null when it hosts none. */
   tools: HostedTransportTools | null;
+  /** The turn's deliveries and lifecycle, performed by the host. */
+  turns: TurnEventSink;
+  /**
+   * The desired state changed (a connection edited, an assistant deleted):
+   * refetch and reconcile. Serialized by the host, so a burst collapses.
+   */
+  reconcile(reason: string): void;
 }
 
 const KEY = Symbol.for("assistants-swarm-hub.core.transports.hosted");

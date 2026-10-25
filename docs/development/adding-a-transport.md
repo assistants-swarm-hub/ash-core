@@ -29,7 +29,7 @@ with which config), and its whole job is translation:
 | Direction | The transport… | The core… |
 | --- | --- | --- |
 | Platform → core | reports **every** update it sees (messages addressed or not, edits, reactions) through the host's hooks, media bytes attached | normalizes it into events, dedupes shared chats, persists it in the conversation store, decides who gets a turn, composes the prompt, runs the pipeline |
-| Core → platform | performs the sends the host asks of its connection: text, voice, photos, files, deletes, menus, titles, the typing indicator | consumes its own reply-delivery and turn-lifecycle events and asks the connection to act |
+| Core → platform | performs the sends the host asks of its connection: text, voice, photos, files, deletes, menus, titles, the typing indicator | hands each finished reply and each turn-lifecycle phase to the host, which asks the connection to act |
 | Model → platform | registers the platform's own actions (react, say) as MCP tools on the server the host builds for it | offers those tools on that platform's turns only, bound to the turn out of band |
 | Operator → transport | announces its config fields in its descriptor | renders them in the assistant editor, stores the values opaquely, hands them back as desired state |
 
@@ -205,10 +205,10 @@ A connection that throws is recorded as `error` and retried every fifteen
 seconds while the core still wants it; the dashboard shows the message.
 
 On every change — a connection edited, started or stopped, a settings write,
-an assistant deleted — the core announces `transport.config.changed` on the
-bus, and the host refetches the desired state and reconciles again. Nothing
-of this needs a restart; adding a connection in the dashboard opens it
-within a second.
+an assistant deleted — the core tells the host directly, and the host
+refetches the desired state and reconciles again (serialized, so a burst of
+changes collapses). Nothing of this needs a restart; adding a connection in
+the dashboard opens it within a second.
 
 ## Step 4 — Report what you see
 
@@ -235,8 +235,8 @@ off. You never report a delivery yourself.
 
 | The host asks | For | Through |
 | --- | --- | --- |
-| `sendMessage` | every reply the pipeline finishes, split under your `maxMessageLength` at paragraph, line, sentence or word boundaries; each part reported | the reply-delivery event |
-| `sendTyping` | from the moment a turn is accepted until it settles, every `typingRefreshMs` | the turn-lifecycle events |
+| `sendMessage` | every reply the pipeline finishes, split under your `maxMessageLength` at paragraph, line, sentence or word boundaries; each part reported | the reply-delivery event, handed to the host in-process |
+| `sendTyping` | from the moment a turn is accepted until it settles, every `typingRefreshMs` | the turn-lifecycle events, handed over the same way |
 | `sendVoice`, `sendPhoto`, `sendFile` | a voice reply (with your connection's text fallback when the platform refuses the bubble), generated images (best-effort per image), a browser-run download | the core's outbound port |
 | `deleteMessage`, `setChatTitle` | a browsing acknowledgement's cleanup, a provisional title | the same |
 | `sendMenu`, `editMenu`, `deleteMessage` | the feedback flow's option menus | the same |

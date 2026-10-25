@@ -3,8 +3,11 @@ import {
   type PlatformAdapter,
   type PlatformConnection,
   type PlatformHooks,
+  type ReplyDeliveryEvent,
+  type SourceTrace,
   type TransportDesiredState,
   type TransportPackage,
+  type TurnLifecycleEvent,
 } from "@assistants-swarm-hub/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
@@ -14,18 +17,23 @@ import { hostedTransport } from "@/server/transports/hosted";
 import { startTransportHost, type TransportHost } from "./host";
 
 /**
- * The host, end to end inside one process, with the bus and the queue
- * replaced by arrays and the store by what the registration would answer:
- * a package is registered, its desired connections opened, its sends go
- * through the connection and are reported, its inbound messages land on the
- * queue as events, its tools are reachable in-process with the turn
- * binding, a config change reconciles, and close stops it all.
+ * The host, end to end inside one process, with the queue replaced by an
+ * array, the trace store by a spy and the store by what the registration
+ * would answer: a package is registered, its desired connections opened,
+ * its sends go through the connection and are reported, its inbound
+ * messages land on the queue as events, its tools are reachable in-process
+ * with the turn binding, the pipeline's deliveries and lifecycle reach it
+ * as direct calls, a config change reconciles, and close stops it all.
+ *
+ * The bus module offers the queue and nothing else: a host that opened a
+ * publisher or a subscriber would fail here, which is the proof that a
+ * hosted transport's deliveries, typing, traces and config changes never
+ * touch Redis (step 6 of the item).
  */
 
 const wires = vi.hoisted(() => ({
   queue: [] as Record<string, unknown>[],
-  bus: [] as Record<string, unknown>[],
-  subscribers: [] as ((payload: unknown) => void)[],
+  traces: [] as SourceTrace[],
   desired: null as TransportDesiredState | null,
   registerTransport: vi.fn(),
   getSourceMessage: vi.fn(),
@@ -39,15 +47,11 @@ vi.mock("@assistants-swarm-hub/bus", () => ({
     },
     close: async () => undefined,
   }),
-  openPublisher: () => ({
-    publish: async (_channel: string, payload: Record<string, unknown>) => {
-      wires.bus.push(payload);
-    },
-    close: async () => undefined,
-  }),
-  openSubscriber: async (_url: string, _channel: string, onMessage: (payload: unknown) => void) => {
-    wires.subscribers.push(onMessage);
-    return { close: async () => undefined };
+}));
+
+vi.mock("@/server/trace/ingest", () => ({
+  ingestSourceTrace: (trace: SourceTrace) => {
+    wires.traces.push(trace);
   },
 }));
 
@@ -85,7 +89,11 @@ interface Raw {
 }
 
 let hooks: PlatformHooks<Raw> | null = null;
-let connection: PlatformConnection & { sendMessage: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> };
+let connection: PlatformConnection & {
+  sendMessage: ReturnType<typeof vi.fn>;
+  sendTyping: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+};
 let sentCount = 0;
 let connectShouldFail = false;
 
@@ -99,6 +107,7 @@ function makeConnection(): typeof connection {
       sourceMessageId: `m-${++sentCount}`,
       replyToSourceMessageId: opts?.replyToSourceMessageId ?? null,
     })),
+    sendTyping: vi.fn(async () => undefined),
     isDirectChat: async () => false,
     close: vi.fn(async () => undefined),
   };
@@ -158,10 +167,45 @@ const desiredRunning: TransportDesiredState = {
 
 let host: TransportHost | null = null;
 
+/** The turn's events as the pipeline builds them, for the synthetic chat. */
+const turn = {
+  correlationId: "chat-1:in-1:a1",
+  delivery(text: string): ReplyDeliveryEvent {
+    return {
+      v: 1,
+      eventId: "evt-d",
+      occurredAt: new Date().toISOString(),
+      correlationId: this.correlationId,
+      type: "reply.delivery",
+      source: "acme",
+      assistantId: "a1",
+      chatRef: "acme:chat:chat-1",
+      threadId: null,
+      replyToSourceMessageId: "in-1",
+      text,
+      silent: false,
+    };
+  },
+  lifecycle(phase: TurnLifecycleEvent["phase"]): TurnLifecycleEvent {
+    return {
+      v: 1,
+      eventId: `evt-${phase}`,
+      occurredAt: new Date().toISOString(),
+      correlationId: this.correlationId,
+      type: "turn.lifecycle",
+      source: "acme",
+      assistantId: "a1",
+      chatRef: "acme:chat:chat-1",
+      sourceMessageId: "in-1",
+      threadId: null,
+      phase,
+    };
+  },
+};
+
 beforeEach(() => {
   wires.queue.length = 0;
-  wires.bus.length = 0;
-  wires.subscribers.length = 0;
+  wires.traces.length = 0;
   wires.desired = desiredRunning;
   wires.registerTransport.mockClear();
   vi.mocked(adapter.connect).mockClear();
@@ -250,19 +294,106 @@ describe("startTransportHost", () => {
     expect(connection.sendMessage).not.toHaveBeenCalled();
   });
 
-  it("reconciles against the fresh desired state when its config changes on the bus", async () => {
+  it("performs a reply the pipeline hands it directly, reports it and traces it on the turn's correlation", async () => {
+    host = await startTransportHost({ redisUrl: "redis://test" });
+    const hosted = hostedTransport("acme")!;
+    await hosted.turns.deliver(turn.delivery("the answer"));
+    expect(connection.sendMessage).toHaveBeenCalledWith(
+      "chat-1",
+      "the answer",
+      expect.objectContaining({ replyToSourceMessageId: "in-1", silent: false }),
+    );
+    expect(wires.queue.find((event) => event.type === "message.delivered")).toMatchObject({
+      source: "acme",
+      sourceMessageId: "m-1",
+      content: "the answer",
+      replyToSourceMessageId: "in-1",
+    });
+    // The deliver trace lands in the store without a bus in between, on the
+    // same correlation as the core's inbound and reply traces.
+    expect(wires.traces).toEqual([
+      expect.objectContaining({
+        feature: "bot-messaging",
+        action: "deliver",
+        assistantId: "a1",
+        status: "success",
+        trigger: { kind: "transport", actor: "acme:chat:chat-1", correlationId: turn.correlationId },
+        outputSummary: "delivered chat-1:m-1",
+      }),
+    ]);
+  });
+
+  it("records a failed delivery as a failed trace and rethrows to the caller", async () => {
+    host = await startTransportHost({ redisUrl: "redis://test" });
+    connection.sendMessage.mockRejectedValueOnce(new Error("platform said no"));
+    await expect(hostedTransport("acme")!.turns.deliver(turn.delivery("the answer"))).rejects.toThrow(
+      /platform said no/,
+    );
+    expect(wires.traces).toEqual([
+      expect.objectContaining({
+        action: "deliver",
+        status: "error",
+        error: { message: "platform said no" },
+      }),
+    ]);
+  });
+
+  it("shows typing from the accepted lifecycle until the turn settles", async () => {
+    vi.useFakeTimers();
+    try {
+      host = await startTransportHost({ redisUrl: "redis://test" });
+      const hosted = hostedTransport("acme")!;
+      hosted.turns.lifecycle(turn.lifecycle("accepted"));
+      expect(connection.sendTyping).toHaveBeenCalledTimes(1);
+      expect(connection.sendTyping).toHaveBeenCalledWith("chat-1", null);
+      // A progress phase keeps the one loop; the refresh interval re-sends.
+      hosted.turns.lifecycle({ ...turn.lifecycle("progress"), activity: "memory_search" });
+      await vi.advanceTimersByTimeAsync(acme.descriptor.typingRefreshMs);
+      expect(connection.sendTyping).toHaveBeenCalledTimes(2);
+      hosted.turns.lifecycle(turn.lifecycle("settled"));
+      await vi.advanceTimersByTimeAsync(acme.descriptor.typingRefreshMs * 2);
+      expect(connection.sendTyping).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reconciles against the fresh desired state when the core tells it the config changed", async () => {
     host = await startTransportHost({ redisUrl: "redis://test" });
     wires.desired = {
       transport: { enabled: true, config: {} },
       connections: [{ ...desiredRunning.connections[0], enabled: false }],
     };
-    for (const deliver of wires.subscribers) {
-      deliver({ type: "transport.config.changed", transport: "acme" });
-    }
+    hostedTransport("acme")!.reconcile("transport.config.changed");
     await vi.waitFor(() => {
       expect(connection.close).toHaveBeenCalled();
     });
     expect(hostedTransport("acme")!.statuses()).toEqual([]);
+  });
+
+  it("collapses a burst of reconciles into serialized applications of the latest state", async () => {
+    host = await startTransportHost({ redisUrl: "redis://test" });
+    const hosted = hostedTransport("acme")!;
+    wires.desired = {
+      transport: { enabled: true, config: {} },
+      connections: [{ ...desiredRunning.connections[0], config: { botToken: "rotated" } }],
+    };
+    hosted.reconcile("transport.config.changed");
+    hosted.reconcile("transport.config.changed");
+    hosted.reconcile("assistant.deleted");
+    await vi.waitFor(() => {
+      expect(vi.mocked(adapter.connect).mock.calls.at(-1)?.[0]).toEqual({
+        connectionId: "c1",
+        assistantId: "a1",
+        config: { botToken: "rotated" },
+      });
+    });
+    // Restarted once for the rotation; the two later reconciles saw the same
+    // state and changed nothing.
+    expect(adapter.connect).toHaveBeenCalledTimes(2);
+    expect(hosted.statuses()).toEqual([
+      expect.objectContaining({ connectionId: "c1", state: "running" }),
+    ]);
   });
 
   it("stops the connections and unregisters the transport on close", async () => {

@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 
 import { openPublisher, openQueue, openWorker, type BusPublisher } from "@assistants-swarm-hub/bus";
 import {
-  BUS_EVENTS_CHANNEL,
   INBOUND_MESSAGES_QUEUE,
   inboundMessageEventSchema,
   parseScopedRef,
@@ -85,14 +84,17 @@ import {
 import { sourceLabel } from "@/server/source/directory";
 import { sourceMediaStore } from "./source-media";
 import { sourceOutbound, type SourceOutboundPort } from "./source-outbound";
+import { publishTurnEvent } from "./turn-events";
 
 /**
  * The queue side of the source split (redesign Phase 2): consume normalized
  * inbound events and run the one reply pipeline for every source —
  * `handleIncomingMessage` with collaborators built from the
- * event instead of the database, deliveries published as bus events instead
- * of sent directly, and turn lifecycle published for the owning source to
- * render (typing) and to release its mirror hold on settle.
+ * event instead of the database, each finished reply handed to the owning
+ * source as a reply-delivery event (`turn-events.ts`: a direct call into
+ * the host for a transport this process runs, the bus for any other), and
+ * the turn lifecycle handed over the same way for the source to render
+ * (typing) and to release its mirror hold on settle.
  *
  * Everything brain-shaped (memory, preferences, persona, tasks, settings)
  * still reads the v1 database until the Phase 6 cutover. Owner identity is
@@ -111,8 +113,8 @@ import { sourceOutbound, type SourceOutboundPort } from "./source-outbound";
  * mirrors + stores them as pending media), browsing acknowledgements (sent
  * silent through the API so their id can be registered for deletion), and
  * the reaction tool. `#id` citation links resolve source-side at delivery
- * (the source owns the mirror). With the API unconfigured everything
- * degrades to the plain-text bus event, the v1 no-capability behavior.
+ * (the source owns the mirror). With no port everything degrades to the
+ * plain-text reply-delivery event, the v1 no-capability behavior.
  */
 
 /** Re-enqueue delay for a turn that failed before performing any action. */
@@ -136,8 +138,9 @@ export interface TurnConsumerContext {
   /**
    * The owning source's outbound sends over its internal API (voice,
    * photos, silent acks, deletes, reactions). Resolved from env when
-   * absent; null-resolution degrades every such send to the plain-text bus
-   * event (or drops it, for images) — dev-only, no live traffic runs so.
+   * absent; null-resolution degrades every such send to the plain-text
+   * reply-delivery event (or drops it, for images) — dev-only, no live
+   * traffic runs so.
    */
   outbound?: SourceOutboundPort;
   overrides?: {
@@ -217,7 +220,7 @@ interface TurnPlan {
    * display name (the spoken-summons identity — addressing and the analyzer
    * match THIS, never the bot account's profile name; user decision
    * 2026-08-24) and the persona block. Null = unknown id (deleted assistant
-   * whose connection outlived the bus event).
+   * whose connection outlived the deletion's reconcile).
    */
   assistantIdentity: { name: string; personaBlock: string } | null;
   /**
@@ -276,8 +279,8 @@ async function buildEventDeps(
   // pre-pass (turn.assistantIdentity — the block includes the structural
   // "You are <name>." line, so a third-person persona still knows its
   // name). An id the store does not know composes no persona but says so
-  // loudly — a deleted assistant whose connection outlived the bus event
-  // must not silently blend in.
+  // loudly — a deleted assistant whose connection outlived the deletion's
+  // reconcile must not silently blend in.
   const personalityPrompt = turn.assistantIdentity?.personaBlock ?? null;
   if (turn.assistantIdentity == null) {
     console.error(
@@ -901,7 +904,7 @@ export async function startTurnConsumer(input: {
   const chatChains = new Map<string, Promise<unknown>>();
 
   const ctx: TurnConsumerContext = {
-    publish: (payload) => publisher.publish(BUS_EVENTS_CHANNEL, payload),
+    publish: (payload) => publishTurnEvent(payload, publisher),
     markers,
     reEnqueue: async (event, attempt) => {
       await queue.add("message.inbound", event, {

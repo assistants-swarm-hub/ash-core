@@ -96,7 +96,7 @@ free. A typical schema is one required secret, the bot token.
 
 | Action | Effect |
 | --- | --- |
-| Connect | `POST /api/transports/{id}/connections` — the row is desired state; the transport refetches it on the bus's `transport.config.changed` and starts the poller |
+| Connect | `POST /api/transports/{id}/connections` — the row is desired state; the host is told to reconcile, refetches it and starts the connection |
 | Save changes | `PATCH …/connections/{connectionId}` with a config — secrets are write-only (previewed as `…last4`); a changed token restarts the poller |
 | Stop / Start | `PATCH` with `enabled` — the desired state the transport receives folds this with the transport's own switch and the owner account's activity, so `false` there means "do not run this" whatever the row says |
 | Disconnect | `DELETE …/connections/{connectionId}` — the row and its stored config go; the assistant is untouched |
@@ -125,12 +125,13 @@ its own assistants explicitly. See [Tool connections](tool-connections.md).
 ## Deletion
 
 `DELETE /api/assistants/{id}` removes the row; its tasks, transport connections
-and tool selections cascade in the store. Whatever a source app keeps keyed on
-the id — the running poller — is dropped by the app reacting to the
-`assistant.deleted` bus event the service publishes on `assistants-swarm-hub:events`
-(the transport refetches its desired state and stops the connection).
-With no bus configured the trace carries a loud `warn` event saying the sources
-were not told, never a silent divergence. Web-chat threads bound to the
+and tool selections cascade in the store. Whatever a transport keeps keyed on
+the id — the running connection — is dropped by the transport reconciling
+against its desired state: every hosted transport is told directly, and a
+transport run elsewhere hears the `assistant.deleted` event the service
+publishes on `assistants-swarm-hub:events`. With such a transport registered
+and no bus configured, the trace carries a loud `warn` event saying the
+sources were not told, never a silent divergence. Web-chat threads bound to the
 assistant keep their `assistant_id` (a plain column, not a foreign key); an
 unknown assistant on a later turn replies with the base prompt only and logs
 the id. The dashboard's confirm names all of it: the assistant, its tasks and

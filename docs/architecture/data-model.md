@@ -211,8 +211,8 @@ vars). See [Adding a transport](../development/adding-a-transport.md).
 
 Per-assistant transport connections: one opaque config section per transport
 (a section holds the bot token, say). This is **desired** state — the
-transport fetches it at boot and on change events and reconciles; actual
-state is published on the bus, not stored.
+host fetches it at boot and on every announced change and reconciles; actual
+state is reported by the host in memory, not stored.
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -1008,8 +1008,8 @@ the two jobs fail, re-run and backfill independently.
   `./data/redis`.
 - **Agent downloads** (`data/downloads`) and the self-updating tool
   binaries (`data/bin`) — `server/paths.ts`.
-- **Live state.** Transport connection status and turn progress are
-  published on the bus, not stored; the tables hold desired state
+- **Live state.** Transport connection status and turn progress live in the
+  host's memory and the realtime hub, not in a table; the tables hold desired state
   (`assistant_transports.enabled`) and the reachability stamp
   (`transports.last_seen_at`) only.
 

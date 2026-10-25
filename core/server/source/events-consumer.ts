@@ -32,10 +32,12 @@ import { ingestSourceTrace } from "@/server/trace/ingest";
  *
  * Reply-delivery and turn-lifecycle events are each source's to consume, and
  * since the chat dissolve (Phase 6) the core IS the web chat's source side:
- * the pipeline still publishes every turn's events to the bus, each transport
- * consumes its own, and the web chat's are consumed right here — the reply
- * stored in the thread, the lifecycle rendered as live progress. Other
- * sources' stay ignored by type.
+ * the pipeline publishes a turn's events to the bus for every source it
+ * does not host (`server/turn/turn-events.ts`), and the web chat's are
+ * consumed right here — the reply stored in the thread, the lifecycle
+ * rendered as live progress. A hosted transport's never reach the bus: its
+ * deliveries, typing, settle hold release and traces are direct calls. What
+ * remains here for transports serves one run as its own service.
  */
 
 export interface SourceEventsConsumer {
@@ -86,9 +88,10 @@ export async function startSourceEventsConsumer(input: {
           handleChatTurnLifecycle(parsed.data);
           return;
         }
-        // A transport turn settled: release the mirror row's live-processing
-        // hold (the transport keeps only the typing rendering; the hold moved
-        // in with the store — Phase 7).
+        // A turn of a transport run elsewhere settled: release the mirror
+        // row's live-processing hold (the transport keeps only the typing
+        // rendering; the hold moved in with the store — Phase 7). A hosted
+        // transport's settle releases it in the router, before any bus.
         if (parsed.data.phase === "settled") {
           const event = parsed.data;
           void releaseHold(
@@ -106,8 +109,10 @@ export async function startSourceEventsConsumer(input: {
         return;
       }
       if (type === "trace.recorded") {
-        // The unified trace store: a source app settled an action and hands
-        // its whole trace over for persistence (PLAN "Traces and debug").
+        // The unified trace store: a source app run elsewhere settled an
+        // action and hands its whole trace over for persistence (PLAN
+        // "Traces and debug"); a hosted transport's settle into the store
+        // directly (`transports/host/traces.ts`).
         const recorded = traceRecordedEventSchema.safeParse(payload);
         if (!recorded.success) {
           console.error("Malformed trace.recorded event ignored:", recorded.error.message);

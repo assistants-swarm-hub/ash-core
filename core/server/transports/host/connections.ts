@@ -1,10 +1,9 @@
 import "server-only";
 
-import { BUS_EVENTS_CHANNEL, type TransportDesiredState } from "@assistants-swarm-hub/contracts";
-import { openPublisher, type BusPublisher } from "@assistants-swarm-hub/bus";
-import { dashboardRefresh } from "@assistants-swarm-hub/service";
+import { type TransportDesiredState } from "@assistants-swarm-hub/contracts";
 
 import { describeError } from "@/lib/describe-error";
+import { publishEvent } from "@/server/realtime/hub";
 
 import { buildEditEvent, buildInboundEvent, buildReactionEvent } from "./inbound";
 import { SeenCache } from "./updates";
@@ -56,18 +55,14 @@ export interface ConnectionManagerDeps<TRaw> {
   addressing: AddressingRule<TRaw>;
   updates: UpdatePublisher;
   core: TransportCoreApi;
-  redisUrl: string;
   onStatusChange?: (status: ConnectionStatus) => void;
 }
 
 export class ConnectionManager<TRaw> {
   private managed = new Map<string, Managed>();
-  private publisher: BusPublisher;
   private seen = new SeenCache();
 
-  constructor(private readonly deps: ConnectionManagerDeps<TRaw>) {
-    this.publisher = openPublisher(deps.redisUrl);
-  }
+  constructor(private readonly deps: ConnectionManagerDeps<TRaw>) {}
 
   private get source(): string {
     return this.deps.descriptor.id;
@@ -334,10 +329,9 @@ export class ConnectionManager<TRaw> {
   ): void {
     entry.status = { connectionId: entry.connectionId, assistantId: entry.assistantId, ...status };
     this.deps.onStatusChange?.({ ...entry.status });
-    // The dashboard's connection card watches `status`.
-    void this.publisher
-      .publish(BUS_EVENTS_CHANNEL, dashboardRefresh(this.source, ["status"]))
-      .catch(() => undefined);
+    // The dashboard's connection card watches `status` — pinged in-process,
+    // the way every core-side change reaches the SSE layer.
+    publishEvent("status");
   }
 
   /** Record a failure and, while the core still wants it, keep retrying. */
@@ -405,6 +399,5 @@ export class ConnectionManager<TRaw> {
       entry.desired = false;
       await this.stop(entry);
     }
-    await this.publisher.close();
   }
 }

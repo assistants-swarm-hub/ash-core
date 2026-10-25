@@ -66,7 +66,7 @@ tracked — is the <transport> package installed and loaded?`.
 | Cause | Fix |
 | --- | --- |
 | The transport's package did not load at the last start | The section above: install it, fix what the log names, restart. A package that loads registers and reconciles its connections from the desired state at boot |
-| The host has not reconciled yet | Connect/Start/Stop announce a `transport.config.changed` bus event and the host refetches. If the core log says `transport.config.changed for '<id>' was NOT published (bus unconfigured?)`, Redis is down — next section — and the host picks the change up only on its next restart |
+| The host has not reconciled yet | Connect/Start/Stop tell the host to reconcile and it refetches; the core log says `<id>: desired state reconciled (transport.config.changed)`. A reconcile that failed is logged with its reason right there (`desired-state reconcile failed`) |
 
 The connection's real state, once tracked, is on the same badge: Running, Error with the
 message, or Stopped.
@@ -99,9 +99,10 @@ Work from the message inward, in Debug:
 2. Then the **`reply`** trace under the same correlation — what the pipeline did with
    the turn: `replied`, `skipped` with the reason (`not addressed — …`, the loop
    guard, maintenance), or `error` with the provider's full response.
-3. A `reply` trace that ends in a delivery but no message in the chat: the delivery
-   travels back to the transport as a bus event; check the transport's log for
-   the send error.
+3. A `reply` trace that ends in a delivery but no message in the chat: the
+   send is the transport's `deliver` trace on the same correlation; a failed
+   one is there with the platform's error, and in the core log under
+   `[<id> delivery]`.
 
 ## The bot ignores me in a group
 

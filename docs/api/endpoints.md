@@ -118,7 +118,7 @@ person link; minting again retires the previous unused code.
 | `GET` | `/api/assistants` | account | — | `{ assistants: Assistant[] }`, oldest first (a user-role account: its own) |
 | `POST` | `/api/assistants` | account | `{ name (≤64), persona? (≤32 000, default "") }` | The created `Assistant` — **201**. The creator owns it |
 | `PATCH` | `/api/assistants/{id}` | account | `{ name?, persona? }`, ≥1 field | The updated `Assistant` |
-| `DELETE` | `/api/assistants/{id}` | account | — | `{ deleted: true }`. Tasks cascade; transports drop their connections on the `assistant.deleted` bus event |
+| `DELETE` | `/api/assistants/{id}` | account | — | `{ deleted: true }`. Tasks cascade; every hosted transport is told to reconcile and drops the connection (a transport run elsewhere hears `assistant.deleted` on the bus) |
 
 `Assistant` = `{ id, name, persona, ownerAccountId, createdAt, updatedAt }`.
 Names are case-insensitively unique (`conflict` otherwise); at most 32
@@ -160,8 +160,10 @@ createdAt, updatedAt, status }` where `status` is the live connection state the
 hosted transport reports (`{ state: "running" \| "error" \|
 "stopped", username, since, error }`) or `null` when it reports none.
 
-Every write here announces `transport.config.changed` on the bus; the host
-refetches the transport's desired state and reconciles its connections.
+Every write here tells the host to reconcile (directly for a hosted
+transport; as `transport.config.changed` on the bus for one run elsewhere);
+the host refetches the transport's desired state and reconciles its
+connections.
 
 ## Backends
 

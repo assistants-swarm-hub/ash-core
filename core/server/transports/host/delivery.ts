@@ -1,37 +1,34 @@
 import "server-only";
 
 import {
-  BUS_EVENTS_CHANNEL,
   parseScopedRef,
-  replyDeliveryEventSchema,
-  turnLifecycleEventSchema,
+  type PlatformConnection,
+  type ReplyDeliveryEvent,
+  type SendContext,
   type SourceTraceClient,
+  type TransportDescriptor,
+  type TurnLifecycleEvent,
 } from "@assistants-swarm-hub/contracts";
-import {
-  openPublisher,
-  openSubscriber,
-  type BusPublisher,
-  type BusSubscription,
-} from "@assistants-swarm-hub/bus";
-import { busTraceClient } from "@assistants-swarm-hub/service";
-
-import type { PlatformConnection, SendContext, TransportDescriptor } from "@assistants-swarm-hub/contracts";
 
 import { describeError } from "@/lib/describe-error";
+import type { TurnEventSink } from "@/server/transports/hosted";
 
 import { sendChatMessage } from "./send";
 
 /**
- * The outbound half of the contract: consume the core's reply-delivery events
- * (perform the send, report it back — the core mirrors and cross-feeds) and
- * its turn-lifecycle events (render as the platform's typing indicator).
+ * The outbound half of the contract, called by the pipeline in-process: a
+ * finished reply to perform (the send, reported back — the core mirrors and
+ * cross-feeds) and the turn's lifecycle to render as the platform's typing
+ * indicator. The pipeline hands both over through {@link TurnEventSink}
+ * (`server/turn/turn-events.ts`), the same events it publishes on the bus
+ * for a source this process does not host.
  *
  * The model never has to remember to deliver its own answer, and typing is
  * never a tool. Both were written identically in every transport.
  */
 
-export interface DeliveryConsumer {
-  close(): Promise<void>;
+export interface HostedDelivery extends TurnEventSink {
+  close(): void;
 }
 
 /**
@@ -73,41 +70,30 @@ class TypingLoops {
   }
 }
 
-export async function startDeliveryConsumer(input: {
-  redisUrl: string;
+export function startDelivery(input: {
   descriptor: TransportDescriptor;
   send: SendContext;
   /**
-   * The service's one trace client — the same one the hosted tools use, so a
-   * turn's delivery and its tool calls are recorded the same way. Omitted, one
-   * is opened here and closed with the consumer; `startTransportService`
-   * always passes its own.
+   * The transport's one trace client — the same one the hosted tools use, so
+   * a turn's delivery and its tool calls are recorded the same way.
    */
-  traces?: SourceTraceClient;
+  traces: SourceTraceClient;
   /** Whether a chat is direct; the core's refs do not carry the kind. */
   isDirect: (chatId: string) => Promise<boolean>;
   onError?: (context: string, error: unknown) => void;
-}): Promise<DeliveryConsumer> {
+}): HostedDelivery {
   const source = input.descriptor.id;
   const onError =
     input.onError ??
     ((context: string, error: unknown) => console.error(`[${source} delivery] ${context}:`, error));
   const typing = new TypingLoops(input.send.connectionFor, input.descriptor.typingRefreshMs);
-  const ownPublisher: BusPublisher | null = input.traces ? null : openPublisher(input.redisUrl);
-  const traces = input.traces ?? busTraceClient(source, ownPublisher!);
 
-  const handle = async (payload: unknown): Promise<void> => {
-    const type =
-      payload && typeof payload === "object" ? (payload as { type?: unknown }).type : undefined;
-
-    if (type === "reply.delivery") {
-      const parsed = replyDeliveryEventSchema.safeParse(payload);
-      if (!parsed.success || parsed.data.source !== source) return;
-      const event = parsed.data;
+  return {
+    async deliver(event: ReplyDeliveryEvent): Promise<void> {
       const chatId = parseScopedRef(event.chatRef).id;
       // The delivery half of the turn, on the turn's own correlation — in
       // Debug it lines up right after the core's reply trace.
-      const trace = traces.startTrace({
+      const trace = input.traces.startTrace({
         feature: "bot-messaging",
         action: "deliver",
         assistantId: event.assistantId,
@@ -170,13 +156,9 @@ export async function startDeliveryConsumer(input: {
         await trace.fail(error);
         throw error;
       }
-      return;
-    }
+    },
 
-    if (type === "turn.lifecycle") {
-      const parsed = turnLifecycleEventSchema.safeParse(payload);
-      if (!parsed.success || parsed.data.source !== source) return;
-      const event = parsed.data;
+    lifecycle(event: TurnLifecycleEvent): void {
       const chatId = parseScopedRef(event.chatRef).id;
       const key = `${chatId}:${event.sourceMessageId}`;
       if (event.phase === "settled") {
@@ -184,23 +166,10 @@ export async function startDeliveryConsumer(input: {
       } else {
         typing.start(key, chatId, event.threadId ?? null, event.assistantId ?? null);
       }
-    }
-  };
-
-  const subscription: BusSubscription = await openSubscriber(
-    input.redisUrl,
-    BUS_EVENTS_CHANNEL,
-    (payload) => {
-      void handle(payload).catch((error) => onError("event handling", error));
     },
-    (error) => onError("bus payload parse", error),
-  );
 
-  return {
-    async close(): Promise<void> {
+    close(): void {
       typing.stopAll();
-      await subscription.close();
-      await ownPublisher?.close();
     },
   };
 }

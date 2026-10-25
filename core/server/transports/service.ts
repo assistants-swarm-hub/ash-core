@@ -33,9 +33,11 @@ import {
  * from the package's descriptor — and the opaque config blobs the row and
  * its connections carry (an owner identity, say; bot tokens) are the
  * transport's to interpret, never the core's. Desired-state changes are
- * announced on the bus (`transport.config.changed`); the host refetches and
- * reconciles. A row outlives its package: a transport that was installed
- * once stays listed, with no connections tracked, until its package is back.
+ * announced to the host (a direct reconcile for a hosted transport, the
+ * `transport.config.changed` bus event for one run elsewhere); the host
+ * refetches and reconciles. A row outlives its package: a transport that was
+ * installed once stays listed, with no connections tracked, until its
+ * package is back.
  */
 
 const FEATURE = FEATURES["tool-connections"];
@@ -124,8 +126,18 @@ export async function isRegisteredTransport(
   return (await getTransport(source, db)) !== null;
 }
 
-/** Announce a desired-state change; the transport refetches and reconciles. */
+/**
+ * Announce a desired-state change; the transport refetches and reconciles.
+ * A hosted transport is told directly (`hosted.reconcile`, serialized by
+ * the host); one this process does not host hears it on the bus.
+ */
 export async function announceTransportChange(transport: SourceId): Promise<void> {
+  const hosted = hostedTransport(transport);
+  if (hosted) {
+    hosted.reconcile("transport.config.changed");
+    publishEvent("status");
+    return;
+  }
   const event: TransportConfigChangedEvent = {
     v: 1,
     eventId: randomUUID(),

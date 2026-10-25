@@ -488,6 +488,8 @@ describe("managed source connections", () => {
         },
         callTool: async () => ({ text: "", isError: false }),
       },
+      turns: {} as never,
+      reconcile: () => undefined,
     });
   }
 

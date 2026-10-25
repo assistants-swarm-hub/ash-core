@@ -156,8 +156,8 @@ export interface IncomingMessage {
 export interface SentMessage {
   /**
    * The delivered message's source-local id, or null when the caller cannot
-   * know it — the queue-consumer path publishes a reply-delivery event and
-   * the owning source app performs the send and mirrors the result
+   * know it — the queue-consumer path hands the owning source a
+   * reply-delivery event, and the source performs the send and mirrors the result
    * (redesign Phase 2). Null skips the local mirror write below.
    */
   sourceMessageId: string | null;
