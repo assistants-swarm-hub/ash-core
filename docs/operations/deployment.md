@@ -243,6 +243,18 @@ docker compose stop app && docker compose exec -T db psql -U bot -d postgres -c 
 
 Nothing in the store depends on the name; the rename is instant.
 
+**Once, upgrading to 2.0.0:** a transport is no longer a container of its own.
+The internal HTTP wire the transport images registered over is gone, so an
+`ash-transport-telegram` or `ash-transport-discord` image from before 2.0.0
+cannot reach a 2.0.0 core, and the compose services and version variables
+that ran them no longer exist. Take the new compose file, remove the old
+transport containers (`docker compose rm -sf telegram discord`), and name the
+transports to run in `TRANSPORTS` with an `NPM_TOKEN` (see
+[Adding a transport](#adding-a-transport)) — each as a release built on SDK
+major 5, which is what a 2.0.0 core hosts. The platform connections the old
+transports opened are the core's rows, not theirs: the hosted transport opens
+the same ones at boot, so nothing has to be re-entered.
+
 A transport upgrades on **its own** schedule — its package and version are its
 repository's, not this one's: change the version in `TRANSPORTS` and recreate
 `app`. The only thing the two sides must agree on is the transport SDK's

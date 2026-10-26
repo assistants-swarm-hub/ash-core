@@ -16,7 +16,7 @@
 # see docs/operations/deployment.md.
 services:
   app:
-    image: ghcr.io/assistants-swarm-hub/ash-core:${ASH_VERSION:-1.49.0}
+    image: ghcr.io/assistants-swarm-hub/ash-core:${ASH_VERSION:-2.0.0}
     ports:
       - "${PORT:-3200}:3200"
     depends_on:
